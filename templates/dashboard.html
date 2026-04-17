@@ -148,11 +148,10 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       {% if user.plano and user.plano in planos %}
         <span class="plano-badge">{{ planos[user.plano].nome }}</span>
       {% elif user.is_admin %}
-        <span class="plano-badge" style="background:var(--green)">Admin ∞</span>
+        <span class="plano-badge" style="background:var(--green)">Admin</span>
       {% else %}
         <span class="plano-badge" style="background:var(--text3)">Sem plano</span>
       {% endif %}
-      <div class="creditos-label" style="margin-top:4px">1 imagem = {{ creditos_por_imagem }} créditos</div>
     </div>
   </div>
 
