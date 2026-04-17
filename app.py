@@ -743,6 +743,10 @@ def checkout():
         "line_items": [{"price": price_id, "quantity": 1}],
         "success_url": request.host_url + "pagamento_sucesso?session_id={CHECKOUT_SESSION_ID}",
         "cancel_url": request.host_url + "dashboard",
+        "locale": "pt-BR",
+        "custom_text": {
+            "submit": {"message": "Seu acesso será liberado imediatamente após o pagamento."},
+        },
         "metadata": {
             "user_id": str(current_user.id),
             "price_id": price_id,
@@ -754,11 +758,29 @@ def checkout():
 
     if plano_info["tipo"] == "assinatura":
         checkout_params["mode"] = "subscription"
+        checkout_params["subscription_data"] = {
+            "metadata": {
+                "user_id": str(current_user.id),
+                "plano_key": plano_info.get("key", ""),
+                "creditos": str(plano_info.get("creditos", 0)),
+            }
+        }
     else:
         checkout_params["mode"] = "payment"
 
     session = stripe.checkout.Session.create(**checkout_params)
     return jsonify({"checkout_url": session.url})
+
+@app.route("/portal_cliente")
+@login_required
+def portal_cliente():
+    if not current_user.stripe_customer_id:
+        return redirect(url_for("dashboard"))
+    session = stripe.billing_portal.Session.create(
+        customer=current_user.stripe_customer_id,
+        return_url=request.host_url + "dashboard",
+    )
+    return redirect(session.url)
 
 @app.route("/pagamento_sucesso")
 @login_required
