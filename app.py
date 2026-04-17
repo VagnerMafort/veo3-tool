@@ -40,7 +40,7 @@ PLANOS_STRIPE = {
         "creditos": 500,
         "valor": "R$39,90/mês",
         "tipo": "assinatura",
-        "descricao": "500 créditos por mês (20 imagens)"
+        "descricao": "500 créditos por mês"
     },
     "pro": {
         "nome": "Pro",
@@ -48,7 +48,7 @@ PLANOS_STRIPE = {
         "creditos": 1500,
         "valor": "R$79,90/mês",
         "tipo": "assinatura",
-        "descricao": "1.500 créditos por mês (60 imagens)"
+        "descricao": "1.500 créditos por mês"
     },
     "business": {
         "nome": "Business",
@@ -56,7 +56,7 @@ PLANOS_STRIPE = {
         "creditos": 4000,
         "valor": "R$149,90/mês",
         "tipo": "assinatura",
-        "descricao": "4.000 créditos por mês (160 imagens)"
+        "descricao": "4.000 créditos por mês"
     },
 }
 
@@ -66,21 +66,21 @@ PACOTES_AVULSO = {
         "price_id": "price_1TMz71LW3ZSF3MIlbXO35Z5Z",
         "creditos": 200,
         "valor": "R$9,90",
-        "descricao": "200 créditos (8 imagens)"
+        "descricao": "200 créditos extras"
     },
     "grande": {
         "nome": "Grande - 1.500 créditos",
         "price_id": "price_1TMz72LW3ZSF3MIlPc1o5Wx6",
         "creditos": 1500,
         "valor": "R$49,90",
-        "descricao": "1.500 créditos (60 imagens)"
+        "descricao": "1.500 créditos extras"
     },
     "ultra": {
         "nome": "Ultra - 7.000 créditos",
         "price_id": "price_1TMz73LW3ZSF3MIliWd0gqYW",
         "creditos": 7000,
         "valor": "R$199,90",
-        "descricao": "7.000 créditos (280 imagens)"
+        "descricao": "7.000 créditos extras"
     },
 }
 

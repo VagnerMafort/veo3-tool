@@ -108,7 +108,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 .plano-card:hover{border-color:var(--accent)}
 .plano-card.ativo{border-color:var(--green);background:rgba(5,150,105,0.08)}
 .plano-card .plano-nome{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:4px}
-.plano-card .plano-preco{font-size:1.2rem;font-weight:700;color:var(--accent);margin-bottom:6px}
+.plano-card .plano-creditos{font-size:1.4rem;font-weight:800;color:var(--accent);margin-bottom:4px}
+.plano-card .plano-preco{font-size:.88rem;font-weight:600;color:var(--text2);margin-bottom:6px}
 .plano-card .plano-desc{font-size:.82rem;color:var(--text2);margin-bottom:12px}
 .plano-card .plano-badge-ativo{position:absolute;top:12px;right:12px;background:var(--green);color:#fff;font-size:.7rem;padding:3px 10px;border-radius:20px;font-weight:600}
 .plano-btn{width:100%;padding:10px;border:none;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;transition:.2s}
@@ -286,6 +287,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <div class="plano-card {% if user.plano == key %}ativo{% endif %}">
         {% if user.plano == key %}<div class="plano-badge-ativo">✓ Ativo</div>{% endif %}
         <div class="plano-nome">{{ plano.nome }}</div>
+        <div class="plano-creditos">{% if plano.creditos > 0 %}{{ plano.creditos }} créditos{% else %}Ilimitado{% endif %}</div>
         <div class="plano-preco">{{ plano.valor }}</div>
         <div class="plano-desc">{{ plano.descricao }}</div>
         {% if user.plano == key %}
