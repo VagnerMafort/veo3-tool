@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — Gerador de Imagens</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f0f;color:#f0f0f0;min-height:100vh;padding:20px}
+    .container{max-width:560px;margin:0 auto}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+    .header h1{font-size:1.2rem}.header h1 span{color:#7c3aed}
+    .header-right{display:flex;align-items:center;gap:10px}
+    .avatar{width:34px;height:34px;background:#7c3aed;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem}
+    .btn-sair{background:none;border:1px solid #3a3a3a;color:#888;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.8rem}
+    .btn-sair:hover{border-color:#ef4444;color:#ef4444}
+    .tabs{display:flex;gap:8px;margin-bottom:20px}
+    .tab{flex:1;padding:10px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;cursor:pointer;text-align:center;font-size:.82rem;color:#888;transition:.2s}
+    .tab.active{background:#7c3aed;border-color:#7c3aed;color:#fff}
+    .pane{display:none}.pane.active{display:block}
+    .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:22px;margin-bottom:14px}
+    .card h2{font-size:.95rem;margin-bottom:16px;color:#ccc}
+    .card h3{font-size:.85rem;color:#888;margin:16px 0 10px;padding-top:16px;border-top:1px solid #2a2a2a}
+    label{display:block;font-size:.82rem;color:#888;margin-bottom:6px;margin-top:14px}
+    label:first-child{margin-top:0}
+    input,select,textarea{width:100%;padding:10px 12px;background:#111;border:1px solid #2a2a2a;border-radius:8px;color:#f0f0f0;font-size:.88rem;outline:none;transition:border-color .2s}
+    input:focus,select:focus,textarea:focus{border-color:#7c3aed}
+    textarea{resize:vertical;min-height:110px;font-family:inherit}
+    .tip{font-size:.76rem;color:#555;margin-top:4px}
+    .drop-area{border:2px dashed #3a3a3a;border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;position:relative;transition:.2s}
+    .drop-area:hover,.drop-area.dragover{border-color:#7c3aed;background:#1f1535}
+    .drop-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .drop-icon{font-size:1.8rem;margin-bottom:6px}
+    .drop-area p{color:#aaa;font-size:.85rem}
+    .drop-area .fmt{font-size:.72rem;color:#555;margin-top:3px}
+    .file-name{margin-top:8px;font-size:.8rem;color:#7c3aed;text-align:center;min-height:16px}
+    .toggle-row{display:flex;align-items:center;gap:10px;margin-top:14px}
+    .toggle-row label{margin:0;flex:1}
+    .toggle{position:relative;width:42px;height:24px;flex-shrink:0}
+    .toggle input{opacity:0;width:0;height:0}
+    .slider{position:absolute;inset:0;background:#2a2a2a;border-radius:24px;cursor:pointer;transition:.3s}
+    .slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s}
+    input:checked+.slider{background:#7c3aed}
+    input:checked+.slider:before{transform:translateX(18px);background:#fff}
+    .secao-voz{display:none;margin-top:14px;background:#111;border-radius:10px;padding:14px;border:1px solid #2a2a2a}
+    .secao-clone{display:none;margin-top:10px}
+    .btn{width:100%;margin-top:18px;padding:13px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;transition:.2s}
+    .btn:hover{background:#6d28d9}
+    .btn:disabled{background:#2a2a2a;color:#555;cursor:not-allowed}
+    .btn-save{background:#1d4ed8}.btn-save:hover{background:#1e40af}
+    .btn-outline{background:none;border:1px solid #3a3a3a;color:#888;margin-top:10px}
+    .btn-outline:hover{border-color:#7c3aed;color:#ccc}
+    .status-box{display:none;margin-top:18px;background:#111;border-radius:10px;padding:16px;text-align:center}
+    .spinner{width:30px;height:30px;border:3px solid #2a2a2a;border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .status-text{font-size:.85rem;color:#ccc;margin-bottom:8px}
+    .progress-bar{height:5px;background:#2a2a2a;border-radius:3px;overflow:hidden}
+    .progress-fill{height:100%;background:#7c3aed;border-radius:3px;transition:width .4s;width:0%}
+    .resultado{display:none;margin-top:18px;text-align:center}
+    .check{font-size:2rem;margin-bottom:6px}
+    .resultado p{color:#aaa;font-size:.85rem;margin-bottom:12px}
+    .btns-resultado{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+    .btn-download{display:inline-block;padding:11px 20px;background:#059669;color:#fff;border-radius:10px;font-weight:600;text-decoration:none;font-size:.88rem}
+    .btn-download:hover{background:#047857}
+    .btn-video{display:inline-block;padding:11px 20px;background:#7c3aed;color:#fff;border-radius:10px;font-weight:600;text-decoration:none;font-size:.88rem}
+    .btn-video:hover{background:#6d28d9}
+    .erro-box{display:none;margin-top:14px;background:#2a0a0a;border:1px solid #7f1d1d;border-radius:10px;padding:12px;color:#fca5a5;font-size:.83rem;text-align:center}
+    .historico-item{background:#111;border:1px solid #2a2a2a;border-radius:10px;padding:14px 16px;margin-bottom:10px}
+    .historico-info .nome{font-size:.9rem;color:#ddd}
+    .historico-info .meta{font-size:.75rem;color:#666;margin-top:3px}
+    .historico-btns{display:flex;gap:8px;margin-top:10px}
+    .btn-dl-hist{padding:7px 14px;color:#fff;border:none;border-radius:8px;font-size:.8rem;cursor:pointer;text-decoration:none;display:inline-block}
+    .btn-dl-zip{background:#059669}.btn-dl-zip:hover{background:#047857}
+    .btn-dl-vid{background:#7c3aed}.btn-dl-vid:hover{background:#6d28d9}
+    .vazio{text-align:center;color:#555;font-size:.88rem;padding:30px 0}
+    .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:600;margin-left:6px}
+    .badge-ok{background:#064e3b;color:#6ee7b7}
+    .badge-none{background:#1f2937;color:#9ca3af}
+    #opcoesOpenAI{display:none}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Gerador <span>Veo3</span></h1>
+    <div class="header-right">
+      <div class="avatar">{{ user.nome[0].upper() }}</div>
+      <button class="btn-sair" onclick="window.location.href='/logout'">Sair</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="trocarAba('gerar')">🎬 Gerar</div>
+    <div class="tab" onclick="trocarAba('historico')">🗂️ Histórico</div>
+    <div class="tab" onclick="trocarAba('perfil')">👤 Perfil <span class="badge {% if user.api_key %}badge-ok{% else %}badge-none{% endif %}" id="badgePerfil">{% if user.api_key %}✓{% else %}—{% endif %}</span></div>
+  </div>
+
+  <!-- GERAR -->
+  <div class="pane active" id="paneGerar">
+    <div class="card">
+      <h2>Entrada</h2>
+
+      <label>Áudio (opcional)</label>
+      <div class="drop-area" id="dropArea">
+        <input type="file" id="fileInput" accept=".mp3,.wav,.m4a,.ogg"/>
+        <div class="drop-icon">🎵</div>
+        <p>Toque para selecionar o áudio</p>
+        <p class="fmt">MP3 · WAV · M4A · OGG</p>
+      </div>
+      <div class="file-name" id="fileName"></div>
+
+      {% if user.minimax_key %}
+      <div class="toggle-row">
+        <label>Clonar minha voz com este áudio</label>
+        <label class="toggle"><input type="checkbox" id="toggleClonar"><span class="slider"></span></label>
+      </div>
+      {% endif %}
+
+      <label>Roteiro escrito (opcional)</label>
+      <textarea id="textoRoteiro" placeholder="Cada linha vira uma imagem. Se não enviar áudio, o MiniMax narrará este texto."></textarea>
+      <p class="tip">Se enviar áudio, o roteiro escrito será ignorado na transcrição.</p>
+
+      {% if user.minimax_key %}
+      <div class="secao-voz" id="secaoVoz">
+        <label>Voz para narração</label>
+        <select id="voiceId">
+          <option value="">— Escolha uma voz —</option>
+          {% for v in vozes %}
+          <option value="{{ v.id }}">{{ v.nome }}</option>
+          {% endfor %}
+        </select>
+        <div class="secao-clone" id="secaoClone">
+          <p class="tip" style="color:#7c3aed;margin-top:8px">✓ Sua voz clonada será usada na narração</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <label>Estilo visual</label>
+      <select id="estilo">
+        <option value="">Padrão</option>
+        <option value="cinematic, dramatic lighting, photorealistic, 8k">🎬 Cinematográfico</option>
+        <option value="cartoon style, vibrant colors, flat design, illustration">🎨 Cartoon</option>
+        <option value="anime style, detailed, colorful, japanese animation">🌸 Anime</option>
+        <option value="watercolor painting, soft colors, artistic, hand painted">🖌️ Aquarela</option>
+        <option value="3D render, octane render, highly detailed, studio lighting">🧊 3D Realista</option>
+        <option value="oil painting, classical art, renaissance style">🖼️ Pintura a Óleo</option>
+        <option value="minimalist, clean lines, simple shapes, modern design">⬜ Minimalista</option>
+        <option value="dark fantasy, dramatic, moody atmosphere, epic">🌑 Dark Fantasy</option>
+        <option value="vintage photography, film grain, retro colors, 1970s">📷 Vintage/Retrô</option>
+        <option value="neon colors, cyberpunk, futuristic city, glowing lights">🌆 Cyberpunk</option>
+      </select>
+
+      <label>Intervalo entre imagens</label>
+      <select id="intervalo">
+        <option value="3">A cada 3 segundos</option>
+        <option value="5">A cada 5 segundos</option>
+        <option value="8">A cada 8 segundos</option>
+        <option value="10">A cada 10 segundos</option>
+      </select>
+    </div>
+
+    <button class="btn" id="btnGerar">Gerar Imagens + Vídeo</button>
+
+    <div class="status-box" id="statusBox">
+      <div class="spinner"></div>
+      <div class="status-text" id="statusText">Processando...</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="resultado" id="resultado">
+      <div class="check">✅</div>
+      <p id="resultadoInfo">Gerado com sucesso!</p>
+      <div class="btns-resultado">
+        <a href="#" id="btnDownload" class="btn-download">⬇ ZIP (imagens)</a>
+        <a href="#" id="btnVideo" class="btn-video">🎬 Baixar Vídeo</a>
+      </div>
+      <button class="btn btn-outline" id="btnNovo">Gerar novamente</button>
+    </div>
+
+    <div class="erro-box" id="erroBox"></div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div class="pane" id="paneHistorico">
+    <div class="card">
+      <h2>Suas criações</h2>
+      {% if criacoes %}
+        {% for c in criacoes %}
+        <div class="historico-item">
+          <div class="historico-info">
+            <div class="nome">{{ c.nome }}</div>
+            <div class="meta">{{ c.total_imagens }} imagens · {{ c.criado_em.strftime('%d/%m/%Y %H:%M') }}</div>
+          </div>
+          <div class="historico-btns">
+            <a href="/download/{{ c.job_id }}" class="btn-dl-hist btn-dl-zip">⬇ ZIP</a>
+            {% if c.video_path %}<a href="/download_video/{{ c.job_id }}" class="btn-dl-hist btn-dl-vid">🎬 Vídeo</a>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="vazio">Nenhuma criação ainda.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- PERFIL -->
+  <div class="pane" id="panePerfil">
+    <div class="card">
+      <h2>Olá, {{ user.nome }} 👋</h2>
+
+      <h3>🖼️ Geração de Imagens</h3>
+      <label>Provedor</label>
+      <select id="cfgProvider">
+        <option value="">— Escolha —</option>
+        <option value="openai" {% if user.provider=='openai' %}selected{% endif %}>OpenAI (DALL-E 3)</option>
+        <option value="replicate" {% if user.provider=='replicate' %}selected{% endif %}>Replicate (Stable Diffusion)</option>
+      </select>
+      <label>Chave de API</label>
+      <input type="password" id="cfgApiKey" value="{{ user.api_key }}" placeholder="Cole sua chave aqui"/>
+      <div id="opcoesOpenAI">
+        <label>Qualidade</label>
+        <select id="cfgQuality">
+          <option value="standard" {% if user.quality=='standard' %}selected{% endif %}>Standard</option>
+          <option value="hd" {% if user.quality=='hd' %}selected{% endif %}>HD</option>
+        </select>
+        <label>Tamanho</label>
+        <select id="cfgSize">
+          <option value="1024x1024" {% if user.image_size=='1024x1024' %}selected{% endif %}>1024x1024</option>
+          <option value="1792x1024" {% if user.image_size=='1792x1024' %}selected{% endif %}>1792x1024 (paisagem)</option>
+          <option value="1024x1792" {% if user.image_size=='1024x1792' %}selected{% endif %}>1024x1792 (retrato)</option>
+        </select>
+      </div>
+
+      <h3>🎙️ Narração (MiniMax)</h3>
+      <label>Chave de API MiniMax</label>
+      <input type="password" id="cfgMinimaxKey" value="{{ user.minimax_key }}" placeholder="eyJ..."/>
+      <label>Group ID MiniMax</label>
+      <input type="text" id="cfgMinimaxGroupId" value="{{ user.minimax_group_id }}" placeholder="1234567890"/>
+      <p class="tip">Encontre em platform.minimax.io → Account → Group ID</p>
+
+      <button class="btn btn-save" id="btnSalvarPerfil">Salvar tudo</button>
+      <div class="erro-box" id="erroPerfil"></div>
+    </div>
+
+    <div class="card">
+      <h2>Preços estimados</h2>
+      <p style="font-size:.82rem;color:#888;line-height:1.8">
+        <b style="color:#ccc">OpenAI DALL-E 3</b><br>
+        Standard → $0.04/img · HD → $0.08/img<br><br>
+        <b style="color:#ccc">Replicate (SDXL)</b><br>
+        ~$0.003/img<br><br>
+        <b style="color:#ccc">MiniMax TTS</b><br>
+        ~$0.10 por 1.000 caracteres<br><br>
+        <span style="color:#555">1 min a cada 3s = 20 imagens</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function trocarAba(aba){
+    const abas=['gerar','historico','perfil'];
+    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+    document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
+  }
+
+  // Provider toggle
+  const cfgProvider=document.getElementById('cfgProvider');
+  const opcoesOpenAI=document.getElementById('opcoesOpenAI');
+  function toggleOpenAI(){if(opcoesOpenAI)opcoesOpenAI.style.display=cfgProvider&&cfgProvider.value==='openai'?'block':'none';}
+  if(cfgProvider)cfgProvider.addEventListener('change',toggleOpenAI);
+  toggleOpenAI();
+
+  // Toggle clonar voz
+  const toggleClonar=document.getElementById('toggleClonar');
+  const secaoVoz=document.getElementById('secaoVoz');
+  const secaoClone=document.getElementById('secaoClone');
+  const voiceIdSelect=document.getElementById('voiceId');
+
+  function atualizarSecaoVoz(){
+    const temTexto=document.getElementById('textoRoteiro').value.trim().length>0;
+    const temAudio=!!arquivoSelecionado;
+    if(secaoVoz){
+      // Mostra seção de voz se tem texto (para narrar) ou se quer clonar
+      secaoVoz.style.display=(temTexto||( toggleClonar&&toggleClonar.checked))?'block':'none';
+    }
+    if(secaoClone&&toggleClonar){
+      secaoClone.style.display=toggleClonar.checked?'block':'none';
+      if(voiceIdSelect)voiceIdSelect.style.display=toggleClonar.checked?'none':'block';
+    }
+  }
+
+  if(toggleClonar)toggleClonar.addEventListener('change',atualizarSecaoVoz);
+  document.getElementById('textoRoteiro').addEventListener('input',atualizarSecaoVoz);
+
+  // Salvar perfil
+  document.getElementById('btnSalvarPerfil').addEventListener('click',async()=>{
+    const data={
+      provider:cfgProvider?cfgProvider.value:'',
+      api_key:document.getElementById('cfgApiKey').value.trim(),
+      quality:document.getElementById('cfgQuality')?document.getElementById('cfgQuality').value:'standard',
+      image_size:document.getElementById('cfgSize')?document.getElementById('cfgSize').value:'1024x1024',
+      minimax_key:document.getElementById('cfgMinimaxKey').value.trim(),
+      minimax_group_id:document.getElementById('cfgMinimaxGroupId').value.trim()
+    };
+    if(!data.provider||!data.api_key){const e=document.getElementById('erroPerfil');e.textContent='❌ Preencha o provedor e a chave de imagens';e.style.display='block';return;}
+    const res=await fetch('/perfil',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const d=await res.json();
+    if(d.ok){const b=document.getElementById('badgePerfil');b.className='badge badge-ok';b.textContent='✓';document.getElementById('erroPerfil').style.display='none';trocarAba('gerar');location.reload();}
+  });
+
+  // Upload
+  const fileInput=document.getElementById('fileInput'),fileName=document.getElementById('fileName'),dropArea=document.getElementById('dropArea');
+  let arquivoSelecionado=null;
+  fileInput.addEventListener('change',()=>{arquivoSelecionado=fileInput.files[0];fileName.textContent=arquivoSelecionado?arquivoSelecionado.name:'';atualizarSecaoVoz();});
+  dropArea.addEventListener('dragover',e=>{e.preventDefault();dropArea.classList.add('dragover');});
+  dropArea.addEventListener('dragleave',()=>dropArea.classList.remove('dragover'));
+  dropArea.addEventListener('drop',e=>{e.preventDefault();dropArea.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f){arquivoSelecionado=f;fileName.textContent=f.name;atualizarSecaoVoz();}});
+
+  // Gerar
+  document.getElementById('btnGerar').addEventListener('click',async()=>{
+    const texto=document.getElementById('textoRoteiro').value.trim();
+    if(!arquivoSelecionado&&!texto){mostrarErro('Envie um áudio ou escreva o roteiro.');return;}
+    document.getElementById('erroBox').style.display='none';
+    document.getElementById('btnGerar').disabled=true;
+    document.getElementById('statusBox').style.display='block';
+    document.getElementById('resultado').style.display='none';
+    document.getElementById('progressFill').style.width='0%';
+    const formData=new FormData();
+    if(arquivoSelecionado)formData.append('audio',arquivoSelecionado);
+    formData.append('texto',texto);
+    formData.append('estilo',document.getElementById('estilo').value);
+    formData.append('intervalo',document.getElementById('intervalo').value);
+    formData.append('voice_id',voiceIdSelect?voiceIdSelect.value:'');
+    formData.append('clonar_audio',toggleClonar&&toggleClonar.checked?'true':'false');
+    try{
+      const res=await fetch('/gerar',{method:'POST',body:formData});
+      const data=await res.json();
+      if(data.erro)throw new Error(data.erro);
+      verificarStatus(data.job_id);
+    }catch(e){mostrarErro(e.message);}
+  });
+
+  function verificarStatus(jobId){
+    const iv=setInterval(async()=>{
+      try{
+        const res=await fetch(`/status/${jobId}`);const data=await res.json();
+        document.getElementById('statusText').textContent=data.progresso||'Processando...';
+        if(data.total>0){document.getElementById('progressFill').style.width=Math.round((data.atual/data.total)*100)+'%';}
+        if(data.status==='pronto'){
+          clearInterval(iv);
+          document.getElementById('statusBox').style.display='none';
+          document.getElementById('resultadoInfo').textContent=`${data.total} imagens + vídeo gerados`;
+          document.getElementById('btnDownload').href=`/download/${jobId}`;
+          document.getElementById('btnVideo').href=`/download_video/${jobId}`;
+          document.getElementById('resultado').style.display='block';
+        }
+        if(data.status==='erro'){clearInterval(iv);document.getElementById('statusBox').style.display='none';mostrarErro(data.progresso);}
+      }catch(e){clearInterval(iv);mostrarErro('Erro de conexão.');}
+    },3000);
+  }
+
+  function mostrarErro(msg){const e=document.getElementById('erroBox');e.textContent='❌ '+msg;e.style.display='block';document.getElementById('btnGerar').disabled=false;}
+  document.getElementById('btnNovo').addEventListener('click',()=>{
+    document.getElementById('resultado').style.display='none';
+    document.getElementById('erroBox').style.display='none';
+    document.getElementById('fileName').textContent='';
+    document.getElementById('textoRoteiro').value='';
+    fileInput.value='';arquivoSelecionado=null;
+    document.getElementById('btnGerar').disabled=false;
+    atualizarSecaoVoz();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gerador de Imagens Sincronizado</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f0f;color:#f0f0f0;min-height:100vh;padding:20px}
+    .container{max-width:520px;margin:0 auto}
+    h1{text-align:center;font-size:1.4rem;margin:24px 0 4px}
+    h1 span{color:#7c3aed}
+    .sub{text-align:center;color:#888;font-size:.85rem;margin-bottom:28px}
+
+    /* Tabs */
+    .tabs{display:flex;gap:8px;margin-bottom:24px}
+    .tab{flex:1;padding:10px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;cursor:pointer;text-align:center;font-size:.9rem;color:#888;transition:.2s}
+    .tab.active{background:#7c3aed;border-color:#7c3aed;color:#fff}
+
+    /* Card */
+    .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:24px;margin-bottom:16px}
+    .card h2{font-size:1rem;margin-bottom:16px;color:#ccc}
+
+    label{display:block;font-size:.82rem;color:#888;margin-bottom:6px;margin-top:14px}
+    label:first-child{margin-top:0}
+
+    input[type=text],input[type=password],select,textarea{
+      width:100%;padding:10px 12px;background:#111;border:1px solid #2a2a2a;border-radius:8px;
+      color:#f0f0f0;font-size:.9rem;outline:none;transition:border-color .2s
+    }
+    input:focus,select:focus,textarea:focus{border-color:#7c3aed}
+    textarea{resize:vertical;min-height:120px;font-family:inherit}
+
+    .drop-area{border:2px dashed #3a3a3a;border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;position:relative;transition:.2s}
+    .drop-area:hover,.drop-area.dragover{border-color:#7c3aed;background:#1f1535}
+    .drop-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .drop-icon{font-size:2rem;margin-bottom:8px}
+    .drop-area p{color:#aaa;font-size:.85rem}
+    .drop-area .fmt{font-size:.75rem;color:#555;margin-top:4px}
+    .file-name{margin-top:8px;font-size:.82rem;color:#7c3aed;text-align:center;min-height:18px}
+
+    .row{display:flex;gap:12px}
+    .row>div{flex:1}
+
+    .btn{width:100%;margin-top:20px;padding:13px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;transition:.2s}
+    .btn:hover{background:#6d28d9}
+    .btn:disabled{background:#2a2a2a;color:#555;cursor:not-allowed}
+    .btn-save{background:#1d4ed8}
+    .btn-save:hover{background:#1e40af}
+    .btn-outline{background:none;border:1px solid #3a3a3a;color:#888;margin-top:10px}
+    .btn-outline:hover{border-color:#7c3aed;color:#ccc}
+
+    .status-box{display:none;margin-top:20px;background:#111;border-radius:10px;padding:18px;text-align:center}
+    .spinner{width:32px;height:32px;border:3px solid #2a2a2a;border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .status-text{font-size:.88rem;color:#ccc;margin-bottom:8px}
+    .progress-bar{height:6px;background:#2a2a2a;border-radius:3px;overflow:hidden}
+    .progress-fill{height:100%;background:#7c3aed;border-radius:3px;transition:width .4s;width:0%}
+
+    .resultado{display:none;margin-top:20px;text-align:center}
+    .check{font-size:2.2rem;margin-bottom:8px}
+    .resultado p{color:#aaa;font-size:.85rem;margin-bottom:14px}
+    .btn-download{display:inline-block;padding:12px 28px;background:#059669;color:#fff;border-radius:10px;font-weight:600;text-decoration:none;font-size:.95rem}
+    .btn-download:hover{background:#047857}
+
+    .erro-box{display:none;margin-top:16px;background:#2a0a0a;border:1px solid #7f1d1d;border-radius:10px;padding:14px;color:#fca5a5;font-size:.85rem;text-align:center}
+
+    .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:600;margin-left:8px}
+    .badge-ok{background:#064e3b;color:#6ee7b7}
+    .badge-err{background:#7f1d1d;color:#fca5a5}
+    .badge-none{background:#1f2937;color:#9ca3af}
+
+    .pane{display:none}.pane.active{display:block}
+
+    .tip{font-size:.78rem;color:#555;margin-top:4px}
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Gerador de Imagens <span>Sincronizado</span></h1>
+  <p class="sub">Áudio ou roteiro → imagens geradas automaticamente</p>
+
+  <div class="tabs">
+    <div class="tab active" onclick="trocarAba('gerar')">🎬 Gerar</div>
+    <div class="tab" onclick="trocarAba('config')">⚙️ Configurações <span class="badge badge-none" id="badgeConfig">—</span></div>
+  </div>
+
+  <!-- ABA GERAR -->
+  <div class="pane active" id="paneGerar">
+    <div class="card">
+      <h2>Entrada</h2>
+
+      <label>Áudio (opcional)</label>
+      <div class="drop-area" id="dropArea">
+        <input type="file" id="fileInput" accept=".mp3,.wav,.m4a,.ogg"/>
+        <div class="drop-icon">🎵</div>
+        <p>Toque para selecionar o áudio</p>
+        <p class="fmt">MP3 · WAV · M4A · OGG</p>
+      </div>
+      <div class="file-name" id="fileName"></div>
+
+      <label>Roteiro escrito (opcional)</label>
+      <textarea id="textoRoteiro" placeholder="Cole ou escreva o roteiro aqui. Cada linha vira uma imagem."></textarea>
+      <p class="tip">Se enviar áudio, o roteiro escrito será ignorado.</p>
+
+      <label>Estilo visual</label>
+      <select id="estilo">
+        <option value="">Padrão (sem estilo)</option>
+        <option value="cinematic, dramatic lighting, photorealistic, 8k">🎬 Cinematográfico</option>
+        <option value="cartoon style, vibrant colors, flat design, illustration">🎨 Cartoon</option>
+        <option value="anime style, detailed, colorful, japanese animation">🌸 Anime</option>
+        <option value="watercolor painting, soft colors, artistic, hand painted">🖌️ Aquarela</option>
+        <option value="3D render, octane render, highly detailed, studio lighting">🧊 3D Realista</option>
+        <option value="oil painting, classical art, renaissance style, detailed brushwork">🖼️ Pintura a Óleo</option>
+        <option value="minimalist, clean lines, simple shapes, modern design">⬜ Minimalista</option>
+        <option value="dark fantasy, dramatic, moody atmosphere, epic">🌑 Dark Fantasy</option>
+        <option value="vintage photography, film grain, retro colors, 1970s">📷 Vintage/Retrô</option>
+        <option value="neon colors, cyberpunk, futuristic city, glowing lights">🌆 Cyberpunk</option>
+      </select>
+
+      <label>Intervalo entre imagens</label>
+      <select id="intervalo">
+        <option value="3">A cada 3 segundos</option>
+        <option value="5">A cada 5 segundos</option>
+        <option value="8">A cada 8 segundos</option>
+        <option value="10">A cada 10 segundos</option>
+      </select>
+    </div>
+
+    <button class="btn" id="btnGerar">Gerar Imagens</button>
+
+    <div class="status-box" id="statusBox">
+      <div class="spinner"></div>
+      <div class="status-text" id="statusText">Processando...</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="resultado" id="resultado">
+      <div class="check">✅</div>
+      <p id="resultadoInfo">Imagens geradas com sucesso!</p>
+      <a href="#" id="btnDownload" class="btn-download">⬇ Baixar ZIP com imagens</a>
+      <button class="btn btn-outline" id="btnNovo">Gerar novamente</button>
+    </div>
+
+    <div class="erro-box" id="erroBox"></div>
+  </div>
+
+  <!-- ABA CONFIG -->
+  <div class="pane" id="paneConfig">
+    <div class="card">
+      <h2>Provedor de IA</h2>
+
+      <label>Selecione o provedor</label>
+      <select id="cfgProvider">
+        <option value="">— Escolha —</option>
+        <option value="openai">OpenAI (DALL-E 3)</option>
+        <option value="replicate">Replicate (Stable Diffusion)</option>
+      </select>
+
+      <label>Chave de API</label>
+      <input type="password" id="cfgApiKey" placeholder="Cole sua chave aqui"/>
+
+      <div id="opcoesOpenAI" style="display:none">
+        <label>Qualidade</label>
+        <select id="cfgQuality">
+          <option value="standard">Standard — mais barato</option>
+          <option value="hd">HD — maior qualidade</option>
+        </select>
+
+        <label>Tamanho da imagem</label>
+        <select id="cfgSize">
+          <option value="1024x1024">1024x1024 (quadrado)</option>
+          <option value="1792x1024">1792x1024 (paisagem)</option>
+          <option value="1024x1792">1024x1792 (retrato)</option>
+        </select>
+      </div>
+
+      <button class="btn btn-save" id="btnSalvar">Salvar configurações</button>
+      <div class="erro-box" id="erroConfig"></div>
+    </div>
+
+    <div class="card">
+      <h2>Preços estimados</h2>
+      <p style="font-size:.82rem;color:#888;line-height:1.7">
+        <b style="color:#ccc">OpenAI DALL-E 3</b><br>
+        Standard 1024x1024 → $0.04/imagem<br>
+        HD 1024x1024 → $0.08/imagem<br><br>
+        <b style="color:#ccc">Replicate (SDXL)</b><br>
+        ~$0.003/imagem<br><br>
+        <span style="color:#555">1 min de vídeo a cada 3s = 20 imagens</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Abas
+  function trocarAba(aba) {
+    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active', ['gerar','config'][i]===aba));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+    document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
+  }
+
+  // Config
+  const cfgProvider=document.getElementById('cfgProvider');
+  const opcoesOpenAI=document.getElementById('opcoesOpenAI');
+  cfgProvider.addEventListener('change',()=>{
+    opcoesOpenAI.style.display=cfgProvider.value==='openai'?'block':'none';
+  });
+
+  // Carrega config salva
+  fetch('/config').then(r=>r.json()).then(c=>{
+    if(c.provider){
+      cfgProvider.value=c.provider;
+      document.getElementById('cfgApiKey').value=c.api_key||'';
+      document.getElementById('cfgQuality').value=c.quality||'standard';
+      document.getElementById('cfgSize').value=c.image_size||'1024x1024';
+      opcoesOpenAI.style.display=c.provider==='openai'?'block':'none';
+      atualizarBadge(true);
+    }
+  });
+
+  function atualizarBadge(ok){
+    const b=document.getElementById('badgeConfig');
+    b.className='badge '+(ok?'badge-ok':'badge-err');
+    b.textContent=ok?'✓ OK':'! Config';
+  }
+
+  document.getElementById('btnSalvar').addEventListener('click',()=>{
+    const data={
+      provider:cfgProvider.value,
+      api_key:document.getElementById('cfgApiKey').value.trim(),
+      quality:document.getElementById('cfgQuality').value,
+      image_size:document.getElementById('cfgSize').value
+    };
+    if(!data.provider||!data.api_key){
+      const e=document.getElementById('erroConfig');
+      e.textContent='❌ Preencha o provedor e a chave de API';
+      e.style.display='block';return;
+    }
+    fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+      .then(r=>r.json()).then(()=>{
+        atualizarBadge(true);
+        document.getElementById('erroConfig').style.display='none';
+        trocarAba('gerar');
+      });
+  });
+
+  // Upload
+  const fileInput=document.getElementById('fileInput');
+  const fileName=document.getElementById('fileName');
+  const dropArea=document.getElementById('dropArea');
+  let arquivoSelecionado=null;
+
+  fileInput.addEventListener('change',()=>{
+    arquivoSelecionado=fileInput.files[0];
+    fileName.textContent=arquivoSelecionado?arquivoSelecionado.name:'';
+  });
+  dropArea.addEventListener('dragover',e=>{e.preventDefault();dropArea.classList.add('dragover');});
+  dropArea.addEventListener('dragleave',()=>dropArea.classList.remove('dragover'));
+  dropArea.addEventListener('drop',e=>{
+    e.preventDefault();dropArea.classList.remove('dragover');
+    const f=e.dataTransfer.files[0];
+    if(f){arquivoSelecionado=f;fileName.textContent=f.name;}
+  });
+
+  // Gerar
+  document.getElementById('btnGerar').addEventListener('click',async()=>{
+    const texto=document.getElementById('textoRoteiro').value.trim();
+    if(!arquivoSelecionado&&!texto){
+      mostrarErro('Envie um áudio ou escreva o roteiro.');return;
+    }
+    document.getElementById('erroBox').style.display='none';
+    document.getElementById('btnGerar').disabled=true;
+    document.getElementById('statusBox').style.display='block';
+    document.getElementById('resultado').style.display='none';
+    document.getElementById('progressFill').style.width='0%';
+
+    const formData=new FormData();
+    if(arquivoSelecionado) formData.append('audio',arquivoSelecionado);
+    formData.append('texto',texto);
+    formData.append('estilo',document.getElementById('estilo').value);
+    formData.append('intervalo',document.getElementById('intervalo').value);
+
+    try{
+      const res=await fetch('/gerar',{method:'POST',body:formData});
+      const data=await res.json();
+      if(data.erro)throw new Error(data.erro);
+      verificarStatus(data.job_id);
+    }catch(e){mostrarErro(e.message);}
+  });
+
+  function verificarStatus(jobId){
+    const iv=setInterval(async()=>{
+      try{
+        const res=await fetch(`/status/${jobId}`);
+        const data=await res.json();
+        document.getElementById('statusText').textContent=data.progresso||'Processando...';
+        if(data.total>0){
+          const pct=Math.round((data.atual/data.total)*100);
+          document.getElementById('progressFill').style.width=pct+'%';
+        }
+        if(data.status==='pronto'){
+          clearInterval(iv);
+          document.getElementById('statusBox').style.display='none';
+          document.getElementById('resultadoInfo').textContent=`${data.total} imagens geradas com sucesso!`;
+          document.getElementById('btnDownload').href=`/download/${jobId}`;
+          document.getElementById('resultado').style.display='block';
+        }
+        if(data.status==='erro'){
+          clearInterval(iv);
+          document.getElementById('statusBox').style.display='none';
+          mostrarErro(data.progresso);
+        }
+      }catch(e){clearInterval(iv);mostrarErro('Erro de conexão.');}
+    },3000);
+  }
+
+  function mostrarErro(msg){
+    const e=document.getElementById('erroBox');
+    e.textContent='❌ '+msg;e.style.display='block';
+    document.getElementById('btnGerar').disabled=false;
+  }
+
+  document.getElementById('btnNovo').addEventListener('click',()=>{
+    document.getElementById('resultado').style.display='none';
+    document.getElementById('erroBox').style.display='none';
+    document.getElementById('fileName').textContent='';
+    document.getElementById('textoRoteiro').value='';
+    fileInput.value='';arquivoSelecionado=null;
+    document.getElementById('btnGerar').disabled=false;
+  });
+</script>
+</body>
+</html>

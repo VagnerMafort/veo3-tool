@@ -1,0 +1,13 @@
+[Unit]
+Description=Veo3 Prompt Generator
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/var/www/veo3-tool
+ExecStart=/var/www/veo3-tool/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

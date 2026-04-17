@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cadastro — Gerador de Imagens</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f0f;color:#f0f0f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;padding:36px 28px;width:100%;max-width:400px}
+    .logo{text-align:center;margin-bottom:28px}
+    .logo h1{font-size:1.5rem;font-weight:700}.logo span{color:#7c3aed}
+    .logo p{font-size:.85rem;color:#888;margin-top:6px}
+    label{display:block;font-size:.82rem;color:#888;margin-bottom:6px;margin-top:16px}
+    input{width:100%;padding:11px 14px;background:#111;border:1px solid #2a2a2a;border-radius:8px;color:#f0f0f0;font-size:.9rem;outline:none;transition:border-color .2s}
+    input:focus{border-color:#7c3aed}
+    .btn{width:100%;margin-top:22px;padding:13px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;transition:.2s}
+    .btn:hover{background:#6d28d9}
+    .link{text-align:center;margin-top:16px;font-size:.85rem;color:#888}
+    .link a{color:#7c3aed;text-decoration:none}
+    .erro{display:none;margin-top:14px;background:#2a0a0a;border:1px solid #7f1d1d;border-radius:8px;padding:12px;color:#fca5a5;font-size:.85rem;text-align:center}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>Gerador <span>Veo3</span></h1>
+    <p>Crie sua conta</p>
+  </div>
+  <label>Nome</label>
+  <input type="text" id="nome" placeholder="Seu nome"/>
+  <label>Email</label>
+  <input type="email" id="email" placeholder="seu@email.com"/>
+  <label>Senha</label>
+  <input type="password" id="senha" placeholder="Mínimo 6 caracteres"/>
+  <button class="btn" id="btnCadastro">Criar conta</button>
+  <div class="erro" id="erro"></div>
+  <div class="link">Já tem conta? <a href="/login">Entrar</a></div>
+</div>
+<script>
+  document.getElementById('btnCadastro').addEventListener('click', async () => {
+    const nome = document.getElementById('nome').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const senha = document.getElementById('senha').value;
+    if (!nome || !email || !senha) { mostrarErro('Preencha todos os campos'); return; }
+    if (senha.length < 6) { mostrarErro('Senha deve ter pelo menos 6 caracteres'); return; }
+    try {
+      const res = await fetch('/cadastro', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nome, email, senha}) });
+      const data = await res.json();
+      if (data.ok) window.location.href = '/dashboard';
+      else mostrarErro(data.erro);
+    } catch(e) { mostrarErro('Erro de conexão'); }
+  });
+  function mostrarErro(msg) { const e=document.getElementById('erro'); e.textContent='❌ '+msg; e.style.display='block'; }
+</script>
+</body>
+</html>
