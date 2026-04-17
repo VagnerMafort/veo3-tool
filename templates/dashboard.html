@@ -100,10 +100,10 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 </style>
 <style>
 /* Planos */
-.creditos-bar{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
-.creditos-bar .creditos-num{font-size:1.3rem;font-weight:700;color:var(--accent)}
-.creditos-bar .creditos-label{font-size:.78rem;color:var(--text2)}
-.creditos-bar .plano-badge{font-size:.72rem;background:var(--accent);color:#fff;padding:3px 10px;border-radius:20px}
+.creditos-bar{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:2px solid var(--accent);border-radius:14px;padding:20px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.creditos-bar .creditos-num{font-size:2.2rem;font-weight:800;color:var(--accent);line-height:1}
+.creditos-bar .creditos-label{font-size:.85rem;color:var(--text2);margin-top:4px}
+.creditos-bar .plano-badge{font-size:.78rem;background:var(--accent);color:#fff;padding:4px 14px;border-radius:20px;font-weight:600}
 .plano-card{background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:20px;margin-bottom:12px;transition:.2s;position:relative}
 .plano-card:hover{border-color:var(--accent)}
 .plano-card.ativo{border-color:var(--green);background:rgba(5,150,105,0.08)}
@@ -303,6 +303,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 
     <div class="card">
       <div class="secao-titulo" style="border:none;padding:0;margin-top:0">⚡ Comprar créditos avulso</div>
+      {% if user.plano and user.plano in planos %}
       <p class="tip" style="margin-bottom:14px">Créditos avulsos são somados aos existentes e não expiram.</p>
       <div class="avulso-grid">
         {% for key, pac in avulsos.items() %}
@@ -313,6 +314,9 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         </div>
         {% endfor %}
       </div>
+      {% else %}
+      <p style="font-size:.85rem;color:var(--text2);text-align:center;padding:20px 0">🔒 Assine um plano para desbloquear a compra de créditos avulso.</p>
+      {% endif %}
     </div>
   </div>
 
