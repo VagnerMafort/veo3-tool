@@ -604,7 +604,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             if user.minimax_key and voice_id:
                 jobs[job_id]["progresso"] = "Narrando frase por frase..."
                 audios = []
-                tempo = 0
+                imagens = []
+                t = 0
                 for i, bloco in enumerate(blocos):
                     frase_path = os.path.join(job_dir, f"frase_{i:03d}.mp3")
                     gerar_audio_minimax(bloco["texto"], user.minimax_key, user.minimax_group_id, voice_id, frase_path)
@@ -615,38 +616,31 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         frase_audio = AudioSegment.from_file(frase_limpa)
                     dur_frase = len(frase_audio) / 1000
                     audios.append(frase_audio)
-                    n_imgs = max(1, math.ceil(dur_frase / intervalo))
-                    for j in range(n_imgs):
-                        img_src = os.path.join(sb_dir, bloco["img"])
-                        img_dst = os.path.join(job_dir, f"{len([f for f in os.listdir(job_dir) if f.endswith('.png')]):04d}.png")
-                        shutil.copy(img_src, img_dst)
-                    tempo += dur_frase
+                    # 1 imagem por cena, duração = duração da frase narrada
+                    img_src = os.path.join(sb_dir, bloco["img"])
+                    img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
+                    shutil.copy(img_src, img_dst)
+                    imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur_frase, 2),
+                                    "inicio": round(t, 2), "fim": round(t + dur_frase, 2),
+                                    "texto": bloco["texto"]})
+                    t += dur_frase
                 audio_completo = audios[0]
                 for a in audios[1:]:
                     audio_completo += a
                 audio_final_path = os.path.join(job_dir, "narracao.mp3")
                 audio_completo.export(audio_final_path, format="mp3")
-                duracao_total = len(audio_completo) / 1000
             else:
-                duracao_total = len(blocos) * intervalo
-
-            imgs_finais = sorted([f for f in os.listdir(job_dir) if f.endswith('.png')])
-            if not imgs_finais:
+                # Sem narração: 1 imagem por cena, duração = intervalo
+                imagens = []
+                t = 0
                 for i, bloco in enumerate(blocos):
-                    shutil.copy(os.path.join(sb_dir, bloco["img"]), os.path.join(job_dir, f"{i+1:04d}.png"))
-                imgs_finais = sorted([f for f in os.listdir(job_dir) if f.endswith('.png')])
-
-            dur_por_img = (duracao_total / len(imgs_finais)) if audio_final_path else intervalo
-            imagens = []
-            t = 0
-            texto_idx = 0
-            for i, img_name in enumerate(imgs_finais):
-                if texto_idx < len(blocos) - 1 and t >= (texto_idx + 1) * (duracao_total / len(blocos)):
-                    texto_idx += 1
-                imagens.append({"index": i+1, "path": os.path.join(job_dir, img_name), "duracao": round(dur_por_img, 2),
-                                "inicio": round(t, 2), "fim": round(t + dur_por_img, 2),
-                                "texto": blocos[min(texto_idx, len(blocos)-1)]["texto"]})
-                t += dur_por_img
+                    img_src = os.path.join(sb_dir, bloco["img"])
+                    img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
+                    shutil.copy(img_src, img_dst)
+                    imagens.append({"index": i+1, "path": img_dst, "duracao": intervalo,
+                                    "inicio": round(t, 2), "fim": round(t + intervalo, 2),
+                                    "texto": bloco["texto"]})
+                    t += intervalo
 
             jobs[job_id]["total"] = len(imagens)
             jobs[job_id]["atual"] = len(imagens)
