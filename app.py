@@ -296,17 +296,27 @@ def salvar_no_banco(prompt, estilo, img_path):
         conn.close()
     except: pass
 
+# Rastrear imagens já usadas no job atual pra não repetir
+_imagens_usadas = set()
+
+def resetar_banco_usadas():
+    global _imagens_usadas
+    _imagens_usadas = set()
+
 def buscar_no_banco(texto, estilo):
+    global _imagens_usadas
     try:
         conn = sqlite3.connect('instance/veo3.db')
         palavras = texto.lower().split()
         for palavra in palavras:
             if len(palavra) < 4: continue
-            rows = conn.execute("SELECT path FROM banco_imagens WHERE tags LIKE ? AND estilo = ? LIMIT 1",
+            rows = conn.execute("SELECT id, path FROM banco_imagens WHERE tags LIKE ? AND estilo = ? ORDER BY id DESC LIMIT 10",
                                 (f"%{palavra}%", estilo)).fetchall()
-            if rows and os.path.exists(rows[0][0]):
-                conn.close()
-                return rows[0][0]
+            for row in rows:
+                if row[0] not in _imagens_usadas and os.path.exists(row[1]):
+                    _imagens_usadas.add(row[0])
+                    conn.close()
+                    return row[1]
         conn.close()
     except: pass
     return None
@@ -501,10 +511,18 @@ def limpar_job(job_dir):
     except: pass
 
 def dividir_roteiro(texto, api_key):
+    # Texto muito curto (1 frase simples) = não divide
+    if len(texto) < 30:
+        return [texto.strip()]
+
+    # Limitar cenas: ~1 cena a cada 40 caracteres, mínimo 2, máximo 12
+    max_cenas = max(2, min(12, len(texto) // 40))
+
     prompts = load_prompts()
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         system = prompts.get("dividir", DEFAULT_PROMPTS["dividir"])
+        system += f"\n\nIMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningful story beat, NOT individual words. If the text describes 2-3 events, create 2-3 scenes. Do NOT over-split."
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system}, {"role": "user", "content": texto}
         ], "max_tokens": 300}
@@ -512,14 +530,18 @@ def dividir_roteiro(texto, api_key):
         if r.ok:
             resultado = r.json()["choices"][0]["message"]["content"].strip()
             linhas = [l.strip() for l in resultado.split("\n") if l.strip()]
+            # Garantir que não excede o máximo
+            if len(linhas) > max_cenas:
+                linhas = linhas[:max_cenas]
             if len(linhas) >= 1:
                 return linhas
     except: pass
-    return [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()]
+    return [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()] or [texto.strip()]
 
 def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco):
     with app.app_context():
         try:
+            resetar_banco_usadas()
             user = User.query.get(user_id)
             jobs[job_id] = {"status": "processando", "progresso": "Analisando roteiro...", "total": 0, "atual": 0}
             sb_dir = os.path.join(STORYBOARD_FOLDER, job_id)
@@ -1183,19 +1205,25 @@ def regerar_cena():
     melhorar = request.form.get("melhorar_prompts", "false") == "true"
     sb_dir = os.path.join(STORYBOARD_FOLDER, sb_id)
     sb_path = os.path.join(sb_dir, "storyboard.json")
-    with open(sb_path) as f:
-        sb_data = json.load(f)
-    bloco = sb_data["blocos"][index - 1]
-    bloco["texto"] = texto
-    if melhorar and current_user.provider == "openai":
-        prompt = melhorar_prompt(texto, estilo, current_user.api_key)
-    else:
-        prompt = f"{texto}, {estilo}" if estilo else texto
-    img_path = os.path.join(sb_dir, bloco["img"])
-    gerar_imagem(prompt, current_user, img_path, estilo, False)
-    with open(sb_path, "w") as f:
-        json.dump(sb_data, f)
-    return jsonify({"ok": True})
+    try:
+        with open(sb_path) as f:
+            sb_data = json.load(f)
+        bloco = sb_data["blocos"][index - 1]
+        bloco["texto"] = texto
+        if melhorar and current_user.provider == "openai":
+            prompt = melhorar_prompt(texto, estilo, current_user.api_key)
+        else:
+            prompt = f"{texto}, {estilo}" if estilo else texto
+        img_path = os.path.join(sb_dir, bloco["img"])
+        gerar_imagem(prompt, current_user, img_path, estilo, False)
+        with open(sb_path, "w") as f:
+            json.dump(sb_data, f)
+        return jsonify({"ok": True})
+    except Exception as e:
+        # Devolver crédito se falhou
+        current_user.creditos += CREDITOS_POR_IMAGEM
+        db.session.commit()
+        return jsonify({"erro": str(e)}), 500
 
 @app.route("/upload_cena", methods=["POST"])
 @login_required
@@ -1213,6 +1241,27 @@ def upload_cena():
     request.files["imagem"].save(img_path)
     corrigir_orientacao(img_path)
     return jsonify({"ok": True})
+
+@app.route("/girar_cena", methods=["POST"])
+@login_required
+def girar_cena():
+    sb_id = request.form.get("sb_id")
+    index = int(request.form.get("index"))
+    graus = int(request.form.get("graus", 90))
+    sb_dir = os.path.join(STORYBOARD_FOLDER, sb_id)
+    sb_path = os.path.join(sb_dir, "storyboard.json")
+    try:
+        with open(sb_path) as f:
+            sb_data = json.load(f)
+        bloco = sb_data["blocos"][index - 1]
+        img_path = os.path.join(sb_dir, bloco["img"])
+        img = Image.open(img_path)
+        img = img.rotate(-graus, expand=True)
+        img.save(img_path, quality=95)
+        img.close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 @app.route("/editar_texto_cena", methods=["POST"])
 @login_required
