@@ -910,46 +910,49 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes para narração. Necessário: {creditos_narracao}", "total": 0, "atual": 0}
                     return
                 db.session.commit()
-                jobs[job_id]["progresso"] = "Narrando frase por frase..."
+                jobs[job_id]["progresso"] = "Gerando narração completa..."
                 audios = []
                 imagens = []
                 t = 0
                 import time as _time
+
+                # Narrar texto completo de uma vez (evita rate limit)
+                texto_completo = ". ".join([b["texto"] for b in blocos])
+                audio_completo_path = os.path.join(job_dir, "narracao.mp3")
+                for tentativa in range(3):
+                    try:
+                        gerar_audio_minimax(texto_completo, user.minimax_key, user.minimax_group_id, voice_id, audio_completo_path)
+                        break
+                    except Exception as e:
+                        if "1002" in str(e) or "rate" in str(e).lower():
+                            _time.sleep(15)
+                            continue
+                        raise
+
+                # Transcrever pra pegar timestamps de cada frase
+                jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
+                audio_completo_seg = AudioSegment.from_file(audio_completo_path)
+                duracao_total = len(audio_completo_seg) / 1000
+
+                if modo_video == "shorts":
+                    audio_limpo_path = os.path.join(job_dir, "narracao_limpa.mp3")
+                    remover_silencio(audio_completo_path, audio_limpo_path)
+                    audio_completo_seg = AudioSegment.from_file(audio_limpo_path)
+                    duracao_total = len(audio_completo_seg) / 1000
+                    audio_completo_path = audio_limpo_path
+
+                # Dividir duração proporcionalmente entre cenas
+                dur_por_cena = duracao_total / len(blocos)
                 for i, bloco in enumerate(blocos):
-                    jobs[job_id]["progresso"] = f"Narrando cena {i+1} de {len(blocos)}..."
-                    jobs[job_id]["atual"] = i + 1
-                    frase_path = os.path.join(job_dir, f"frase_{i:03d}.mp3")
-                    # Retry com delay pra rate limit
-                    for tentativa in range(3):
-                        try:
-                            gerar_audio_minimax(bloco["texto"], user.minimax_key, user.minimax_group_id, voice_id, frase_path)
-                            break
-                        except Exception as e:
-                            if "1002" in str(e) or "rate" in str(e).lower():
-                                _time.sleep(15)
-                                continue
-                            raise
-                    frase_audio = AudioSegment.from_file(frase_path)
-                    if modo_video == "shorts":
-                        frase_limpa = os.path.join(job_dir, f"frase_{i:03d}_limpa.mp3")
-                        remover_silencio(frase_path, frase_limpa)
-                        frase_audio = AudioSegment.from_file(frase_limpa)
-                    dur_frase = len(frase_audio) / 1000
-                    audios.append(frase_audio)
                     img_src = os.path.join(sb_dir, bloco["img"])
                     img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
                     shutil.copy(img_src, img_dst)
-                    imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur_frase, 2),
-                                    "inicio": round(t, 2), "fim": round(t + dur_frase, 2),
+                    imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur_por_cena, 2),
+                                    "inicio": round(t, 2), "fim": round(t + dur_por_cena, 2),
                                     "texto": bloco["texto"]})
-                    t += dur_frase
-                    if i < len(blocos) - 1:
-                        _time.sleep(1)  # Delay entre narrações
-                audio_completo = audios[0]
-                for a in audios[1:]:
-                    audio_completo += a
-                audio_final_path = os.path.join(job_dir, "narracao.mp3")
-                audio_completo.export(audio_final_path, format="mp3")
+                    t += dur_por_cena
+
+                audio_final_path = audio_completo_path
             else:
                 # Sem narração: 1 imagem por cena, duração = intervalo
                 imagens = []
