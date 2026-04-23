@@ -157,6 +157,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 
   <div class="tabs">
     <div class="tab active" onclick="trocarAba('gerar')">🎬 Criar</div>
+    <div class="tab" onclick="trocarAba('rascunhos')">📝 Rascunhos</div>
     <div class="tab" onclick="trocarAba('planos')">💎 Planos</div>
     <div class="tab" onclick="trocarAba('historico')">🗂️ Histórico</div>
     <div class="tab" onclick="trocarAba('clonar')">🎙️ Voz</div>
@@ -307,6 +308,15 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <div class="erro-box" id="erroFinal"></div>
     </div>
     {% endif %}
+  </div>
+
+  <!-- RASCUNHOS -->
+  <div class="pane" id="paneRascunhos">
+    <div class="card">
+      <h2>📝 Seus rascunhos</h2>
+      <p class="tip" style="margin-bottom:14px">Storyboards salvos automaticamente. Clique pra continuar editando.</p>
+      <div id="listaRascunhos"><div class="vazio">Carregando...</div></div>
+    </div>
   </div>
 
   <!-- PLANOS -->
@@ -543,6 +553,42 @@ if(window.location.search.includes('pagamento=sucesso')){
   history.replaceState(null,'','/dashboard');
 }
 
+// Rascunhos
+async function carregarRascunhos(){
+  const lista=document.getElementById('listaRascunhos');
+  lista.innerHTML='<div class="vazio">Carregando...</div>';
+  try{
+    const res=await fetch('/rascunhos');
+    const d=await res.json();
+    if(!d.rascunhos||d.rascunhos.length===0){lista.innerHTML='<div class="vazio">Nenhum rascunho salvo.</div>';return;}
+    lista.innerHTML='';
+    d.rascunhos.forEach(r=>{
+      lista.innerHTML+=`<div class="historico-item" style="cursor:pointer" onclick="abrirRascunho('${r.sb_id}')">
+        <div style="display:flex;gap:12px;align-items:center">
+          <img src="/storyboard_img/${r.sb_id}/${r.thumb}" style="width:60px;height:60px;border-radius:8px;object-fit:cover" onerror="this.style.display='none'"/>
+          <div class="historico-info">
+            <div class="nome">${r.preview}...</div>
+            <div class="meta">${r.total_cenas} cenas · ${r.data}</div>
+          </div>
+        </div>
+      </div>`;
+    });
+  }catch(e){lista.innerHTML='<div class="vazio">Erro ao carregar rascunhos.</div>';}
+}
+
+async function abrirRascunho(rascunhoId){
+  try{
+    const res=await fetch('/carregar_rascunho/'+rascunhoId);
+    const d=await res.json();
+    if(d.erro){alert(d.erro);return;}
+    sbId=d.sb_id;
+    sbBlocos=d.blocos;
+    sbEstilo=d.estilo||'';
+    trocarAba('gerar');
+    setTimeout(()=>mostrarStoryboard(),100);
+  }catch(e){alert('Erro ao carregar rascunho');}
+}
+
 // Novo usuário sem plano → abrir aba planos
 {% if not user.plano and not user.is_admin and user.creditos < 25 %}
 setTimeout(()=>trocarAba('planos'),100);
@@ -554,10 +600,11 @@ function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=docu
 applyTheme();
 
 function trocarAba(aba){
-  const abas=['gerar','planos','historico','clonar','perfil'];
+  const abas=['gerar','rascunhos','planos','historico','clonar','perfil'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
+  if(aba==='rascunhos')carregarRascunhos();
 }
 
 function setModo(m){document.getElementById('modoVideo').value=m;document.getElementById('btnModoLongo').classList.toggle('active',m==='longo');document.getElementById('btnModoShorts').classList.toggle('active',m==='shorts');}

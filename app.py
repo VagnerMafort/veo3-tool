@@ -1744,6 +1744,52 @@ def gerar_storyboard_route():
 def storyboard_img(sb_id, filename):
     return send_file(os.path.join(STORYBOARD_FOLDER, sb_id, filename))
 
+@app.route("/rascunhos")
+@login_required
+def listar_rascunhos():
+    """Lista storyboards salvos do usuário"""
+    rascunhos = []
+    if os.path.exists(STORYBOARD_FOLDER):
+        for sb_id in os.listdir(STORYBOARD_FOLDER):
+            sb_path = os.path.join(STORYBOARD_FOLDER, sb_id, "storyboard.json")
+            if os.path.exists(sb_path):
+                try:
+                    with open(sb_path) as f:
+                        sb_data = json.load(f)
+                    blocos = sb_data.get("blocos", [])
+                    if not blocos:
+                        continue
+                    # Verificar se tem pelo menos 1 imagem
+                    primeira_img = os.path.join(STORYBOARD_FOLDER, sb_id, blocos[0].get("img", ""))
+                    if not os.path.exists(primeira_img):
+                        continue
+                    # Pegar data de modificação
+                    mtime = os.path.getmtime(sb_path)
+                    data = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M')
+                    texto_preview = blocos[0].get("texto", "")[:60]
+                    rascunhos.append({
+                        "sb_id": sb_id,
+                        "total_cenas": len(blocos),
+                        "estilo": sb_data.get("estilo", ""),
+                        "data": data,
+                        "preview": texto_preview,
+                        "thumb": blocos[0].get("img", "")
+                    })
+                except: continue
+    rascunhos.sort(key=lambda x: x["data"], reverse=True)
+    return jsonify({"rascunhos": rascunhos[:20]})
+
+@app.route("/carregar_rascunho/<sb_id>")
+@login_required
+def carregar_rascunho(sb_id):
+    """Carrega um storyboard salvo"""
+    sb_path = os.path.join(STORYBOARD_FOLDER, sb_id, "storyboard.json")
+    if not os.path.exists(sb_path):
+        return jsonify({"erro": "Rascunho não encontrado"}), 404
+    with open(sb_path) as f:
+        sb_data = json.load(f)
+    return jsonify({"sb_id": sb_id, "blocos": sb_data.get("blocos", []), "estilo": sb_data.get("estilo", "")})
+
 @app.route("/regerar_cena", methods=["POST"])
 @login_required
 def regerar_cena():
