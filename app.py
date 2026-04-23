@@ -459,6 +459,10 @@ def gerar_srt(blocos, srt_path):
 def gerar_srt_palavras(audio_path, srt_path):
     """Gera SRT com uma palavra por vez sincronizada com o áudio usando Whisper"""
     try:
+        print(f"[SRT] Gerando legendas palavra por palavra de: {audio_path}")
+        if not os.path.exists(audio_path):
+            print(f"[SRT] Audio nao encontrado: {audio_path}")
+            return False
         model = get_whisper_model()
         resultado = model.transcribe(audio_path, word_timestamps=True, fp16=False)
         def fmt(s):
@@ -475,9 +479,10 @@ def gerar_srt_palavras(audio_path, srt_path):
                     end = palavra.get("end", start + 0.3)
                     f.write(f"{idx}\n{fmt(start)} --> {fmt(end)}\n{word}\n\n")
                     idx += 1
-        return True
+        print(f"[SRT] Gerado com {idx-1} palavras em: {srt_path}")
+        return idx > 1
     except Exception as e:
-        print(f"Erro ao gerar SRT por palavras: {e}")
+        print(f"[SRT] Erro ao gerar SRT por palavras: {e}")
         return False
 
 def montar_video(imagens, audio_path, output_path, legenda_cfg=None):
@@ -511,9 +516,12 @@ def montar_video(imagens, audio_path, output_path, legenda_cfg=None):
         srt_path = output_path.replace(".mp4", ".srt")
         # Se tem áudio, gera legenda palavra por palavra sincronizada
         if audio_path and os.path.exists(audio_path):
+            print(f"[LEGENDA] Usando audio para legendas palavra por palavra: {audio_path}")
             if not gerar_srt_palavras(audio_path, srt_path):
+                print(f"[LEGENDA] Fallback para legenda por cena")
                 gerar_srt(imagens, srt_path)  # fallback pra legenda por cena
         else:
+            print(f"[LEGENDA] Sem audio, usando legenda por cena")
             gerar_srt(imagens, srt_path)
         fonte = legenda_cfg.get("fonte", "Arial")
         cor = legenda_cfg.get("cor", "&H00FFFFFF")
