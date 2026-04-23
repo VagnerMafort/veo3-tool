@@ -842,6 +842,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             jobs[job_id]["atual"] = len(imagens)
 
             # Animar imagens com IA (MiniMax Video)
+            print(f"[VIDEO] animar_ia={animar_ia}, minimax_key={'SIM' if user.minimax_key else 'NAO'}")
             if animar_ia and user.minimax_key:
                 jobs[job_id]["progresso"] = "Animando cenas com IA..."
                 clipes_video = []
