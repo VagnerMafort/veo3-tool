@@ -112,11 +112,12 @@ Goal: Convert narration text into a HIGH-QUALITY VERTICAL image prompt.
 STRICT RULES:
 1. STYLE FIRST: Start the prompt with: "{estilo}" of...". This is mandatory.
 2. VERTICAL COMPOSITION: Use "vertical composition", "tall frame", or "full-body portrait" to force 9:16 framing.
-3. SCENE ACCURACY: Describe EXACTLY what the text says. Do NOT invent new elements. Do NOT add women if the text only mentions men.
-4. HISTORICAL ACCURACY: For biblical/ancient themes use ancient Middle Eastern attire, rough linen textures, desert sun, period-accurate sandals. Characters should have olive/Mediterranean skin tones.
-5. SAFE DESCRIPTIONS: Instead of "defeated" say "lying on the ground exhausted". A giant = "extremely tall muscular man, twice the height of normal men". A king = "man wearing golden crown and royal robes".
-6. NO TEXT: No letters, signatures, watermarks in the image.
-7. Output ONLY the prompt. Max 400 characters.""",
+3. SCENE ACCURACY: Describe EXACTLY what the text says. Include ALL characters, objects, and actions mentioned.
+4. HISTORICAL ACCURACY: For biblical/ancient themes use ancient Middle Eastern attire, rough linen textures, desert sun, period-accurate sandals.
+5. SAFE DESCRIPTIONS: Instead of "defeated" say "lying on the ground exhausted". A giant = "extremely tall muscular man". A king = "man wearing golden crown and royal robes".
+6. ABSOLUTELY NO TEXT IN IMAGE: Add "no text, no letters, no words, no writing, no captions, no watermarks, no signatures, no inscriptions" at the END of every prompt. This is MANDATORY.
+7. NEGATIVE CONCEPTS: Instead of "empty bowl", say "a clean bowl with nothing inside it, completely bare". Instead of "dark room" say "a room with very dim lighting". Always describe what IS there, not what ISN'T.
+8. Output ONLY the prompt. Max 400 characters.""",
     "suavizar": "Rewrite this image prompt to pass DALL-E safety filters. Remove ALL violence, weapons, blood, fighting, death, killing. Keep same characters, historical period, and setting. Replace conflict with dramatic tension shown through facial expressions, body language, and atmosphere. Characters must wear period-appropriate clothing. You MUST preserve the original artistic style tags and the vertical composition instruction at all costs. Output ONLY the new prompt.",
     "dividir": """You are a storyboard director. Split this narration into individual scenes.
 
