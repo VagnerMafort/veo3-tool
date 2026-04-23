@@ -23,7 +23,14 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 stripe.api_key = STRIPE_SECRET_KEY
 
-CREDITOS_POR_IMAGEM = 25
+CREDITOS_POR_IMAGEM = 11  # Base: gerar imagem
+CREDITOS_MELHORAR_PROMPT = 3  # Melhorar prompt com IA
+CREDITOS_NARRACAO = 2  # Narração por cena
+CREDITOS_ANIMACAO = 14  # Animar cena com MiniMax Video
+CREDITOS_CENA_COMPLETA = 30  # Tudo junto (11+3+2+14)
+
+# Add-on Banco de Imagens
+BANCO_ADDON_PRICE_ID = ""  # Será criado na Stripe
 
 PLANOS_STRIPE = {
     "api_propria": {
@@ -196,6 +203,18 @@ class User(UserMixin, db.Model):
         if self.plano and self.plano in PLANOS_STRIPE:
             return PLANOS_STRIPE[self.plano]
         return None
+
+
+def calcular_creditos_cena(melhorar_prompt=False, narracao=False, animar=False):
+    """Calcula créditos por cena baseado nas features usadas"""
+    total = CREDITOS_POR_IMAGEM
+    if melhorar_prompt:
+        total += CREDITOS_MELHORAR_PROMPT
+    if narracao:
+        total += CREDITOS_NARRACAO
+    if animar:
+        total += CREDITOS_ANIMACAO
+    return total
 
 
 class Criacao(db.Model):
@@ -753,7 +772,8 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             total = len(linhas)
             # Contar quantas cenas precisam ser geradas (excluir preenchidas)
             cenas_a_gerar = [i for i in range(total) if str(i+1) not in cenas_preenchidas]
-            creditos_necessarios = len(cenas_a_gerar) * CREDITOS_POR_IMAGEM
+            creditos_por_cena = calcular_creditos_cena(melhorar_prompt=melhorar_prompts, narracao=False, animar=False)
+            creditos_necessarios = len(cenas_a_gerar) * creditos_por_cena
             if not user.tem_creditos(creditos_necessarios):
                 jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes. Necessário: {creditos_necessarios}, disponível: {user.creditos}", "total": 0, "atual": 0}
                 return
@@ -796,7 +816,8 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
 
             # Gastar créditos apenas pelas cenas geradas
             if cenas_a_gerar:
-                user.gastar_creditos(len(cenas_a_gerar) * CREDITOS_POR_IMAGEM)
+                creditos_por_cena = calcular_creditos_cena(melhorar_prompt=melhorar_prompts, narracao=False, animar=False)
+                user.gastar_creditos(len(cenas_a_gerar) * creditos_por_cena)
                 db.session.commit()
 
             blocos.sort(key=lambda x: x["index"])
@@ -821,6 +842,12 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             audio_final_path = None
 
             if user.minimax_key and voice_id:
+                # Cobrar créditos de narração
+                creditos_narracao = len(blocos) * CREDITOS_NARRACAO
+                if not user.gastar_creditos(creditos_narracao):
+                    jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes para narração. Necessário: {creditos_narracao}", "total": 0, "atual": 0}
+                    return
+                db.session.commit()
                 jobs[job_id]["progresso"] = "Narrando frase por frase..."
                 audios = []
                 imagens = []
@@ -869,6 +896,18 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             sys.stderr.write(f"[VIDEO] animar_ia={animar_ia}, minimax_key={'SIM' if user.minimax_key else 'NAO'}\n")
             sys.stderr.flush()
             if animar_ia and user.minimax_key:
+                # Básico não tem animação
+                if user.plano == "basico":
+                    import sys
+                    sys.stderr.write("[VIDEO] Plano basico nao tem animacao, pulando\n")
+                    animar_ia = False
+                else:
+                    # Cobrar créditos de animação
+                    creditos_animacao = len(imagens) * CREDITOS_ANIMACAO
+                if not user.gastar_creditos(creditos_animacao):
+                    jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes para animação. Necessário: {creditos_animacao}", "total": 0, "atual": 0}
+                    return
+                db.session.commit()
                 n_cenas = len(imagens)
                 tempo_est = max(3, min(8, n_cenas))  # 3-8 min estimado (paralelo)
                 jobs[job_id]["progresso"] = f"Animando {n_cenas} cenas com IA em paralelo. Tempo estimado: ~{tempo_est} minutos..."
@@ -1213,7 +1252,10 @@ def dashboard():
     vozes_clonadas = current_user.get_vozes_clonadas()
     return render_template("dashboard.html", user=current_user, criacoes=criacoes, vozes=VOZES_MINIMAX,
                            vozes_clonadas=vozes_clonadas, planos=PLANOS_STRIPE, avulsos=PACOTES_AVULSO,
-                           creditos_por_imagem=CREDITOS_POR_IMAGEM)
+                           creditos_por_imagem=CREDITOS_POR_IMAGEM,
+                           creditos_prompt=CREDITOS_MELHORAR_PROMPT,
+                           creditos_narracao=CREDITOS_NARRACAO,
+                           creditos_animacao=CREDITOS_ANIMACAO)
 
 @app.route("/perfil", methods=["GET", "POST"])
 @login_required
@@ -1547,7 +1589,7 @@ def storyboard_img(sb_id, filename):
 def regerar_cena():
     if not current_user.api_key:
         return jsonify({"erro": "Configure API"}), 400
-    # Cobrar crédito por regeneração
+    # Cobrar crédito por regeneração (só imagem base)
     if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM):
         return jsonify({"erro": f"Créditos insuficientes. Necessário: {CREDITOS_POR_IMAGEM}"}), 400
     db.session.commit()
