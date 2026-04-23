@@ -165,6 +165,14 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 
   <!-- GERAR -->
   <div class="pane active" id="paneGerar">
+    {% if not user.plano and not user.is_admin and user.creditos < 25 %}
+    <div class="card" style="text-align:center;padding:40px 22px">
+      <div style="font-size:2.5rem;margin-bottom:12px">🎬</div>
+      <h2 style="margin-bottom:8px">Comece a criar vídeos com IA</h2>
+      <p style="color:var(--text2);font-size:.88rem;margin-bottom:20px">Assine um plano para desbloquear a criação de vídeos com inteligência artificial.</p>
+      <button class="btn" onclick="trocarAba('planos')" style="max-width:300px;margin:0 auto">💎 Ver Planos</button>
+    </div>
+    {% else %}
     <div id="etapaRoteiro">
       <div class="card">
         <h2>1. Escreva o roteiro</h2>
@@ -292,6 +300,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       </div>
       <div class="erro-box" id="erroFinal"></div>
     </div>
+    {% endif %}
   </div>
 
   <!-- PLANOS -->
@@ -466,6 +475,21 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 
 <script>
 let sbId=null, sbEstilo='', sbBlocos=[], bancoTargetIdx=null;
+
+// Notificação de pagamento sucesso
+if(window.location.search.includes('pagamento=sucesso')){
+  const notif=document.createElement('div');
+  notif.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:14px 28px;border-radius:10px;font-size:.9rem;font-weight:600;z-index:999;animation:fadeIn .3s';
+  notif.textContent='✅ Pagamento confirmado! Seus créditos foram adicionados.';
+  document.body.appendChild(notif);
+  setTimeout(()=>notif.remove(),5000);
+  history.replaceState(null,'','/dashboard');
+}
+
+// Novo usuário sem plano → abrir aba planos
+{% if not user.plano and not user.is_admin and user.creditos < 25 %}
+setTimeout(()=>trocarAba('planos'),100);
+{% endif %}
 
 // Theme
 function toggleTheme(){const themes=['dark','light','auto'];let cur=localStorage.getItem('theme')||'dark';let next=themes[(themes.indexOf(cur)+1)%3];localStorage.setItem('theme',next);applyTheme();}

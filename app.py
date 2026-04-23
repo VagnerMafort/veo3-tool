@@ -1117,14 +1117,14 @@ def pagamento_sucesso():
 
                 if tipo == "assinatura":
                     current_user.plano = plano_key
-                    current_user.creditos = creditos  # Reset mensal
+                    current_user.creditos = creditos
                 elif tipo == "avulso":
-                    current_user.creditos += creditos  # Soma aos existentes
+                    current_user.creditos += creditos
 
                 db.session.commit()
         except Exception as e:
             print(f"Erro ao processar pagamento: {e}")
-    return redirect(url_for("dashboard"))
+    return redirect(url_for("dashboard") + "?pagamento=sucesso")
 
 @app.route("/stripe_webhook", methods=["POST"])
 def stripe_webhook():
