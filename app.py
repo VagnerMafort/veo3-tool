@@ -30,7 +30,8 @@ CREDITOS_ANIMACAO = 14  # Animar cena com MiniMax Video
 CREDITOS_CENA_COMPLETA = 30  # Tudo junto (11+3+2+14)
 
 # Add-on Banco de Imagens
-BANCO_ADDON_PRICE_ID = ""  # Será criado na Stripe
+BANCO_ADDON_PRICE_ID = "price_1TPFcuLW3ZSF3MIlECdLofvd"
+BANCO_ADDON_VALOR = "R$14,97/mês"
 
 PLANOS_STRIPE = {
     "api_propria": {
@@ -97,6 +98,7 @@ for key, p in PLANOS_STRIPE.items():
     PRICE_MAP[p["price_id"]] = {**p, "key": key, "tipo": "assinatura"}
 for key, p in PACOTES_AVULSO.items():
     PRICE_MAP[p["price_id"]] = {**p, "key": key, "tipo": "avulso"}
+PRICE_MAP[BANCO_ADDON_PRICE_ID] = {"nome": "Banco de Imagens", "key": "banco", "tipo": "addon", "creditos": 0}
 
 UPLOAD_FOLDER = "uploads"
 OUTPUT_FOLDER = "outputs"
@@ -165,6 +167,7 @@ class User(UserMixin, db.Model):
     creditos = db.Column(db.Integer, default=0)
     plano = db.Column(db.Text, default="")
     stripe_customer_id = db.Column(db.Text, default="")
+    banco_ativo = db.Column(db.Boolean, default=False)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
     criacoes = db.relationship("Criacao", backref="user", lazy=True)
 
@@ -1159,6 +1162,9 @@ def pagamento_sucesso():
                     current_user.creditos = creditos
                 elif tipo == "avulso":
                     current_user.creditos += creditos
+                elif tipo == "addon":
+                    if plano_key == "banco":
+                        current_user.banco_ativo = True
 
                 db.session.commit()
         except Exception as e:
@@ -1214,6 +1220,9 @@ def stripe_webhook():
                     user.creditos = creditos
                 elif tipo == "avulso":
                     user.creditos += creditos
+                elif tipo == "addon":
+                    if plano_key == "banco":
+                        user.banco_ativo = True
                 db.session.commit()
 
     return jsonify({"ok": True})
@@ -1255,7 +1264,9 @@ def dashboard():
                            creditos_por_imagem=CREDITOS_POR_IMAGEM,
                            creditos_prompt=CREDITOS_MELHORAR_PROMPT,
                            creditos_narracao=CREDITOS_NARRACAO,
-                           creditos_animacao=CREDITOS_ANIMACAO)
+                           creditos_animacao=CREDITOS_ANIMACAO,
+                           banco_addon_price=BANCO_ADDON_PRICE_ID,
+                           banco_addon_valor=BANCO_ADDON_VALOR)
 
 @app.route("/perfil", methods=["GET", "POST"])
 @login_required
@@ -1731,4 +1742,22 @@ def download_video(job_id):
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+        # Migrate: adicionar colunas novas se não existirem
+        try:
+            conn = sqlite3.connect('instance/veo3.db')
+            try: conn.execute("ALTER TABLE user ADD COLUMN banco_ativo BOOLEAN DEFAULT 0")
+            except: pass
+            conn.commit()
+            conn.close()
+        except: pass
     app.run(host="0.0.0.0", port=5000)
+else:
+    # Gunicorn: migrate automático
+    with app.app_context():
+        try:
+            conn = sqlite3.connect('instance/veo3.db')
+            try: conn.execute("ALTER TABLE user ADD COLUMN banco_ativo BOOLEAN DEFAULT 0")
+            except: pass
+            conn.commit()
+            conn.close()
+        except: pass

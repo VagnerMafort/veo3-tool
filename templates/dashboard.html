@@ -349,6 +349,40 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <p style="font-size:.85rem;color:var(--text2);text-align:center;padding:20px 0">🔒 Assine um plano para desbloquear a compra de créditos avulso.</p>
       {% endif %}
     </div>
+
+    <!-- UPSELL BANCO DE IMAGENS -->
+    {% if user.plano and user.plano in planos %}
+    <div class="card" style="border-color:var(--accent);background:linear-gradient(135deg,var(--bg3),var(--bg2))">
+      {% if user.banco_ativo %}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:1.5rem">🗃️</span>
+        <div>
+          <h2 style="margin:0;color:var(--green)">Banco de Imagens ✓ Ativo</h2>
+          <p style="font-size:.78rem;color:var(--text2);margin-top:2px">Acesse o banco em cada cena do storyboard</p>
+        </div>
+      </div>
+      {% else %}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="font-size:2rem">🗃️</span>
+        <div>
+          <h2 style="margin:0">Banco de Imagens e Vídeos</h2>
+          <p style="font-size:.78rem;color:var(--text2);margin-top:2px">{{ banco_addon_valor }}</p>
+        </div>
+      </div>
+      <p style="font-size:.85rem;color:var(--text);margin-bottom:12px">Reutilize imagens e cenas animadas já geradas em novos vídeos. Economize créditos e tempo!</p>
+      <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:14px">
+        <p style="font-size:.82rem;color:var(--accent);font-weight:600;margin-bottom:8px">💰 Quanto você economiza:</p>
+        <p style="font-size:.8rem;color:var(--text2);line-height:1.6">
+          • Cada imagem reutilizada = <b style="color:var(--green)">11 créditos economizados</b><br>
+          • Cada cena animada reutilizada = <b style="color:var(--green)">25 créditos economizados</b><br>
+          • 1 vídeo de 30s reaproveitado = <b style="color:var(--green)">até 180 créditos economizados</b><br>
+          • Em valores: até <b style="color:var(--green)">R$30+ de economia</b> por mês
+        </p>
+      </div>
+      <button class="btn" onclick="comprarPlano('{{ banco_addon_price }}')" style="background:var(--accent)">🗃️ Assinar Banco — {{ banco_addon_valor }}</button>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
 
   <!-- HISTÓRICO -->
@@ -691,7 +725,11 @@ async function girarCena(idx){const cena=document.getElementById('cena-'+idx);ce
 
 // Banco de imagens
 let bancoFiltroTipo='';
-function abrirBanco(idx){bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value='';bancoFiltroTipo='';document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));document.getElementById('filtroTodos').classList.add('active');buscarBanco();}
+const bancoAtivo = {{ 'true' if user.banco_ativo else 'false' }};
+function abrirBanco(idx){
+  if(!bancoAtivo){alert('🗃️ Assine o Banco de Imagens na aba Planos para acessar.');trocarAba('planos');return;}
+  bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value='';bancoFiltroTipo='';document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));document.getElementById('filtroTodos').classList.add('active');buscarBanco();
+}
 function fecharBanco(){document.getElementById('bancoModal').style.display='none';}
 function filtrarBanco(tipo){bancoFiltroTipo=tipo;document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));if(tipo==='imagem')document.getElementById('filtroImg').classList.add('active');else if(tipo==='video')document.getElementById('filtroVid').classList.add('active');else document.getElementById('filtroTodos').classList.add('active');buscarBanco();}
 async function buscarBanco(){const termo=document.getElementById('bancoBusca').value.trim();const res=await fetch('/buscar_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({termo:termo,tipo:bancoFiltroTipo})});const d=await res.json();const grid=document.getElementById('bancoGrid');grid.innerHTML='';if(d.imgs.length===0){grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text3)">Nenhum item encontrado</p>';return;}d.imgs.forEach(img=>{const isVideo=img.tipo==='video';const badge=isVideo?'<span style="position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;font-size:.6rem;padding:2px 6px;border-radius:10px">🎬</span>':'';grid.innerHTML+=`<div class="banco-item" style="position:relative" onclick="selecionarBanco(${img.id})">${badge}${isVideo?`<video src="/banco_img/${img.path}" style="width:100%;display:block" muted></video>`:`<img src="/banco_img/${img.path}" alt=""/>`}<p title="${img.descricao||img.prompt}">${(img.descricao||img.prompt).substring(0,50)}</p></div>`;});}
