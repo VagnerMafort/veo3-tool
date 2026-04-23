@@ -541,25 +541,25 @@ def remover_silencio(audio_path, output_path):
 # ── MiniMax Video (Image-to-Video) ──────────────────────
 def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
     """Gera um clipe de vídeo animado a partir de uma imagem usando MiniMax Hailuo"""
-    import base64, time
+    import base64, time, sys
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
     # Converter imagem pra base64
     with open(img_path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
     ext = img_path.rsplit(".", 1)[-1].lower()
-    if ext == "png":
-        mime = "image/png"
-    else:
-        mime = "image/jpeg"
+    mime = "image/png" if ext == "png" else "image/jpeg"
     img_data_url = f"data:{mime};base64,{img_b64}"
 
-    # Criar task
+    # Criar task com modelo rápido
     body = {
-        "model": "I2V-01",
+        "model": "MiniMax-Hailuo-2.3-Fast",
         "prompt": prompt,
         "first_frame_image": img_data_url,
+        "duration": 6,
+        "resolution": "768P",
     }
+    t0 = time.time()
     r = requests.post("https://api.minimax.io/v1/video_generation", headers=headers, json=body, timeout=60)
     if not r.ok:
         raise Exception(f"MiniMax Video erro {r.status_code}: {r.text}")
@@ -567,34 +567,39 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
     task_id = data.get("task_id")
     if not task_id:
         raise Exception(f"MiniMax Video sem task_id: {data}")
+    sys.stderr.write(f"[VIDEO] Task criada: {task_id}\n"); sys.stderr.flush()
 
-    # Poll status
-    for _ in range(120):  # max 20 min
-        time.sleep(10)
-        r2 = requests.get("https://api.minimax.io/v1/query/video_generation",
-                          headers=headers, params={"task_id": task_id}, timeout=30)
-        if not r2.ok:
+    # Poll status (a cada 5s em vez de 10s)
+    for _ in range(180):  # max 15 min
+        time.sleep(5)
+        try:
+            r2 = requests.get("https://api.minimax.io/v1/query/video_generation",
+                              headers=headers, params={"task_id": task_id}, timeout=15)
+            if not r2.ok:
+                continue
+            status_data = r2.json()
+            status = status_data.get("status", "")
+            if status == "Success":
+                file_id = status_data.get("file_id")
+                if not file_id:
+                    raise Exception("MiniMax Video: sucesso mas sem file_id")
+                r3 = requests.get("https://api.minimax.io/v1/files/retrieve",
+                                  headers=headers, params={"file_id": file_id}, timeout=15)
+                if not r3.ok:
+                    raise Exception(f"MiniMax Video download erro: {r3.text}")
+                download_url = r3.json().get("file", {}).get("download_url")
+                if not download_url:
+                    raise Exception("MiniMax Video: sem download_url")
+                video_r = requests.get(download_url, timeout=120)
+                with open(output_path, "wb") as f:
+                    f.write(video_r.content)
+                dt = time.time() - t0
+                sys.stderr.write(f"[VIDEO] OK em {dt:.0f}s\n"); sys.stderr.flush()
+                return True
+            elif status == "Fail":
+                raise Exception(f"MiniMax Video falhou: {status_data.get('error_message', 'erro desconhecido')}")
+        except requests.exceptions.Timeout:
             continue
-        status_data = r2.json()
-        status = status_data.get("status", "")
-        if status == "Success":
-            file_id = status_data.get("file_id")
-            if not file_id:
-                raise Exception("MiniMax Video: sucesso mas sem file_id")
-            # Download
-            r3 = requests.get("https://api.minimax.io/v1/files/retrieve",
-                              headers=headers, params={"file_id": file_id}, timeout=30)
-            if not r3.ok:
-                raise Exception(f"MiniMax Video download erro: {r3.text}")
-            download_url = r3.json().get("file", {}).get("download_url")
-            if not download_url:
-                raise Exception("MiniMax Video: sem download_url")
-            video_r = requests.get(download_url, timeout=120)
-            with open(output_path, "wb") as f:
-                f.write(video_r.content)
-            return True
-        elif status == "Fail":
-            raise Exception(f"MiniMax Video falhou: {status_data.get('error_message', 'erro desconhecido')}")
     raise Exception("MiniMax Video: timeout aguardando geração")
 
 def gerar_imagem_openai(prompt, api_key, size, quality, output_path, modelo="dall-e-3"):
@@ -1016,12 +1021,16 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                             return
                     clipes_video[i] = None
 
-                # Animar uma cena por vez pra evitar rate limit do MiniMax
+                # Animar em paralelo (3 por vez) com retry
                 import time as _time
-                for i in range(n_cenas):
-                    animar_cena(i)
-                    if i < n_cenas - 1:
-                        _time.sleep(3)
+                lote_size = 3
+                for lote_start in range(0, n_cenas, lote_size):
+                    lote_end = min(lote_start + lote_size, n_cenas)
+                    lote = list(range(lote_start, lote_end))
+                    with ThreadPoolExecutor(max_workers=lote_size) as executor:
+                        list(executor.map(animar_cena, lote))
+                    if lote_end < n_cenas:
+                        _time.sleep(2)
 
                 # Se pelo menos 1 clipe foi gerado, concatena os vídeos
                 if any(clipes_video):
