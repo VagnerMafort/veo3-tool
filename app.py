@@ -1036,7 +1036,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                             return
                         except Exception as e:
                             erro_str = str(e)
-                            sys.stderr.write(f"[ANIMAR] Cena {i+1} tentativa {tentativa+1}: {erro_str}\n"); sys.stderr.flush()
+                            import traceback
+                            sys.stderr.write(f"[ANIMAR] Cena {i+1} tentativa {tentativa+1}: {erro_str}\n{traceback.format_exc()}\n"); sys.stderr.flush()
                             if "1002" in erro_str or "rate" in erro_str.lower():
                                 _t.sleep(30)
                                 continue
