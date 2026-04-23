@@ -944,7 +944,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                                     "texto": bloco["texto"]})
                     t += dur_frase
                     if i < len(blocos) - 1:
-                        _time.sleep(2)  # Delay entre narrações
+                        _time.sleep(1)  # Delay entre narrações
                 audio_completo = audios[0]
                 for a in audios[1:]:
                     audio_completo += a
