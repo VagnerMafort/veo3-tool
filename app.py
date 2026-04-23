@@ -978,28 +978,34 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 def animar_cena(i):
                     img = imagens[i]
                     clipe_path = os.path.join(job_dir, f"clipe_{i+1:04d}.mp4")
-                    try:
-                        gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
-                        clipes_video[i] = clipe_path
-                        # Salvar cena animada no banco
-                        salvar_no_banco(img["texto"], sbEstilo if 'sbEstilo' in dir() else "", clipe_path, tipo="video", categoria="cena_animada")
-                        jobs[job_id]["atual"] = sum(1 for c in clipes_video if c is not None)
-                        jobs[job_id]["progresso"] = f"Animando cenas... {jobs[job_id]['atual']}/{n_cenas} prontas (~{tempo_est} min)"
-                    except Exception as e:
-                        sys.stderr.write(f"[ANIMAR] Erro na cena {i+1}: {e}\n")
-                        sys.stderr.flush()
-                        clipes_video[i] = None
+                    import time as _t
+                    for tentativa in range(3):
+                        try:
+                            gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
+                            clipes_video[i] = clipe_path
+                            salvar_no_banco(img["texto"], "", clipe_path, tipo="video", categoria="cena_animada")
+                            jobs[job_id]["atual"] = sum(1 for c in clipes_video if c is not None)
+                            jobs[job_id]["progresso"] = f"Animando cenas... {jobs[job_id]['atual']}/{n_cenas} prontas (~{tempo_est} min)"
+                            return
+                        except Exception as e:
+                            erro_str = str(e)
+                            if "1002" in erro_str or "rate" in erro_str.lower():
+                                sys.stderr.write(f"[ANIMAR] Rate limit cena {i+1}, tentativa {tentativa+1}, esperando 30s...\n")
+                                sys.stderr.flush()
+                                _t.sleep(30)
+                                continue
+                            sys.stderr.write(f"[ANIMAR] Erro na cena {i+1}: {e}\n")
+                            sys.stderr.flush()
+                            clipes_video[i] = None
+                            return
+                    clipes_video[i] = None
 
-                # Animar em lotes de 3 pra evitar rate limit do MiniMax
+                # Animar uma cena por vez pra evitar rate limit do MiniMax
                 import time as _time
-                lote_size = 3
-                for lote_start in range(0, n_cenas, lote_size):
-                    lote_end = min(lote_start + lote_size, n_cenas)
-                    lote = list(range(lote_start, lote_end))
-                    with ThreadPoolExecutor(max_workers=lote_size) as executor:
-                        list(executor.map(animar_cena, lote))
-                    if lote_end < n_cenas:
-                        _time.sleep(5)  # Esperar 5s entre lotes
+                for i in range(n_cenas):
+                    animar_cena(i)
+                    if i < n_cenas - 1:
+                        _time.sleep(3)
 
                 # Se pelo menos 1 clipe foi gerado, concatena os vídeos
                 if any(clipes_video):
