@@ -992,6 +992,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     return
                 db.session.commit()
                 n_cenas = len(imagens)
+                minimax_key_cache = user.minimax_key  # Cache pra usar nas threads
                 tempo_est = max(3, min(8, n_cenas))  # 3-8 min estimado (paralelo)
                 jobs[job_id]["progresso"] = f"Animando {n_cenas} cenas com IA em paralelo. Tempo estimado: ~{tempo_est} minutos..."
                 clipes_video = [None] * n_cenas
@@ -1015,7 +1016,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     import time as _t
                     for tentativa in range(3):
                         try:
-                            gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
+                            gerar_video_minimax(img["path"], img["texto"], minimax_key_cache, clipe_path)
                             clipes_video[i] = clipe_path
                             # Salvar no banco imediatamente (path absoluto)
                             try:
