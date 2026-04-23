@@ -456,6 +456,30 @@ def gerar_srt(blocos, srt_path):
         for b in blocos:
             f.write(f"{b['index']}\n{fmt(b['inicio'])} --> {fmt(b['fim'])}\n{b['texto']}\n\n")
 
+def gerar_srt_palavras(audio_path, srt_path):
+    """Gera SRT com uma palavra por vez sincronizada com o áudio usando Whisper"""
+    try:
+        model = get_whisper_model()
+        resultado = model.transcribe(audio_path, word_timestamps=True, fp16=False)
+        def fmt(s):
+            h=int(s//3600); m=int((s%3600)//60); sec=s%60
+            return f"{h:02d}:{m:02d}:{sec:06.3f}".replace(".",",")
+        idx = 1
+        with open(srt_path, "w", encoding="utf-8") as f:
+            for seg in resultado.get("segments", []):
+                for palavra in seg.get("words", []):
+                    word = palavra.get("word", "").strip()
+                    if not word:
+                        continue
+                    start = palavra.get("start", 0)
+                    end = palavra.get("end", start + 0.3)
+                    f.write(f"{idx}\n{fmt(start)} --> {fmt(end)}\n{word}\n\n")
+                    idx += 1
+        return True
+    except Exception as e:
+        print(f"Erro ao gerar SRT por palavras: {e}")
+        return False
+
 def montar_video(imagens, audio_path, output_path, legenda_cfg=None):
     fps = 25
     try:
@@ -485,7 +509,12 @@ def montar_video(imagens, audio_path, output_path, legenda_cfg=None):
     saida_v = "[vout]"
     if legenda_cfg and legenda_cfg.get("ativo"):
         srt_path = output_path.replace(".mp4", ".srt")
-        gerar_srt(imagens, srt_path)
+        # Se tem áudio, gera legenda palavra por palavra sincronizada
+        if audio_path and os.path.exists(audio_path):
+            if not gerar_srt_palavras(audio_path, srt_path):
+                gerar_srt(imagens, srt_path)  # fallback pra legenda por cena
+        else:
+            gerar_srt(imagens, srt_path)
         fonte = legenda_cfg.get("fonte", "Arial")
         cor = legenda_cfg.get("cor", "&H00FFFFFF")
         tam = legenda_cfg.get("tamanho", "18")
