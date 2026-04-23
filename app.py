@@ -842,7 +842,9 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             jobs[job_id]["atual"] = len(imagens)
 
             # Animar imagens com IA (MiniMax Video)
-            print(f"[VIDEO] animar_ia={animar_ia}, minimax_key={'SIM' if user.minimax_key else 'NAO'}")
+            import sys
+            sys.stderr.write(f"[VIDEO] animar_ia={animar_ia}, minimax_key={'SIM' if user.minimax_key else 'NAO'}\n")
+            sys.stderr.flush()
             if animar_ia and user.minimax_key:
                 jobs[job_id]["progresso"] = "Animando cenas com IA..."
                 clipes_video = []
@@ -1556,6 +1558,9 @@ def finalizar_video_route():
         "sombra": request.form.get("legenda_sombra", "true") == "true",
     }
     animar_ia = request.form.get("animar_ia", "false") == "true"
+    import sys
+    sys.stderr.write(f"[ROTA] animar_ia={animar_ia}, form_value={request.form.get('animar_ia', 'NAO_ENVIADO')}\n")
+    sys.stderr.flush()
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
     thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia))
