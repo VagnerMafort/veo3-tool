@@ -1256,12 +1256,24 @@ def admin_panel():
     prompts = load_prompts()
     conn = sqlite3.connect('instance/veo3.db')
     try:
-        total_imgs = conn.execute("SELECT COUNT(*) FROM banco_imagens").fetchone()[0]
+        total_imgs = conn.execute("SELECT COUNT(*) FROM banco_imagens WHERE tipo='imagem' OR tipo IS NULL").fetchone()[0]
     except:
         total_imgs = 0
+    try:
+        total_videos = conn.execute("SELECT COUNT(*) FROM banco_imagens WHERE tipo='video'").fetchone()[0]
+    except:
+        total_videos = 0
     conn.close()
     total_criacoes = Criacao.query.count()
-    return render_template("admin.html", users=users, prompts=prompts, total_imgs=total_imgs, total_criacoes=total_criacoes)
+    total_creditos = sum(u.creditos for u in users)
+    users_com_plano = sum(1 for u in users if u.plano)
+    from datetime import timedelta
+    hoje = datetime.utcnow()
+    users_recentes = sum(1 for u in users if (hoje - u.criado_em).days <= 7)
+    return render_template("admin.html", users=users, prompts=prompts, total_imgs=total_imgs,
+                           total_criacoes=total_criacoes, total_videos=total_videos,
+                           total_creditos=total_creditos, users_com_plano=users_com_plano,
+                           users_recentes=users_recentes, planos=PLANOS_STRIPE)
 
 @app.route("/admin/toggle_admin", methods=["POST"])
 @login_required

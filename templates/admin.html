@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin — Kaelum Studio</title>
+<style>
+:root{--bg:#0b1120;--bg2:#111827;--bg3:#0f172a;--border:#1e3a5f;--text:#e2e8f0;--text2:#94a3b8;--text3:#475569;--accent:#4a9eff;--accent2:#2563eb;--green:#059669;--red:#dc2626;--red-bg:#1a0a0a;--red-border:#7f1d1d;--red-text:#fca5a5}
+[data-theme="light"]{--bg:#f0f4f8;--bg2:#fff;--bg3:#e8edf2;--border:#c8d6e5;--text:#1a2332;--text2:#4a5568;--text3:#718096;--accent:#2563eb;--accent2:#1d4ed8;--red-bg:#fff5f5;--red-border:#feb2b2;--red-text:#c53030}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:20px;transition:background .3s,color .3s}
+.container{max-width:720px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.header h1{font-size:1.2rem}.header h1 span{color:var(--accent)}
+.header-right{display:flex;align-items:center;gap:10px}
+.header a{color:var(--accent);text-decoration:none;font-size:.85rem}
+.theme-toggle{background:none;border:1px solid var(--border);color:var(--text2);padding:6px 10px;border-radius:8px;cursor:pointer;font-size:.85rem}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.stat-num{font-size:1.6rem;font-weight:800;color:var(--accent)}
+.stat-label{font-size:.7rem;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.tab{flex:1;min-width:70px;padding:9px 4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:.75rem;color:var(--text2);transition:.2s}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.pane{display:none}.pane.active{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px}
+.card h2{font-size:.95rem;margin-bottom:16px;color:var(--text)}
+label{display:block;font-size:.82rem;color:var(--text2);margin-bottom:6px;margin-top:14px}
+input,select,textarea{width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s}
+input:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
+.btn{width:100%;margin-top:14px;padding:12px;background:var(--accent2);color:#fff;border:none;border-radius:10px;font-size:.9rem;font-weight:600;cursor:pointer;transition:.2s}
+.btn:hover{background:var(--accent)}
+.btn-save{background:#1d4ed8}.btn-save:hover{background:#2563eb}
+.btn-sm{padding:6px 12px;font-size:.75rem;border-radius:6px;cursor:pointer;border:none;color:#fff;margin:2px}
+.btn-green{background:var(--green)}.btn-red{background:var(--red)}.btn-blue{background:var(--accent2)}
+.btn-outline-sm{padding:6px 12px;font-size:.75rem;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text2);margin:2px}
+.btn-outline-sm:hover{border-color:var(--accent);color:var(--accent)}
+.user-row{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.user-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.user-info .name{font-size:.9rem;color:var(--text);font-weight:600}
+.user-info .email{font-size:.78rem;color:var(--text2)}
+.user-info .meta{font-size:.7rem;color:var(--text3);margin-top:3px}
+.user-btns{display:flex;gap:4px;flex-wrap:wrap}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.68rem;font-weight:600;margin-left:6px}
+.badge-admin{background:var(--accent2);color:#fff}
+.badge-plano{background:var(--green);color:#fff}
+.badge-sem{background:var(--text3);color:#fff}
+.user-details{display:flex;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:.78rem;color:var(--text2);flex-wrap:wrap}
+.user-details span{display:flex;align-items:center;gap:4px}
+.senha-input{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.senha-input input{width:auto;display:inline-block;max-width:200px}
+.creditos-input{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.creditos-input input{width:auto;display:inline-block;max-width:120px}
+.erro-box{display:none;margin-top:10px;background:var(--red-bg);border:1px solid var(--red-border);border-radius:8px;padding:10px;color:var(--red-text);font-size:.83rem;text-align:center}
+.ok-box{display:none;margin-top:10px;background:#064e3b;border:1px solid #059669;border-radius:8px;padding:10px;color:#6ee7b7;font-size:.83rem;text-align:center}
+.metric-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:.85rem}
+.metric-row:last-child{border:none}
+.metric-label{color:var(--text2)}
+.metric-value{color:var(--text);font-weight:600}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⚙️ Admin <span>Kaelum Studio</span></h1>
+    <div class="header-right">
+      <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙</button>
+      <a href="/dashboard">← Dashboard</a>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-box"><div class="stat-num">{{ users|length }}</div><div class="stat-label">Usuários</div></div>
+    <div class="stat-box"><div class="stat-num">{{ users_com_plano }}</div><div class="stat-label">Assinantes</div></div>
+    <div class="stat-box"><div class="stat-num">{{ total_criacoes }}</div><div class="stat-label">Criações</div></div>
+    <div class="stat-box"><div class="stat-num">{{ total_imgs + total_videos }}</div><div class="stat-label">Banco</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="trocarAba('metricas')">📊 Métricas</div>
+    <div class="tab" onclick="trocarAba('usuarios')">👥 Usuários</div>
+    <div class="tab" onclick="trocarAba('prompts')">📝 Prompts</div>
+  </div>
+
+  <!-- MÉTRICAS -->
+  <div class="pane active" id="paneMetricas">
+    <div class="card">
+      <h2>📊 Visão Geral</h2>
+      <div class="metric-row"><span class="metric-label">Total de usuários</span><span class="metric-value">{{ users|length }}</span></div>
+      <div class="metric-row"><span class="metric-label">Novos (últimos 7 dias)</span><span class="metric-value">{{ users_recentes }}</span></div>
+      <div class="metric-row"><span class="metric-label">Assinantes ativos</span><span class="metric-value">{{ users_com_plano }}</span></div>
+      <div class="metric-row"><span class="metric-label">Taxa de conversão</span><span class="metric-value">{{ "%.0f"|format(users_com_plano / users|length * 100) if users|length > 0 else 0 }}%</span></div>
+    </div>
+    <div class="card">
+      <h2>🎬 Produção</h2>
+      <div class="metric-row"><span class="metric-label">Total de criações</span><span class="metric-value">{{ total_criacoes }}</span></div>
+      <div class="metric-row"><span class="metric-label">Imagens no banco</span><span class="metric-value">{{ total_imgs }}</span></div>
+      <div class="metric-row"><span class="metric-label">Vídeos animados no banco</span><span class="metric-value">{{ total_videos }}</span></div>
+      <div class="metric-row"><span class="metric-label">Média criações/usuário</span><span class="metric-value">{{ "%.1f"|format(total_criacoes / users|length) if users|length > 0 else 0 }}</span></div>
+    </div>
+    <div class="card">
+      <h2>💰 Créditos</h2>
+      <div class="metric-row"><span class="metric-label">Créditos em circulação</span><span class="metric-value">{{ total_creditos }}</span></div>
+      <div class="metric-row"><span class="metric-label">Média créditos/usuário</span><span class="metric-value">{{ "%.0f"|format(total_creditos / users|length) if users|length > 0 else 0 }}</span></div>
+    </div>
+    <div class="card">
+      <h2>📋 Distribuição de Planos</h2>
+      {% for key, plano in planos.items() %}
+      <div class="metric-row">
+        <span class="metric-label">{{ plano.nome }}</span>
+        <span class="metric-value">{{ users|selectattr('plano','equalto',key)|list|length }} usuários</span>
+      </div>
+      {% endfor %}
+      <div class="metric-row">
+        <span class="metric-label">Sem plano</span>
+        <span class="metric-value">{{ users|rejectattr('plano')|list|length }} usuários</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- USUARIOS -->
+  <div class="pane" id="paneUsuarios">
+    <div class="card">
+      <h2>👥 Gerenciar Usuários ({{ users|length }})</h2>
+      <input type="text" id="buscaUser" placeholder="Buscar por nome ou email..." oninput="filtrarUsers()" style="margin-bottom:14px"/>
+      <div id="listaUsers">
+      {% for u in users %}
+      <div class="user-row" id="user-{{ u.id }}" data-nome="{{ u.nome|lower }}" data-email="{{ u.email|lower }}">
+        <div class="user-top">
+          <div class="user-info">
+            <div class="name">{{ u.nome }}
+              {% if u.is_admin %}<span class="badge badge-admin">ADMIN</span>{% endif %}
+              {% if u.plano %}<span class="badge badge-plano">{{ u.plano }}</span>{% else %}<span class="badge badge-sem">Sem plano</span>{% endif %}
+            </div>
+            <div class="email">{{ u.email }}</div>
+            <div class="meta">Criado: {{ u.criado_em.strftime('%d/%m/%Y') }} · {{ u.criacoes|length }} criações</div>
+          </div>
+          <div class="user-btns">
+            <button class="btn-sm btn-blue" onclick="toggleAdmin({{ u.id }})">{% if u.is_admin %}⬇ Admin{% else %}⬆ Admin{% endif %}</button>
+            <button class="btn-outline-sm" onclick="mostrarCreditos({{ u.id }})">💰 Créditos</button>
+            <button class="btn-outline-sm" onclick="mostrarSenha({{ u.id }})">🔑 Senha</button>
+            <button class="btn-sm btn-red" onclick="deletarUser({{ u.id }})">🗑</button>
+          </div>
+        </div>
+        <div class="user-details">
+          <span>💰 {{ u.creditos }} créditos</span>
+          <span>🖼️ {{ u.provider or 'Sem API' }}</span>
+          <span>🎙️ {{ 'MiniMax ✓' if u.minimax_key else 'Sem voz' }}</span>
+          <span>💳 {{ u.stripe_customer_id[:15] + '...' if u.stripe_customer_id else 'Sem Stripe' }}</span>
+        </div>
+        <div class="senha-input" id="senha-{{ u.id }}">
+          <input type="text" id="novaSenha-{{ u.id }}" placeholder="Nova senha (min 6)"/>
+          <button class="btn-sm btn-green" onclick="mudarSenha({{ u.id }})">Salvar</button>
+        </div>
+        <div class="creditos-input" id="creditos-{{ u.id }}">
+          <input type="number" id="qtdCreditos-{{ u.id }}" placeholder="Quantidade" value="100"/>
+          <button class="btn-sm btn-green" onclick="darCreditos({{ u.id }})">+ Dar</button>
+          <select id="planoUser-{{ u.id }}" style="width:auto;display:inline-block;max-width:150px">
+            <option value="">Sem plano</option>
+            {% for key, plano in planos.items() %}
+            <option value="{{ key }}" {% if u.plano == key %}selected{% endif %}>{{ plano.nome }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn-sm btn-blue" onclick="definirPlano({{ u.id }})">Definir</button>
+        </div>
+      </div>
+      {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- PROMPTS -->
+  <div class="pane" id="panePrompts">
+    <div class="card">
+      <h2>📝 Prompt: Melhorar Imagem</h2>
+      <p style="font-size:.76rem;color:var(--text3);margin-bottom:10px">Use {estilo} onde o estilo selecionado será inserido.</p>
+      <textarea id="promptMelhorar">{{ prompts.get('melhorar', '') }}</textarea>
+    </div>
+    <div class="card">
+      <h2>📝 Prompt: Suavizar (Safety)</h2>
+      <textarea id="promptSuavizar">{{ prompts.get('suavizar', '') }}</textarea>
+    </div>
+    <div class="card">
+      <h2>📝 Prompt: Dividir Roteiro</h2>
+      <textarea id="promptDividir">{{ prompts.get('dividir', '') }}</textarea>
+    </div>
+    <button class="btn btn-save" id="btnSalvarPrompts">Salvar Prompts</button>
+    <div class="ok-box" id="okPrompts"></div>
+    <div class="erro-box" id="erroPrompts"></div>
+  </div>
+</div>
+
+<script>
+// Theme
+function toggleTheme(){const themes=['dark','light'];let cur=localStorage.getItem('theme')||'dark';let next=themes[(themes.indexOf(cur)+1)%2];localStorage.setItem('theme',next);applyTheme();}
+function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=document.getElementById('themeBtn');if(t==='light'){document.documentElement.setAttribute('data-theme','light');if(btn)btn.textContent='☀️';}else{document.documentElement.removeAttribute('data-theme');if(btn)btn.textContent='🌙';}}
+applyTheme();
+
+function trocarAba(aba){
+  const abas=['metricas','usuarios','prompts'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
+}
+
+function filtrarUsers(){
+  const termo=document.getElementById('buscaUser').value.toLowerCase();
+  document.querySelectorAll('.user-row').forEach(el=>{
+    const nome=el.dataset.nome||'';const email=el.dataset.email||'';
+    el.style.display=(nome.includes(termo)||email.includes(termo))?'block':'none';
+  });
+}
+
+async function toggleAdmin(uid){const res=await fetch('/admin/toggle_admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});if((await res.json()).ok)location.reload();}
+
+function mostrarSenha(uid){const el=document.getElementById('senha-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('creditos-'+uid).style.display='none';}
+function mostrarCreditos(uid){const el=document.getElementById('creditos-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('senha-'+uid).style.display='none';}
+
+async function mudarSenha(uid){const senha=document.getElementById('novaSenha-'+uid).value.trim();if(!senha||senha.length<6){alert('Senha deve ter pelo menos 6 caracteres');return;}const res=await fetch('/admin/mudar_senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,nova_senha:senha})});if((await res.json()).ok){alert('Senha alterada');document.getElementById('senha-'+uid).style.display='none';}}
+
+async function darCreditos(uid){const qtd=parseInt(document.getElementById('qtdCreditos-'+uid).value);if(!qtd||qtd<1){alert('Quantidade inválida');return;}const res=await fetch('/admin/dar_creditos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,creditos:qtd})});const d=await res.json();if(d.ok){alert('Créditos adicionados! Total: '+d.creditos);location.reload();}}
+
+async function definirPlano(uid){const plano=document.getElementById('planoUser-'+uid).value;const res=await fetch('/admin/definir_plano',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,plano:plano})});if((await res.json()).ok){alert('Plano definido!');location.reload();}}
+
+async function deletarUser(uid){if(!confirm('Tem certeza? Isso apaga o usuário e todas as criações dele.'))return;const res=await fetch('/admin/deletar_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});const d=await res.json();if(d.ok){document.getElementById('user-'+uid).remove();}else{alert(d.erro);}}
+
+document.getElementById('btnSalvarPrompts').addEventListener('click',async()=>{const data={melhorar:document.getElementById('promptMelhorar').value,suavizar:document.getElementById('promptSuavizar').value,dividir:document.getElementById('promptDividir').value};const res=await fetch('/admin/salvar_prompts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if((await res.json()).ok){document.getElementById('okPrompts').textContent='✅ Prompts salvos';document.getElementById('okPrompts').style.display='block';document.getElementById('erroPrompts').style.display='none';}else{document.getElementById('erroPrompts').textContent='❌ Erro ao salvar';document.getElementById('erroPrompts').style.display='block';}});
+</script>
+</body>
+</html>
