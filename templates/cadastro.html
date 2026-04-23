@@ -34,7 +34,10 @@
   <label>Email</label>
   <input type="email" id="email" placeholder="seu@email.com"/>
   <label>Senha</label>
-  <input type="password" id="senha" placeholder="Mínimo 6 caracteres"/>
+  <div style="position:relative">
+    <input type="password" id="senha" placeholder="Mínimo 6 caracteres" style="padding-right:44px"/>
+    <button type="button" onclick="toggleSenha()" id="btnToggleSenha" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.1rem;padding:4px">👁️</button>
+  </div>
   <button class="btn" id="btnCadastro">Criar conta</button>
   <div class="erro" id="erro"></div>
   <div class="link">Já tem conta? <a href="/login">Entrar</a></div>
@@ -54,6 +57,7 @@
     } catch(e) { mostrarErro('Erro de conexão'); }
   });
   function mostrarErro(msg) { const e=document.getElementById('erro'); e.textContent='❌ '+msg; e.style.display='block'; }
+  function toggleSenha(){const i=document.getElementById('senha');const b=document.getElementById('btnToggleSenha');if(i.type==='password'){i.type='text';b.textContent='🙈';}else{i.type='password';b.textContent='👁️';}}
 </script>
 </body>
 </html>

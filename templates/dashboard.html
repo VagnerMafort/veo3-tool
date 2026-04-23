@@ -492,6 +492,23 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
   </div>
 </div>
 
+<!-- Modal Créditos Esgotados -->
+<div class="banco-modal" id="creditosModal" style="display:none">
+  <div class="banco-content" style="max-width:440px;text-align:center">
+    <div style="font-size:3rem;margin-bottom:12px">💰</div>
+    <h2 style="margin-bottom:8px;color:var(--text)">Créditos insuficientes</h2>
+    <p style="color:var(--text2);font-size:.88rem;margin-bottom:20px">Seus créditos acabaram. Escolha uma opção para continuar criando:</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn" onclick="document.getElementById('creditosModal').style.display='none';trocarAba('planos')" style="background:var(--accent)">💎 Fazer upgrade de plano</button>
+      {% if user.plano and user.plano in planos %}
+      <button class="btn" onclick="document.getElementById('creditosModal').style.display='none';trocarAba('planos')" style="background:var(--green)">⚡ Comprar créditos avulso</button>
+      {% endif %}
+      <button class="btn-outline" onclick="document.getElementById('creditosModal').style.display='none'" style="width:100%">Fechar</button>
+    </div>
+    <p style="color:var(--text3);font-size:.75rem;margin-top:14px">Você tem <b id="creditosRestantes">0</b> créditos restantes</p>
+  </div>
+</div>
+
 <!-- Modal Banco de Imagens -->
 <div class="banco-modal" id="bancoModal">
   <div class="banco-content">
@@ -747,9 +764,18 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}
 });
 
-function pollFinal(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();document.getElementById('statusTextFinal').textContent=d.progresso||'...';if(d.total>0)document.getElementById('progressFillFinal').style.width=Math.round((d.atual/d.total)*100)+'%';if(d.status==='pronto'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('resultadoInfo').textContent=`${d.total} imagens + vídeo gerados`;document.getElementById('btnDownload').href=`/download/${jobId}`;document.getElementById('btnVideo').href=`/download_video/${jobId}`;document.getElementById('resultado').style.display='block';}if(d.status==='erro'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+d.progresso;document.getElementById('erroFinal').style.display='block';}},3000);}
+function pollFinal(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();document.getElementById('statusTextFinal').textContent=d.progresso||'...';if(d.total>0)document.getElementById('progressFillFinal').style.width=Math.round((d.atual/d.total)*100)+'%';if(d.status==='pronto'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('resultadoInfo').textContent=`${d.total} imagens + vídeo gerados`;document.getElementById('btnDownload').href=`/download/${jobId}`;document.getElementById('btnVideo').href=`/download_video/${jobId}`;document.getElementById('resultado').style.display='block';atualizarCreditos();}if(d.status==='erro'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;if(d.progresso&&d.progresso.toLowerCase().includes('insuficiente')){document.getElementById('creditosRestantes').textContent=document.getElementById('creditosNum').textContent;document.getElementById('creditosModal').style.display='block';}else{document.getElementById('erroFinal').textContent='❌ '+d.progresso;document.getElementById('erroFinal').style.display='block';}}},3000);}
 
-function mostrarErroSB(msg){document.getElementById('statusSB').style.display='none';document.getElementById('btnGerarSB').disabled=false;document.getElementById('erroSB').textContent='❌ '+msg;document.getElementById('erroSB').style.display='block';}
+function mostrarErroSB(msg){
+  document.getElementById('statusSB').style.display='none';
+  document.getElementById('btnGerarSB').disabled=false;
+  if(msg.toLowerCase().includes('cr') && msg.toLowerCase().includes('insuficiente')){
+    document.getElementById('creditosRestantes').textContent=document.getElementById('creditosNum').textContent;
+    document.getElementById('creditosModal').style.display='block';
+  } else {
+    document.getElementById('erroSB').textContent='❌ '+msg;document.getElementById('erroSB').style.display='block';
+  }
+}
 
 document.getElementById('btnNovo').addEventListener('click',()=>{document.getElementById('resultado').style.display='none';document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';document.getElementById('textoRoteiro').value='';});
 
