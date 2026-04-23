@@ -140,6 +140,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
           <div class="user-btns">
             <button class="btn-sm btn-blue" onclick="toggleAdmin({{ u.id }})">{% if u.is_admin %}⬇ Admin{% else %}⬆ Admin{% endif %}</button>
             <button class="btn-outline-sm" onclick="mostrarCreditos({{ u.id }})">💰 Créditos</button>
+            <button class="btn-outline-sm" onclick="toggleBanco({{ u.id }})">🗃️ {% if u.banco_ativo %}Banco ✓{% else %}Banco{% endif %}</button>
             <button class="btn-outline-sm" onclick="mostrarSenha({{ u.id }})">🔑 Senha</button>
             <button class="btn-sm btn-red" onclick="deletarUser({{ u.id }})">🗑</button>
           </div>
@@ -289,6 +290,8 @@ function filtrarUsers(){
 }
 
 async function toggleAdmin(uid){const res=await fetch('/admin/toggle_admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});if((await res.json()).ok)location.reload();}
+
+async function toggleBanco(uid){const res=await fetch('/admin/toggle_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});const d=await res.json();if(d.ok){alert(d.banco_ativo?'Banco ativado!':'Banco desativado!');location.reload();}}
 
 function mostrarSenha(uid){const el=document.getElementById('senha-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('creditos-'+uid).style.display='none';}
 function mostrarCreditos(uid){const el=document.getElementById('creditos-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('senha-'+uid).style.display='none';}

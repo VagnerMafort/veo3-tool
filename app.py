@@ -1438,6 +1438,19 @@ def admin_toggle():
         return jsonify({"ok": True, "is_admin": user.is_admin})
     return jsonify({"erro": "Usuario nao encontrado"}), 404
 
+@app.route("/admin/toggle_banco", methods=["POST"])
+@login_required
+def admin_toggle_banco():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    user_id = request.json.get("user_id")
+    user = User.query.get(user_id)
+    if user:
+        user.banco_ativo = not user.banco_ativo
+        db.session.commit()
+        return jsonify({"ok": True, "banco_ativo": user.banco_ativo})
+    return jsonify({"erro": "Usuario nao encontrado"}), 404
+
 @app.route("/admin/mudar_senha", methods=["POST"])
 @login_required
 def admin_mudar_senha():

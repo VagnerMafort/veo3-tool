@@ -814,7 +814,12 @@ let bancoFiltroTipo='';
 let bancoPagina=1;
 const bancoAtivo = {{ 'true' if user.banco_ativo else 'false' }};
 function abrirBanco(idx){
-  if(!bancoAtivo){alert('🗃️ Assine o Banco de Imagens na aba Planos para acessar.');trocarAba('planos');return;}
+  if(!bancoAtivo){
+    if(confirm('🗃️ O Banco de Imagens é um add-on por R$14,97/mês.\n\nDeseja assinar agora?')){
+      comprarPlano('{{ banco_addon_price }}');
+    }
+    return;
+  }
   bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value='';bancoFiltroTipo='';bancoPagina=1;document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));document.getElementById('filtroTodos').classList.add('active');buscarBanco();
 }
 function fecharBanco(){document.getElementById('bancoModal').style.display='none';}
