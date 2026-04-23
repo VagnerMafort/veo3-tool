@@ -201,8 +201,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <button class="btn" id="btnGerarSB">1. Dividir em Cenas</button>
       <div class="status-box" id="statusSB">
         <div class="spinner"></div>
-        <div class="status-text" id="statusTextSB">Gerando imagens...</div>
-        <div class="progress-bar"><div class="progress-fill" id="progressFillSB"></div></div>
+        <div class="status-text" id="statusTextSB">Analisando roteiro...</div>
       </div>
       <div class="erro-box" id="erroSB"></div>
     </div>
@@ -218,8 +217,9 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <button class="btn-outline" id="btnVoltarPreview">← Voltar ao roteiro</button>
       <div class="status-box" id="statusPreview">
         <div class="spinner"></div>
-        <div class="status-text" id="statusTextPreview">Gerando...</div>
+        <div class="status-text" id="statusTextPreview">Preparando...</div>
         <div class="progress-bar"><div class="progress-fill" id="progressFillPreview"></div></div>
+        <div style="margin-top:10px;font-size:.75rem;color:var(--text3)" id="statusEtapa"></div>
       </div>
       <div class="erro-box" id="erroPreview"></div>
     </div>
@@ -286,8 +286,9 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <button class="btn-outline" id="btnVoltarRoteiro">← Voltar ao roteiro</button>
       <div class="status-box" id="statusFinal">
         <div class="spinner"></div>
-        <div class="status-text" id="statusTextFinal">Finalizando...</div>
+        <div class="status-text" id="statusTextFinal">Preparando vídeo...</div>
         <div class="progress-bar"><div class="progress-fill" id="progressFillFinal"></div></div>
+        <div style="margin-top:10px;font-size:.75rem;color:var(--text3)" id="statusEtapaFinal"></div>
       </div>
       <div class="resultado" id="resultado">
         <div class="check">✅</div>
@@ -719,8 +720,17 @@ document.getElementById('btnGerarFaltantes').addEventListener('click',async()=>{
 function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();
   const stEl=document.getElementById('statusTextPreview')||document.getElementById('statusTextSB');
   const pfEl=document.getElementById('progressFillPreview')||document.getElementById('progressFillSB');
-  if(stEl)stEl.textContent=d.progresso||'...';
+  const etapaEl=document.getElementById('statusEtapa');
+  const prog=d.progresso||'';
+  if(stEl)stEl.textContent=prog;
   if(pfEl&&d.total>0)pfEl.style.width=Math.round((d.atual/d.total)*100)+'%';
+  // Mostrar etapa atual
+  if(etapaEl){
+    if(prog.includes('personagens'))etapaEl.textContent='📋 Etapa 1/3 — Analisando personagens do roteiro';
+    else if(prog.includes('Gerando imagem'))etapaEl.textContent='🖼️ Etapa 2/3 — Gerando imagens com IA';
+    else if(prog.includes('Otimizando'))etapaEl.textContent='🧠 Etapa 2/3 — Otimizando prompts';
+    else etapaEl.textContent='';
+  }
   if(d.status==='storyboard_pronto'){clearInterval(iv);
     document.getElementById('statusSB').style.display='none';document.getElementById('statusPreview').style.display='none';
     document.getElementById('btnGerarSB').disabled=false;document.getElementById('btnGerarFaltantes').disabled=false;
@@ -764,7 +774,20 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}
 });
 
-function pollFinal(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();document.getElementById('statusTextFinal').textContent=d.progresso||'...';if(d.total>0)document.getElementById('progressFillFinal').style.width=Math.round((d.atual/d.total)*100)+'%';if(d.status==='pronto'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('resultadoInfo').textContent=`${d.total} imagens + vídeo gerados`;document.getElementById('btnDownload').href=`/download/${jobId}`;document.getElementById('btnVideo').href=`/download_video/${jobId}`;document.getElementById('resultado').style.display='block';atualizarCreditos();}if(d.status==='erro'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;if(d.progresso&&d.progresso.toLowerCase().includes('insuficiente')){document.getElementById('creditosRestantes').textContent=document.getElementById('creditosNum').textContent;document.getElementById('creditosModal').style.display='block';}else{document.getElementById('erroFinal').textContent='❌ '+d.progresso;document.getElementById('erroFinal').style.display='block';}}},3000);}
+function pollFinal(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();const prog=d.progresso||'';document.getElementById('statusTextFinal').textContent=prog;if(d.total>0)document.getElementById('progressFillFinal').style.width=Math.round((d.atual/d.total)*100)+'%';
+  const etapaEl=document.getElementById('statusEtapaFinal');
+  if(etapaEl){
+    if(prog.includes('Narrando'))etapaEl.textContent='🎙️ Etapa 1 — Gerando narração por cena';
+    else if(prog.includes('Animando'))etapaEl.textContent='🎬 Etapa 2 — Animando cenas com IA (pode levar alguns minutos)';
+    else if(prog.includes('Montando'))etapaEl.textContent='🎞️ Etapa 3 — Montando vídeo final';
+    else if(prog.includes('legendas')||prog.includes('SRT'))etapaEl.textContent='💬 Gerando legendas sincronizadas';
+    else if(prog.includes('Compactando'))etapaEl.textContent='📦 Finalizando e compactando arquivos';
+    else if(prog.includes('Juntando'))etapaEl.textContent='🔗 Juntando clipes animados';
+    else etapaEl.textContent='';
+  }
+  if(d.status==='pronto'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('resultadoInfo').textContent=`${d.total} imagens + vídeo gerados`;document.getElementById('btnDownload').href=`/download/${jobId}`;document.getElementById('btnVideo').href=`/download_video/${jobId}`;document.getElementById('resultado').style.display='block';atualizarCreditos();}
+  if(d.status==='erro'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;if(d.progresso&&d.progresso.toLowerCase().includes('insuficiente')){document.getElementById('creditosRestantes').textContent=document.getElementById('creditosNum').textContent;document.getElementById('creditosModal').style.display='block';}else{document.getElementById('erroFinal').textContent='❌ '+d.progresso;document.getElementById('erroFinal').style.display='block';}}
+},3000);}
 
 function mostrarErroSB(msg){
   document.getElementById('statusSB').style.display='none';

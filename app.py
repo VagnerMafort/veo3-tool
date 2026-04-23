@@ -734,22 +734,21 @@ def dividir_roteiro(texto, api_key):
     if len(texto) < 30:
         return [texto.strip()]
 
-    # Limitar cenas: ~1 cena a cada 40 caracteres, mínimo 2, máximo 12
-    max_cenas = max(2, min(12, len(texto) // 40))
+    # Limitar cenas proporcionalmente ao tamanho do texto
+    max_cenas = max(2, min(20, len(texto) // 40))
 
     prompts = load_prompts()
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         system = prompts.get("dividir", DEFAULT_PROMPTS["dividir"])
-        system += f"\n\nIMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningful story beat, NOT individual words. If the text describes 2-3 events, create 2-3 scenes. Do NOT over-split."
+        system += f"\n\nIMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningful story beat. Include ALL parts of the text - do NOT skip or cut any part. The ENTIRE text must be covered by the scenes."
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system}, {"role": "user", "content": texto}
-        ], "max_tokens": 300}
+        ], "max_tokens": 1000}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
         if r.ok:
             resultado = r.json()["choices"][0]["message"]["content"].strip()
             linhas = [l.strip() for l in resultado.split("\n") if l.strip()]
-            # Garantir que não excede o máximo
             if len(linhas) > max_cenas:
                 linhas = linhas[:max_cenas]
             if len(linhas) >= 1:
