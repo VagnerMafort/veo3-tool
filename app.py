@@ -522,11 +522,32 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
             raise Exception(f"MiniMax Video falhou: {status_data.get('error_message', 'erro desconhecido')}")
     raise Exception("MiniMax Video: timeout aguardando geração")
 
-def gerar_imagem_openai(prompt, api_key, size, quality, output_path):
+def gerar_imagem_openai(prompt, api_key, size, quality, output_path, modelo="dall-e-3"):
     tamanhos_validos = ["1024x1024", "1792x1024", "1024x1792"]
     if size not in tamanhos_validos:
         size = "1024x1024"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    if modelo == "gpt-image-1":
+        # gpt-image-1: melhor consistência, retorna base64
+        import base64
+        body = {"model": "gpt-image-1", "prompt": prompt, "n": 1, "size": size, "quality": "high", "output_format": "png"}
+        r = requests.post("https://api.openai.com/v1/images/generations", headers=headers, json=body, timeout=120)
+        if r.ok:
+            data = r.json()
+            img_bytes = base64.b64decode(data["data"][0]["b64_json"])
+            with open(output_path, "wb") as f:
+                f.write(img_bytes)
+            return
+        erro = r.json().get("error", {}).get("message", "")
+        # Se gpt-image-1 falhar, tenta dall-e-3
+        if "model" in erro.lower() or "access" in erro.lower() or "permission" in erro.lower():
+            print(f"[IMG] gpt-image-1 indisponivel, usando dall-e-3: {erro}")
+            modelo = "dall-e-3"
+        else:
+            raise Exception(f"OpenAI erro {r.status_code}: {erro}")
+
+    # DALL-E 3
     for tentativa in range(3):
         body = {"model": "dall-e-3", "prompt": prompt, "n": 1, "size": size, "quality": quality, "response_format": "url"}
         r = requests.post("https://api.openai.com/v1/images/generations", headers=headers, json=body, timeout=60)
@@ -568,7 +589,8 @@ def gerar_imagem(prompt, user, output_path, estilo="", usar_banco=False):
             shutil.copy(img_banco, output_path)
             return
     if user.provider == "openai":
-        gerar_imagem_openai(prompt, user.api_key, user.image_size, user.quality, output_path)
+        # Tenta gpt-image-1 primeiro (melhor consistência), fallback pra dall-e-3
+        gerar_imagem_openai(prompt, user.api_key, user.image_size, user.quality, output_path, modelo="gpt-image-1")
     elif user.provider == "replicate":
         gerar_imagem_replicate(prompt, user.api_key, output_path)
     else:
