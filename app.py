@@ -419,12 +419,20 @@ def suavizar_prompt(prompt, api_key):
     except: pass
     return "a dramatic historical scene with warm golden light, ancient setting, photorealistic, 8K, vertical composition"
 
-def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personagens=""):
+def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personagens="", direcao_criativa=""):
     prompts = load_prompts()
     estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "photorealistic, natural lighting, high quality, vertical composition"
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         system = prompts.get("melhorar", DEFAULT_PROMPTS["melhorar"]).replace("{estilo}", estilo_det)
+
+        # Direção criativa do usuário
+        if direcao_criativa:
+            system += f"""
+
+CREATIVE DIRECTION FROM THE USER:
+"{direcao_criativa}"
+You MUST incorporate this creative direction into every image prompt. It defines the mood, atmosphere, and visual elements the user wants."""
         if ficha_personagens:
             system += f"""
 
@@ -786,7 +794,7 @@ def dividir_roteiro(texto, api_key):
     except: pass
     return [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()] or [texto.strip()]
 
-def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco=False, cenas_preenchidas=None):
+def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco=False, cenas_preenchidas=None, direcao_criativa=""):
     if cenas_preenchidas is None:
         cenas_preenchidas = {}
     with app.app_context():
@@ -833,7 +841,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             def gerar_bloco(i_linha):
                 linha = linhas[i_linha]
                 if melhorar_prompts and user.provider == "openai":
-                    prompt_final = melhorar_prompt(linha, estilo, user.api_key, roteiro_completo, ficha)
+                    prompt_final = melhorar_prompt(linha, estilo, user.api_key, roteiro_completo, ficha, direcao_criativa)
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
@@ -1673,9 +1681,11 @@ def gerar_storyboard_route():
     except:
         cenas_preenchidas = {}
 
+    direcao_criativa = request.form.get("direcao_criativa", "").strip()
+
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, False, cenas_preenchidas))
+    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, False, cenas_preenchidas, direcao_criativa))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})

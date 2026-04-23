@@ -196,6 +196,9 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <label>🧠 Melhorar prompts com IA</label>
           <label class="toggle"><input type="checkbox" id="melhorarPrompts" checked><span class="slider"></span></label>
         </div>
+        <label style="margin-top:16px">🎯 Direção criativa <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
+        <textarea id="direcaoCriativa" style="min-height:60px;font-size:.82rem" placeholder="Descreva o clima do vídeo. Ex: atmosfera sombria com elementos de mistério, ou visual futurista com hologramas e luzes neon"></textarea>
+        <p class="tip">Orienta a IA sobre o tom, atmosfera e elementos visuais que você quer no vídeo.</p>
         </div>
       </div>
       <button class="btn" id="btnGerarSB">1. Dividir em Cenas</button>
@@ -635,7 +638,7 @@ document.getElementById('btnGerarSB').addEventListener('click',async()=>{
   pbar.style.width='0%';
   const animBar=setInterval(()=>{progresso=Math.min(progresso+Math.random()*15,90);pbar.style.width=progresso+'%';},500);
   sbEstilo=document.getElementById('estilo').value;
-  const fd=new FormData();fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');
+  const fd=new FormData();fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');fd.append('direcao_criativa',document.getElementById('direcaoCriativa').value.trim());
   try{
     const res=await fetch('/dividir_roteiro',{method:'POST',body:fd});
     clearInterval(animBar);pbar.style.width='100%';
@@ -709,6 +712,7 @@ document.getElementById('btnGerarFaltantes').addEventListener('click',async()=>{
   const fd=new FormData();
   fd.append('texto',texto);fd.append('estilo',sbEstilo);
   fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');
+  fd.append('direcao_criativa',document.getElementById('direcaoCriativa').value.trim());
   fd.append('cenas_preenchidas',JSON.stringify(cenasPreenchidas));
   try{
     const res=await fetch('/gerar_storyboard',{method:'POST',body:fd});
