@@ -202,6 +202,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <div class="status-box" id="statusSB">
         <div class="spinner"></div>
         <div class="status-text" id="statusTextSB">Analisando roteiro...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFillSB" style="width:0%"></div></div>
+        <div style="margin-top:8px;font-size:.75rem;color:var(--text3)">✂️ Dividindo o roteiro em cenas com IA...</div>
       </div>
       <div class="erro-box" id="erroSB"></div>
     </div>
@@ -627,18 +629,26 @@ document.getElementById('btnGerarSB').addEventListener('click',async()=>{
   const texto=document.getElementById('textoRoteiro').value.trim();
   if(!texto){document.getElementById('erroSB').textContent='❌ Escreva o roteiro';document.getElementById('erroSB').style.display='block';return;}
   document.getElementById('erroSB').style.display='none';document.getElementById('btnGerarSB').disabled=true;document.getElementById('statusSB').style.display='block';
+  // Animar barra de progresso durante divisão
+  let progresso=0;
+  const pbar=document.getElementById('progressFillSB');
+  pbar.style.width='0%';
+  const animBar=setInterval(()=>{progresso=Math.min(progresso+Math.random()*15,90);pbar.style.width=progresso+'%';},500);
   sbEstilo=document.getElementById('estilo').value;
   const fd=new FormData();fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');
   try{
     const res=await fetch('/dividir_roteiro',{method:'POST',body:fd});
+    clearInterval(animBar);pbar.style.width='100%';
     const d=await res.json();
     if(d.erro)throw new Error(d.erro);
-    document.getElementById('statusSB').style.display='none';
-    document.getElementById('btnGerarSB').disabled=false;
-    previewCenas=d.cenas;
-    cenasPreenchidas={};
-    mostrarPreview();
-  }catch(e){mostrarErroSB(e.message);}
+    setTimeout(()=>{
+      document.getElementById('statusSB').style.display='none';
+      document.getElementById('btnGerarSB').disabled=false;
+      previewCenas=d.cenas;
+      cenasPreenchidas={};
+      mostrarPreview();
+    },300);
+  }catch(e){clearInterval(animBar);mostrarErroSB(e.message);}
 });
 
 function mostrarPreview(){
