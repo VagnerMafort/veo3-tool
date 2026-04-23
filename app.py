@@ -735,7 +735,9 @@ def dividir_roteiro(texto, api_key):
     except: pass
     return [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()] or [texto.strip()]
 
-def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco):
+def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco=False, cenas_preenchidas=None):
+    if cenas_preenchidas is None:
+        cenas_preenchidas = {}
     with app.app_context():
         try:
             resetar_banco_usadas()
@@ -748,9 +750,10 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             else:
                 linhas = [l.strip() for l in texto_manual.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()]
 
-            # Verificar créditos antes de gerar
             total = len(linhas)
-            creditos_necessarios = total * CREDITOS_POR_IMAGEM
+            # Contar quantas cenas precisam ser geradas (excluir preenchidas)
+            cenas_a_gerar = [i for i in range(total) if str(i+1) not in cenas_preenchidas]
+            creditos_necessarios = len(cenas_a_gerar) * CREDITOS_POR_IMAGEM
             if not user.tem_creditos(creditos_necessarios):
                 jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes. Necessário: {creditos_necessarios}, disponível: {user.creditos}", "total": 0, "atual": 0}
                 return
@@ -759,12 +762,21 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             blocos = []
             roteiro_completo = texto_manual
 
+            # Copiar cenas preenchidas do banco
+            for idx_str, banco_path in cenas_preenchidas.items():
+                idx = int(idx_str) - 1
+                if idx < total:
+                    img_path = os.path.join(sb_dir, f"{idx+1:03d}.png")
+                    src = os.path.join(BANCO_IMG_FOLDER, banco_path) if not os.path.isabs(banco_path) else banco_path
+                    if os.path.exists(src):
+                        shutil.copy(src, img_path)
+                        blocos.append({"index": idx+1, "texto": linhas[idx], "img": f"{idx+1:03d}.png"})
+
             # Extrair ficha de personagens pra consistência visual
             ficha = ""
-            if melhorar_prompts and user.provider == "openai":
+            if melhorar_prompts and user.provider == "openai" and cenas_a_gerar:
                 jobs[job_id]["progresso"] = "Analisando personagens..."
                 ficha = extrair_personagens(texto_manual, user.api_key)
-                print(f"[FICHA] Personagens extraidos: {ficha}")
 
             def gerar_bloco(i_linha):
                 linha = linhas[i_linha]
@@ -773,17 +785,19 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
-                gerar_imagem(prompt_final, user, img_path, estilo, usar_banco)
+                gerar_imagem(prompt_final, user, img_path, estilo)
                 blocos.append({"index": i_linha+1, "texto": linha, "img": f"{i_linha+1:03d}.png"})
                 jobs[job_id]["atual"] = len(blocos)
                 jobs[job_id]["progresso"] = f"Gerando imagem {len(blocos)} de {total}..."
 
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                list(executor.map(gerar_bloco, range(total)))
+            if cenas_a_gerar:
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    list(executor.map(gerar_bloco, cenas_a_gerar))
 
-            # Gastar créditos após gerar com sucesso
-            user.gastar_creditos(creditos_necessarios)
-            db.session.commit()
+            # Gastar créditos apenas pelas cenas geradas
+            if cenas_a_gerar:
+                user.gastar_creditos(len(cenas_a_gerar) * CREDITOS_POR_IMAGEM)
+                db.session.commit()
 
             blocos.sort(key=lambda x: x["index"])
             sb_data = {"blocos": blocos, "estilo": estilo, "dir": sb_dir}
@@ -1458,6 +1472,24 @@ def deletar_voz():
     return jsonify({"ok": True})
 
 # ── Rotas Storyboard ─────────────────────────────────────
+@app.route("/dividir_roteiro", methods=["POST"])
+@login_required
+def dividir_roteiro_route():
+    """Divide o roteiro em cenas sem gerar imagens — pra o usuário preencher do banco antes"""
+    texto = request.form.get("texto", "").strip()
+    if not texto:
+        return jsonify({"erro": "Escreva o roteiro"}), 400
+    estilo = request.form.get("estilo", "").strip()
+    melhorar = request.form.get("melhorar_prompts", "false") == "true"
+
+    if melhorar and current_user.provider == "openai" and current_user.api_key:
+        linhas = dividir_roteiro(texto, current_user.api_key)
+    else:
+        linhas = [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()] or [texto.strip()]
+
+    cenas = [{"index": i+1, "texto": l, "preenchida": False} for i, l in enumerate(linhas)]
+    return jsonify({"cenas": cenas, "total": len(cenas)})
+
 @app.route("/gerar_storyboard", methods=["POST"])
 @login_required
 def gerar_storyboard_route():
@@ -1479,9 +1511,16 @@ def gerar_storyboard_route():
     estilo = request.form.get("estilo", "").strip()
     melhorar = request.form.get("melhorar_prompts", "false") == "true"
     usar_banco = request.form.get("usar_banco", "false") == "true"
+    # Cenas já preenchidas do banco (JSON com índices)
+    cenas_preenchidas = request.form.get("cenas_preenchidas", "{}")
+    try:
+        cenas_preenchidas = json.loads(cenas_preenchidas)
+    except:
+        cenas_preenchidas = {}
+
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, usar_banco))
+    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, False, cenas_preenchidas))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})

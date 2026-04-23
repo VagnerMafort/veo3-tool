@@ -190,13 +190,30 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         </div>
         </div>
       </div>
-      <button class="btn" id="btnGerarSB">Gerar Storyboard</button>
+      <button class="btn" id="btnGerarSB">1. Dividir em Cenas</button>
       <div class="status-box" id="statusSB">
         <div class="spinner"></div>
         <div class="status-text" id="statusTextSB">Gerando imagens...</div>
         <div class="progress-bar"><div class="progress-fill" id="progressFillSB"></div></div>
       </div>
       <div class="erro-box" id="erroSB"></div>
+    </div>
+
+    <!-- ETAPA PRÉ-VISUALIZAÇÃO (dividir + preencher do banco) -->
+    <div id="etapaPreview" style="display:none">
+      <div class="card">
+        <h2>2. Preencha cenas do banco (opcional)</h2>
+        <p class="tip" style="margin-bottom:14px">Busque imagens ou vídeos no banco pra cada cena. Cenas vazias serão geradas com IA.</p>
+      </div>
+      <div id="listaPreview"></div>
+      <button class="btn btn-green" id="btnGerarFaltantes">🎨 Gerar imagens faltantes</button>
+      <button class="btn-outline" id="btnVoltarPreview">← Voltar ao roteiro</button>
+      <div class="status-box" id="statusPreview">
+        <div class="spinner"></div>
+        <div class="status-text" id="statusTextPreview">Gerando...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFillPreview"></div></div>
+      </div>
+      <div class="erro-box" id="erroPreview"></div>
     </div>
 
     <div id="etapaStoryboard" style="display:none">
@@ -527,19 +544,120 @@ async function deletarVoz(vid){if(!confirm('Remover?'))return;await fetch('/dele
 </script>
 
 <script>
-// Storyboard
+// Storyboard - Novo fluxo: dividir → preencher do banco → gerar faltantes
+let previewCenas=[], cenasPreenchidas={};
+
 document.getElementById('btnGerarSB').addEventListener('click',async()=>{
   const texto=document.getElementById('textoRoteiro').value.trim();
   if(!texto){document.getElementById('erroSB').textContent='❌ Escreva o roteiro';document.getElementById('erroSB').style.display='block';return;}
-  document.getElementById('erroSB').style.display='none';document.getElementById('btnGerarSB').disabled=true;document.getElementById('statusSB').style.display='block';document.getElementById('progressFillSB').style.width='0%';
+  document.getElementById('erroSB').style.display='none';document.getElementById('btnGerarSB').disabled=true;document.getElementById('statusSB').style.display='block';
   sbEstilo=document.getElementById('estilo').value;
-  const fd=new FormData();fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');fd.append('usar_banco',document.getElementById('usarBanco').checked?'true':'false');
-  try{const res=await fetch('/gerar_storyboard',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollSB(d.job_id);}catch(e){mostrarErroSB(e.message);}
+  const fd=new FormData();fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');
+  try{
+    const res=await fetch('/dividir_roteiro',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.erro)throw new Error(d.erro);
+    document.getElementById('statusSB').style.display='none';
+    document.getElementById('btnGerarSB').disabled=false;
+    previewCenas=d.cenas;
+    cenasPreenchidas={};
+    mostrarPreview();
+  }catch(e){mostrarErroSB(e.message);}
 });
 
-function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();document.getElementById('statusTextSB').textContent=d.progresso||'...';if(d.total>0)document.getElementById('progressFillSB').style.width=Math.round((d.atual/d.total)*100)+'%';if(d.status==='storyboard_pronto'){clearInterval(iv);document.getElementById('statusSB').style.display='none';document.getElementById('btnGerarSB').disabled=false;sbId=d.sb_id;sbBlocos=d.blocos;mostrarStoryboard();atualizarCreditos();}if(d.status==='erro'){clearInterval(iv);mostrarErroSB(d.progresso);}},3000);}
+function mostrarPreview(){
+  document.getElementById('etapaRoteiro').style.display='none';
+  document.getElementById('etapaPreview').style.display='block';
+  const lista=document.getElementById('listaPreview');
+  lista.innerHTML='';
+  previewCenas.forEach((c,i)=>{
+    lista.innerHTML+=`<div class="sb-cena" id="preview-${c.index}">
+      <div class="sb-num">Cena ${c.index} ${cenasPreenchidas[c.index]?'✅ Do banco':'⏳ Será gerada'}</div>
+      <div id="preview-img-${c.index}" style="min-height:60px;background:var(--bg2);border-radius:8px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.8rem;padding:20px">
+        ${cenasPreenchidas[c.index]?`<img src="/banco_img/${cenasPreenchidas[c.index]}" style="width:100%;border-radius:8px"/>`:'Vazia — será gerada com IA'}
+      </div>
+      <div class="sb-texto" style="font-size:.88rem;color:var(--text);padding:8px;background:var(--bg2);border-radius:6px;border:1px solid var(--border);margin-bottom:10px">${c.texto}</div>
+      <div class="sb-btns">
+        <button class="btn-sm" style="background:var(--green)" onclick="abrirBancoPreview(${c.index})">🗃️ Buscar no banco</button>
+        ${cenasPreenchidas[c.index]?`<button class="btn-sm" style="background:var(--red)" onclick="limparPreview(${c.index})">✕ Limpar</button>`:''}
+      </div>
+    </div>`;
+  });
+}
 
-function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaStoryboard').style.display='block';const lista=document.getElementById('listaCenas');lista.innerHTML='';sbBlocos.forEach((b,i)=>{lista.innerHTML+=`<div class="sb-cena" id="cena-${b.index}"><div class="sb-num">Cena ${b.index}</div><img src="/storyboard_img/${sbId}/${b.img}?t=${Date.now()}" alt="Cena ${b.index}"/><div class="sb-texto" contenteditable="true" id="texto-${b.index}">${b.texto}</div><div class="sb-btns"><button class="btn-sm" style="background:var(--accent)" onclick="regerarCena(${b.index})">🔄 Regerar</button><button class="btn-sm" style="background:#f59e0b" onclick="girarCena(${b.index})">↻ Girar</button><label class="btn-sm" style="background:#1d4ed8;cursor:pointer">📤 Upload<input type="file" accept="image/*" style="display:none" onchange="uploadCena(${b.index},this)"/></label><button class="btn-sm" style="background:var(--green)" onclick="abrirBanco(${b.index})">🗃️ Banco</button></div></div>`;});}
+function abrirBancoPreview(idx){bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value=previewCenas[idx-1].texto.substring(0,30);bancoFiltroTipo='';buscarBanco();}
+
+function limparPreview(idx){delete cenasPreenchidas[idx];mostrarPreview();}
+
+// Override selecionarBanco pra funcionar no preview também
+async function selecionarBanco(imgId){
+  // Buscar info do item
+  const res=await fetch('/buscar_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({termo:''})});
+  const d=await res.json();
+  const item=d.imgs.find(i=>i.id===imgId);
+  if(item){
+    if(document.getElementById('etapaPreview').style.display!=='none'){
+      // Modo preview: salvar referência
+      cenasPreenchidas[bancoTargetIdx]=item.path;
+      fecharBanco();
+      mostrarPreview();
+    } else if(document.getElementById('etapaStoryboard').style.display!=='none'){
+      // Modo storyboard: copiar pro storyboard
+      const fd=new FormData();fd.append('sb_id',sbId);fd.append('index',bancoTargetIdx);fd.append('img_id',imgId);
+      const res2=await fetch('/usar_banco_cena',{method:'POST',body:fd});
+      const d2=await res2.json();
+      if(d2.ok){const cena=document.getElementById('cena-'+bancoTargetIdx);cena.querySelector('img').src=`/storyboard_img/${sbId}/${String(bancoTargetIdx).padStart(3,'0')}.png?t=${Date.now()}`;}
+      else{alert('Erro: '+(d2.erro||''));}
+      fecharBanco();
+    }
+  }
+}
+
+document.getElementById('btnVoltarPreview').addEventListener('click',()=>{
+  document.getElementById('etapaPreview').style.display='none';
+  document.getElementById('etapaRoteiro').style.display='block';
+});
+
+document.getElementById('btnGerarFaltantes').addEventListener('click',async()=>{
+  const texto=document.getElementById('textoRoteiro').value.trim();
+  document.getElementById('erroPreview').style.display='none';
+  document.getElementById('btnGerarFaltantes').disabled=true;
+  document.getElementById('statusPreview').style.display='block';
+  document.getElementById('progressFillPreview').style.width='0%';
+  sbEstilo=document.getElementById('estilo').value;
+  const fd=new FormData();
+  fd.append('texto',texto);fd.append('estilo',sbEstilo);
+  fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');
+  fd.append('cenas_preenchidas',JSON.stringify(cenasPreenchidas));
+  try{
+    const res=await fetch('/gerar_storyboard',{method:'POST',body:fd});
+    const d=await res.json();if(d.erro)throw new Error(d.erro);
+    pollSB(d.job_id);
+  }catch(e){
+    document.getElementById('statusPreview').style.display='none';
+    document.getElementById('btnGerarFaltantes').disabled=false;
+    document.getElementById('erroPreview').textContent='❌ '+e.message;
+    document.getElementById('erroPreview').style.display='block';
+  }
+});
+
+function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();
+  const stEl=document.getElementById('statusTextPreview')||document.getElementById('statusTextSB');
+  const pfEl=document.getElementById('progressFillPreview')||document.getElementById('progressFillSB');
+  if(stEl)stEl.textContent=d.progresso||'...';
+  if(pfEl&&d.total>0)pfEl.style.width=Math.round((d.atual/d.total)*100)+'%';
+  if(d.status==='storyboard_pronto'){clearInterval(iv);
+    document.getElementById('statusSB').style.display='none';document.getElementById('statusPreview').style.display='none';
+    document.getElementById('btnGerarSB').disabled=false;document.getElementById('btnGerarFaltantes').disabled=false;
+    document.getElementById('etapaPreview').style.display='none';
+    sbId=d.sb_id;sbBlocos=d.blocos;mostrarStoryboard();atualizarCreditos();}
+  if(d.status==='erro'){clearInterval(iv);
+    document.getElementById('statusSB').style.display='none';document.getElementById('statusPreview').style.display='none';
+    document.getElementById('btnGerarSB').disabled=false;document.getElementById('btnGerarFaltantes').disabled=false;
+    mostrarErroSB(d.progresso);}
+},3000);}
+
+function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaPreview').style.display='none';document.getElementById('etapaStoryboard').style.display='block';const lista=document.getElementById('listaCenas');lista.innerHTML='';sbBlocos.forEach((b,i)=>{lista.innerHTML+=`<div class="sb-cena" id="cena-${b.index}"><div class="sb-num">Cena ${b.index}</div><img src="/storyboard_img/${sbId}/${b.img}?t=${Date.now()}" alt="Cena ${b.index}"/><div class="sb-texto" contenteditable="true" id="texto-${b.index}">${b.texto}</div><div class="sb-btns"><button class="btn-sm" style="background:var(--accent)" onclick="regerarCena(${b.index})">🔄 Regerar</button><button class="btn-sm" style="background:#f59e0b" onclick="girarCena(${b.index})">↻ Girar</button><label class="btn-sm" style="background:#1d4ed8;cursor:pointer">📤 Upload<input type="file" accept="image/*" style="display:none" onchange="uploadCena(${b.index},this)"/></label><button class="btn-sm" style="background:var(--green)" onclick="abrirBanco(${b.index})">🗃️ Banco</button></div></div>`;});}
 
 async function regerarCena(idx){const texto=document.getElementById('texto-'+idx).textContent.trim();const cena=document.getElementById('cena-'+idx);cena.style.opacity='0.5';cena.querySelector('.sb-num').textContent='Cena '+idx+' — Gerando...';const fd=new FormData();fd.append('sb_id',sbId);fd.append('index',idx);fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');try{const res=await fetch('/regerar_cena',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);cena.querySelector('img').src=`/storyboard_img/${sbId}/${String(idx).padStart(3,'0')}.png?t=${Date.now()}`;atualizarCreditos();}catch(e){alert('Erro: '+e.message);}cena.style.opacity='1';cena.querySelector('.sb-num').textContent='Cena '+idx;}
 
