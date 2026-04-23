@@ -307,16 +307,32 @@ def buscar_no_banco(texto, estilo):
     global _imagens_usadas
     try:
         conn = sqlite3.connect('instance/veo3.db')
-        palavras = texto.lower().split()
-        for palavra in palavras:
-            if len(palavra) < 4: continue
-            rows = conn.execute("SELECT id, path FROM banco_imagens WHERE tags LIKE ? AND estilo = ? ORDER BY id DESC LIMIT 10",
-                                (f"%{palavra}%", estilo)).fetchall()
-            for row in rows:
-                if row[0] not in _imagens_usadas and os.path.exists(row[1]):
-                    _imagens_usadas.add(row[0])
-                    conn.close()
-                    return row[1]
+        palavras = [p for p in texto.lower().split() if len(p) >= 4]
+        if not palavras:
+            conn.close()
+            return None
+
+        # Buscar imagens que contenham o MÁXIMO de palavras da cena
+        melhor_match = None
+        melhor_score = 0
+        rows = conn.execute("SELECT id, path, tags FROM banco_imagens WHERE estilo = ? ORDER BY id DESC LIMIT 100",
+                            (estilo,)).fetchall()
+        for row in rows:
+            if row[0] in _imagens_usadas or not os.path.exists(row[1]):
+                continue
+            tags = row[2].lower() if row[2] else ""
+            # Contar quantas palavras da cena aparecem nas tags
+            score = sum(1 for p in palavras if p in tags)
+            if score > melhor_score:
+                melhor_score = score
+                melhor_match = row
+
+        # Só usa se pelo menos 40% das palavras relevantes bateram
+        if melhor_match and melhor_score >= max(2, len(palavras) * 0.4):
+            _imagens_usadas.add(melhor_match[0])
+            conn.close()
+            return melhor_match[1]
+
         conn.close()
     except: pass
     return None
