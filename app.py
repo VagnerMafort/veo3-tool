@@ -1571,27 +1571,39 @@ def banco_img_file(filename):
 @login_required
 def buscar_banco():
     termo = request.json.get("termo", "").lower().strip()
-    tipo_filtro = request.json.get("tipo", "")  # "imagem", "video", ou "" (todos)
+    tipo_filtro = request.json.get("tipo", "")
     estilo = request.json.get("estilo", "")
+    pagina = int(request.json.get("pagina", 1))
+    por_pagina = 20
+    offset = (pagina - 1) * por_pagina
+
     conn = sqlite3.connect('instance/veo3.db')
     query = "SELECT id, prompt, path, estilo, tipo, categoria, descricao FROM banco_imagens WHERE 1=1"
+    count_query = "SELECT COUNT(*) FROM banco_imagens WHERE 1=1"
     params = []
     if termo:
-        query += " AND (tags LIKE ? OR prompt LIKE ? OR descricao LIKE ?)"
+        filtro = " AND (tags LIKE ? OR prompt LIKE ? OR descricao LIKE ?)"
+        query += filtro
+        count_query += filtro
         params += [f"%{termo}%", f"%{termo}%", f"%{termo}%"]
     if tipo_filtro:
         query += " AND tipo = ?"
+        count_query += " AND tipo = ?"
         params.append(tipo_filtro)
     if estilo:
         query += " AND estilo = ?"
+        count_query += " AND estilo = ?"
         params.append(estilo)
-    query += " ORDER BY id DESC LIMIT 30"
+
     try:
+        total = conn.execute(count_query, params).fetchone()[0]
+        query += f" ORDER BY id DESC LIMIT {por_pagina} OFFSET {offset}"
         rows = conn.execute(query, params).fetchall()
     except:
-        # Fallback se colunas novas não existem ainda
-        rows = conn.execute("SELECT id, prompt, path, estilo, 'imagem', '', prompt FROM banco_imagens ORDER BY id DESC LIMIT 30").fetchall()
+        total = 0
+        rows = conn.execute("SELECT id, prompt, path, estilo, 'imagem', '', prompt FROM banco_imagens ORDER BY id DESC LIMIT 20").fetchall()
     conn.close()
+
     imgs = []
     for r in rows:
         if os.path.exists(r[2]):
@@ -1600,7 +1612,8 @@ def buscar_banco():
                 "estilo": r[3] or "", "tipo": r[4] or "imagem",
                 "categoria": r[5] or "", "descricao": r[6] or r[1]
             })
-    return jsonify({"imgs": imgs})
+    tem_mais = (pagina * por_pagina) < total
+    return jsonify({"imgs": imgs, "total": total, "pagina": pagina, "tem_mais": tem_mais})
 
 @app.route("/usar_banco_cena", methods=["POST"])
 @login_required

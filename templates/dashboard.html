@@ -674,7 +674,7 @@ function mostrarPreview(){
   });
 }
 
-function abrirBancoPreview(idx){bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value=previewCenas[idx-1].texto.substring(0,30);bancoFiltroTipo='';buscarBanco();}
+function abrirBancoPreview(idx){bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value='';bancoFiltroTipo='';bancoPagina=1;buscarBanco();}
 
 function limparPreview(idx){delete cenasPreenchidas[idx];mostrarPreview();}
 
@@ -764,14 +764,33 @@ async function girarCena(idx){const cena=document.getElementById('cena-'+idx);ce
 
 // Banco de imagens
 let bancoFiltroTipo='';
+let bancoPagina=1;
 const bancoAtivo = {{ 'true' if user.banco_ativo else 'false' }};
 function abrirBanco(idx){
   if(!bancoAtivo){alert('🗃️ Assine o Banco de Imagens na aba Planos para acessar.');trocarAba('planos');return;}
-  bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value='';bancoFiltroTipo='';document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));document.getElementById('filtroTodos').classList.add('active');buscarBanco();
+  bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value='';bancoFiltroTipo='';bancoPagina=1;document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));document.getElementById('filtroTodos').classList.add('active');buscarBanco();
 }
 function fecharBanco(){document.getElementById('bancoModal').style.display='none';}
-function filtrarBanco(tipo){bancoFiltroTipo=tipo;document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));if(tipo==='imagem')document.getElementById('filtroImg').classList.add('active');else if(tipo==='video')document.getElementById('filtroVid').classList.add('active');else document.getElementById('filtroTodos').classList.add('active');buscarBanco();}
-async function buscarBanco(){const termo=document.getElementById('bancoBusca').value.trim();const res=await fetch('/buscar_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({termo:termo,tipo:bancoFiltroTipo})});const d=await res.json();const grid=document.getElementById('bancoGrid');grid.innerHTML='';_bancoCache={};if(d.imgs.length===0){grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text3)">Nenhum item encontrado</p>';return;}d.imgs.forEach(img=>{_bancoCache[img.id]=img;const isVideo=img.tipo==='video';const badge=isVideo?'<span style="position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;font-size:.6rem;padding:2px 6px;border-radius:10px">🎬</span>':'';grid.innerHTML+=`<div class="banco-item" style="position:relative" onclick="selecionarBanco(${img.id})">${badge}${isVideo?`<video src="/banco_img/${img.path}" style="width:100%;display:block" muted></video>`:`<img src="/banco_img/${img.path}" alt=""/>`}<p title="${img.descricao||img.prompt}">${(img.descricao||img.prompt).substring(0,50)}</p></div>`;});}
+function filtrarBanco(tipo){bancoFiltroTipo=tipo;bancoPagina=1;document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));if(tipo==='imagem')document.getElementById('filtroImg').classList.add('active');else if(tipo==='video')document.getElementById('filtroVid').classList.add('active');else document.getElementById('filtroTodos').classList.add('active');buscarBanco();}
+async function buscarBanco(append){
+  if(!append)bancoPagina=1;
+  const termo=document.getElementById('bancoBusca').value.trim();
+  const res=await fetch('/buscar_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({termo:termo,tipo:bancoFiltroTipo,pagina:bancoPagina})});
+  const d=await res.json();
+  const grid=document.getElementById('bancoGrid');
+  if(!append){grid.innerHTML='';_bancoCache={};}
+  // Remover botão carregar mais anterior
+  const btnMais=document.getElementById('btnCarregarMais');if(btnMais)btnMais.remove();
+  if(d.imgs.length===0&&!append){grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text3)">Nenhum item encontrado</p>';return;}
+  d.imgs.forEach(img=>{_bancoCache[img.id]=img;const isVideo=img.tipo==='video';const badge=isVideo?'<span style="position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;font-size:.6rem;padding:2px 6px;border-radius:10px">🎬</span>':'';grid.innerHTML+=`<div class="banco-item" style="position:relative" onclick="selecionarBanco(${img.id})">${badge}${isVideo?`<video src="/banco_img/${img.path}" style="width:100%;display:block" muted></video>`:`<img src="/banco_img/${img.path}" alt=""/>`}<p title="${img.descricao||img.prompt}">${(img.descricao||img.prompt).substring(0,50)}</p></div>`;});
+  // Botão carregar mais
+  if(d.tem_mais){
+    const container=grid.parentElement;
+    const btn=document.createElement('button');btn.id='btnCarregarMais';btn.className='btn-outline';btn.style.cssText='margin-top:10px;width:100%';btn.textContent=`Carregar mais (${d.total - bancoPagina*20} restantes)`;
+    btn.onclick=()=>{bancoPagina++;buscarBanco(true);};
+    container.insertBefore(btn,container.querySelector('.btn-outline:last-child'));
+  }
+}
 
 document.getElementById('btnVoltarRoteiro').addEventListener('click',()=>{document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';});
 
