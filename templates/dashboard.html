@@ -731,12 +731,15 @@ function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/st
   const pfEl=document.getElementById('progressFillPreview')||document.getElementById('progressFillSB');
   const etapaEl=document.getElementById('statusEtapa');
   const prog=d.progresso||'';
-  if(stEl)stEl.textContent=prog;
+  // Manter texto do progresso fixo (não piscar)
+  if(stEl&&prog){
+    const pct=d.total>0?Math.round((d.atual/d.total)*100):0;
+    stEl.textContent=d.total>0?`${prog} (${pct}%)`:prog;
+  }
   if(pfEl&&d.total>0)pfEl.style.width=Math.round((d.atual/d.total)*100)+'%';
-  // Mostrar etapa atual
   if(etapaEl){
     if(prog.includes('personagens'))etapaEl.textContent='📋 Etapa 1/3 — Analisando personagens do roteiro';
-    else if(prog.includes('Gerando imagem'))etapaEl.textContent='🖼️ Etapa 2/3 — Gerando imagens com IA';
+    else if(prog.includes('Gerando imagem'))etapaEl.textContent=`🖼️ Etapa 2/3 — Gerando imagens com IA (${d.atual||0} de ${d.total||'?'})`;
     else if(prog.includes('Otimizando'))etapaEl.textContent='🧠 Etapa 2/3 — Otimizando prompts';
     else etapaEl.textContent='';
   }
