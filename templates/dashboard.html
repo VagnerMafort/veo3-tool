@@ -243,6 +243,13 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         </select>
         {% endif %}
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          {% if user.minimax_key %}
+          <div class="toggle-row">
+            <label>🎬 Animar cenas com IA</label>
+            <label class="toggle"><input type="checkbox" id="animarIA"><span class="slider"></span></label>
+          </div>
+          <p class="tip">Transforma cada imagem em um clipe de vídeo animado (~5s por cena). Usa MiniMax Video.</p>
+          {% endif %}
           <div class="toggle-row">
             <label>💬 Legendas</label>
             <label class="toggle"><input type="checkbox" id="legendaAtivo"><span class="slider"></span></label>
@@ -555,6 +562,7 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   document.getElementById('erroFinal').style.display='none';document.getElementById('btnFinalizar').disabled=true;document.getElementById('statusFinal').style.display='block';document.getElementById('resultado').style.display='none';
   const fd=new FormData();fd.append('sb_id',sbId);const voiceEl=document.getElementById('voiceId');fd.append('voice_id',voiceEl?voiceEl.value:'');fd.append('modo_video',document.getElementById('modoVideo').value);fd.append('intervalo',document.getElementById('intervalo').value);
   fd.append('legenda_ativo',legendaAtivo&&legendaAtivo.checked?'true':'false');fd.append('legenda_fonte',document.getElementById('legendaFonte')?document.getElementById('legendaFonte').value:'Arial');fd.append('legenda_tamanho',document.getElementById('legendaTamanho')?document.getElementById('legendaTamanho').value:'18');fd.append('legenda_cor',document.getElementById('legendaCor')?document.getElementById('legendaCor').value:'&H00FFFFFF');fd.append('legenda_posicao',document.getElementById('legendaPosicao')?document.getElementById('legendaPosicao').value:'2');fd.append('legenda_sombra',document.getElementById('legendaSombra')&&document.getElementById('legendaSombra').checked?'true':'false');
+  const animarEl=document.getElementById('animarIA');fd.append('animar_ia',animarEl&&animarEl.checked?'true':'false');
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}
 });
 

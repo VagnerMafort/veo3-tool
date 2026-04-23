@@ -395,6 +395,65 @@ def remover_silencio(audio_path, output_path):
     if result.returncode != 0 or not os.path.exists(output_path):
         shutil.copy(audio_path, output_path)
 
+# ── MiniMax Video (Image-to-Video) ──────────────────────
+def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
+    """Gera um clipe de vídeo animado a partir de uma imagem usando MiniMax Hailuo"""
+    import base64, time
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    # Converter imagem pra base64
+    with open(img_path, "rb") as f:
+        img_b64 = base64.b64encode(f.read()).decode()
+    ext = img_path.rsplit(".", 1)[-1].lower()
+    if ext == "png":
+        mime = "image/png"
+    else:
+        mime = "image/jpeg"
+    img_data_url = f"data:{mime};base64,{img_b64}"
+
+    # Criar task
+    body = {
+        "model": "I2V-01",
+        "prompt": prompt,
+        "first_frame_image": img_data_url,
+    }
+    r = requests.post("https://api.minimax.io/v1/video_generation", headers=headers, json=body, timeout=60)
+    if not r.ok:
+        raise Exception(f"MiniMax Video erro {r.status_code}: {r.text}")
+    data = r.json()
+    task_id = data.get("task_id")
+    if not task_id:
+        raise Exception(f"MiniMax Video sem task_id: {data}")
+
+    # Poll status
+    for _ in range(120):  # max 20 min
+        time.sleep(10)
+        r2 = requests.get("https://api.minimax.io/v1/query/video_generation",
+                          headers=headers, params={"task_id": task_id}, timeout=30)
+        if not r2.ok:
+            continue
+        status_data = r2.json()
+        status = status_data.get("status", "")
+        if status == "Success":
+            file_id = status_data.get("file_id")
+            if not file_id:
+                raise Exception("MiniMax Video: sucesso mas sem file_id")
+            # Download
+            r3 = requests.get("https://api.minimax.io/v1/files/retrieve",
+                              headers=headers, params={"file_id": file_id}, timeout=30)
+            if not r3.ok:
+                raise Exception(f"MiniMax Video download erro: {r3.text}")
+            download_url = r3.json().get("file", {}).get("download_url")
+            if not download_url:
+                raise Exception("MiniMax Video: sem download_url")
+            video_r = requests.get(download_url, timeout=120)
+            with open(output_path, "wb") as f:
+                f.write(video_r.content)
+            return True
+        elif status == "Fail":
+            raise Exception(f"MiniMax Video falhou: {status_data.get('error_message', 'erro desconhecido')}")
+    raise Exception("MiniMax Video: timeout aguardando geração")
+
 def gerar_imagem_openai(prompt, api_key, size, quality, output_path):
     tamanhos_validos = ["1024x1024", "1792x1024", "1024x1792"]
     if size not in tamanhos_validos:
@@ -626,7 +685,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
         except Exception as e:
             jobs[job_id] = {"status": "erro", "progresso": str(e), "total": 0, "atual": 0}
 
-def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo):
+def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia=False):
     with app.app_context():
         try:
             user = User.query.get(user_id)
@@ -682,9 +741,80 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
 
             jobs[job_id]["total"] = len(imagens)
             jobs[job_id]["atual"] = len(imagens)
-            jobs[job_id]["progresso"] = "Montando video..."
-            video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
-            montar_video(imagens, audio_final_path, video_path, legenda_cfg)
+
+            # Animar imagens com IA (MiniMax Video)
+            if animar_ia and user.minimax_key:
+                jobs[job_id]["progresso"] = "Animando cenas com IA..."
+                clipes_video = []
+                for i, img in enumerate(imagens):
+                    jobs[job_id]["progresso"] = f"Animando cena {i+1} de {len(imagens)}..."
+                    jobs[job_id]["atual"] = i + 1
+                    clipe_path = os.path.join(job_dir, f"clipe_{i+1:04d}.mp4")
+                    try:
+                        gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
+                        clipes_video.append(clipe_path)
+                    except Exception as e:
+                        print(f"[ANIMAR] Erro na cena {i+1}: {e}")
+                        clipes_video.append(None)  # fallback pra imagem estática
+
+                # Se pelo menos 1 clipe foi gerado, concatena os vídeos
+                if any(clipes_video):
+                    jobs[job_id]["progresso"] = "Juntando clipes animados..."
+                    # Criar lista de concat
+                    concat_path = os.path.join(job_dir, "concat_list.txt")
+                    with open(concat_path, "w") as f:
+                        for cp in clipes_video:
+                            if cp and os.path.exists(cp):
+                                f.write(f"file '{os.path.abspath(cp)}'\n")
+                    video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
+                    # Concatenar clipes
+                    cmd_concat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_path]
+                    if audio_final_path and os.path.exists(audio_final_path):
+                        cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+                    else:
+                        cmd_concat += ["-c:v", "copy"]
+
+                    # Adicionar legendas se ativo
+                    if legenda_cfg and legenda_cfg.get("ativo") and audio_final_path:
+                        srt_path = video_path.replace(".mp4", ".srt")
+                        gerar_srt_palavras(audio_final_path, srt_path)
+                        fonte = legenda_cfg.get("fonte", "Arial")
+                        cor = legenda_cfg.get("cor", "&H00FFFFFF")
+                        tam = legenda_cfg.get("tamanho", "18")
+                        pos = legenda_cfg.get("posicao", "2")
+                        sombra = "1" if legenda_cfg.get("sombra", True) else "0"
+                        # Precisa re-encode pra adicionar legendas
+                        video_temp = os.path.join(job_dir, "temp_concat.mp4")
+                        cmd_concat += [video_temp]
+                        result = subprocess.run(cmd_concat, capture_output=True, text=True)
+                        if result.returncode != 0:
+                            raise Exception(f"FFmpeg concat erro: {result.stderr[-500:]}")
+                        srt_esc = os.path.abspath(srt_path)
+                        cmd_sub = ["ffmpeg", "-y", "-i", video_temp]
+                        if audio_final_path and os.path.exists(audio_final_path):
+                            cmd_sub += ["-i", audio_final_path]
+                        cmd_sub += ["-vf", f"subtitles={srt_esc}:force_style='FontName={fonte},FontSize={tam},PrimaryColour={cor},Alignment={pos},Shadow={sombra},Bold=1'",
+                                    "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p"]
+                        if audio_final_path and os.path.exists(audio_final_path):
+                            cmd_sub += ["-c:a", "aac", "-b:a", "192k", "-shortest"]
+                        cmd_sub += [video_path]
+                        result = subprocess.run(cmd_sub, capture_output=True, text=True)
+                        if result.returncode != 0:
+                            raise Exception(f"FFmpeg legendas erro: {result.stderr[-500:]}")
+                    else:
+                        cmd_concat += [video_path]
+                        result = subprocess.run(cmd_concat, capture_output=True, text=True)
+                        if result.returncode != 0:
+                            raise Exception(f"FFmpeg concat erro: {result.stderr[-500:]}")
+                else:
+                    # Nenhum clipe gerado, fallback pra montagem normal
+                    jobs[job_id]["progresso"] = "Montando video (sem animação)..."
+                    video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
+                    montar_video(imagens, audio_final_path, video_path, legenda_cfg)
+            else:
+                jobs[job_id]["progresso"] = "Montando video..."
+                video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
+                montar_video(imagens, audio_final_path, video_path, legenda_cfg)
 
             jobs[job_id]["progresso"] = "Compactando..."
             zip_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.zip")
@@ -1325,9 +1455,10 @@ def finalizar_video_route():
         "posicao": request.form.get("legenda_posicao", "2"),
         "sombra": request.form.get("legenda_sombra", "true") == "true",
     }
+    animar_ia = request.form.get("animar_ia", "false") == "true"
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo))
+    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})
