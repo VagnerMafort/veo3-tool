@@ -80,6 +80,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
   <div class="tabs">
     <div class="tab active" onclick="trocarAba('metricas')">📊 Métricas</div>
     <div class="tab" onclick="trocarAba('usuarios')">👥 Usuários</div>
+    <div class="tab" onclick="trocarAba('planos')">💎 Planos</div>
     <div class="tab" onclick="trocarAba('prompts')">📝 Prompts</div>
   </div>
 
@@ -170,6 +171,81 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     </div>
   </div>
 
+  <!-- PLANOS -->
+  <div class="pane" id="panePlanos">
+    <div class="card">
+      <h2>🎨 Identidade Visual</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:14px">Logo, ícone e cores da marca. Reflete no app e no checkout.</p>
+
+      <div style="display:flex;gap:20px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <label>Logo (horizontal)</label>
+          <div style="background:var(--bg3);border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;position:relative;min-height:100px;display:flex;align-items:center;justify-content:center">
+            <img id="previewLogo" src="" style="max-width:100%;max-height:80px;display:none"/>
+            <span id="placeholderLogo" style="color:var(--text3);font-size:.8rem">Arraste ou clique</span>
+            <input type="file" id="inputLogo" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="previewImg('Logo',this)"/>
+          </div>
+        </div>
+        <div style="flex:0 0 120px">
+          <label>Ícone (quadrado)</label>
+          <div style="background:var(--bg3);border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;position:relative;min-height:100px;display:flex;align-items:center;justify-content:center">
+            <img id="previewIcone" src="" style="max-width:80px;max-height:80px;display:none"/>
+            <span id="placeholderIcone" style="color:var(--text3);font-size:.8rem">Ícone</span>
+            <input type="file" id="inputIcone" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="previewImg('Icone',this)"/>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <div style="flex:1">
+          <label>Nome da marca</label>
+          <input type="text" id="brandNome" value="Kaelum Studio"/>
+        </div>
+        <div style="flex:1">
+          <label>Subtítulo</label>
+          <input type="text" id="brandSubtitulo" value="AI Video Automation"/>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap">
+        <div style="flex:1">
+          <label>Cor primária</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="brandCorPrimaria" value="#1a2332" style="width:50px;height:36px;padding:2px;cursor:pointer"/>
+            <input type="text" id="brandCorPrimariaHex" value="#1a2332" style="flex:1" oninput="document.getElementById('brandCorPrimaria').value=this.value"/>
+          </div>
+        </div>
+        <div style="flex:1">
+          <label>Cor accent</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="brandCorAccent" value="#4a9eff" style="width:50px;height:36px;padding:2px;cursor:pointer"/>
+            <input type="text" id="brandCorAccentHex" value="#4a9eff" style="flex:1" oninput="document.getElementById('brandCorAccent').value=this.value"/>
+          </div>
+        </div>
+      </div>
+      <button class="btn" id="btnSalvarBranding" onclick="salvarBranding()">Salvar Identidade Visual</button>
+      <div class="ok-box" id="okBranding"></div>
+    </div>
+
+    <div class="card">
+      <h2>💎 Planos Ativos</h2>
+      {% for key, plano in planos.items() %}
+      <div class="metric-row">
+        <span class="metric-label">{{ plano.nome }} — {{ plano.valor }}</span>
+        <span class="metric-value">{{ users|selectattr('plano','equalto',key)|list|length }} assinantes</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <h2>📊 Tabela de Créditos por Ação</h2>
+      <div class="metric-row"><span class="metric-label">Gerar imagem</span><span class="metric-value">11 créditos</span></div>
+      <div class="metric-row"><span class="metric-label">Melhorar prompt com IA</span><span class="metric-value">+3 créditos</span></div>
+      <div class="metric-row"><span class="metric-label">Narração por cena</span><span class="metric-value">+2 créditos</span></div>
+      <div class="metric-row"><span class="metric-label">Animar cena com IA</span><span class="metric-value">+14 créditos</span></div>
+      <div class="metric-row" style="border-top:2px solid var(--accent)"><span class="metric-label" style="font-weight:700;color:var(--accent)">Cena completa (máximo)</span><span class="metric-value" style="color:var(--accent)">30 créditos</span></div>
+    </div>
+  </div>
+
   <!-- PROMPTS -->
   <div class="pane" id="panePrompts">
     <div class="card">
@@ -198,7 +274,7 @@ function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=docu
 applyTheme();
 
 function trocarAba(aba){
-  const abas=['metricas','usuarios','prompts'];
+  const abas=['metricas','usuarios','planos','prompts'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
@@ -226,6 +302,48 @@ async function definirPlano(uid){const plano=document.getElementById('planoUser-
 async function deletarUser(uid){if(!confirm('Tem certeza? Isso apaga o usuário e todas as criações dele.'))return;const res=await fetch('/admin/deletar_usuario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});const d=await res.json();if(d.ok){document.getElementById('user-'+uid).remove();}else{alert(d.erro);}}
 
 document.getElementById('btnSalvarPrompts').addEventListener('click',async()=>{const data={melhorar:document.getElementById('promptMelhorar').value,suavizar:document.getElementById('promptSuavizar').value,dividir:document.getElementById('promptDividir').value};const res=await fetch('/admin/salvar_prompts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if((await res.json()).ok){document.getElementById('okPrompts').textContent='✅ Prompts salvos';document.getElementById('okPrompts').style.display='block';document.getElementById('erroPrompts').style.display='none';}else{document.getElementById('erroPrompts').textContent='❌ Erro ao salvar';document.getElementById('erroPrompts').style.display='block';}});
+
+// Branding
+function previewImg(tipo,input){
+  if(!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('preview'+tipo).src=e.target.result;
+    document.getElementById('preview'+tipo).style.display='block';
+    document.getElementById('placeholder'+tipo).style.display='none';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+document.getElementById('brandCorPrimaria').addEventListener('input',function(){document.getElementById('brandCorPrimariaHex').value=this.value;});
+document.getElementById('brandCorAccent').addEventListener('input',function(){document.getElementById('brandCorAccentHex').value=this.value;});
+
+async function salvarBranding(){
+  const fd=new FormData();
+  fd.append('nome',document.getElementById('brandNome').value);
+  fd.append('subtitulo',document.getElementById('brandSubtitulo').value);
+  fd.append('cor_primaria',document.getElementById('brandCorPrimariaHex').value);
+  fd.append('cor_accent',document.getElementById('brandCorAccentHex').value);
+  const logo=document.getElementById('inputLogo').files[0];
+  const icone=document.getElementById('inputIcone').files[0];
+  if(logo)fd.append('logo',logo);
+  if(icone)fd.append('icone',icone);
+  const res=await fetch('/admin/branding',{method:'POST',body:fd});
+  const d=await res.json();
+  if(d.ok){document.getElementById('okBranding').textContent='✅ Identidade visual salva!';document.getElementById('okBranding').style.display='block';}
+}
+
+// Carregar branding atual
+fetch('/admin/branding').then(r=>r.json()).then(d=>{
+  document.getElementById('brandNome').value=d.nome||'Kaelum Studio';
+  document.getElementById('brandSubtitulo').value=d.subtitulo||'AI Video Automation';
+  document.getElementById('brandCorPrimariaHex').value=d.cor_primaria||'#1a2332';
+  document.getElementById('brandCorPrimaria').value=d.cor_primaria||'#1a2332';
+  document.getElementById('brandCorAccentHex').value=d.cor_accent||'#4a9eff';
+  document.getElementById('brandCorAccent').value=d.cor_accent||'#4a9eff';
+  if(d.logo){document.getElementById('previewLogo').src=d.logo;document.getElementById('previewLogo').style.display='block';document.getElementById('placeholderLogo').style.display='none';}
+  if(d.icone){document.getElementById('previewIcone').src=d.icone;document.getElementById('previewIcone').style.display='block';document.getElementById('placeholderIcone').style.display='none';}
+});
 </script>
 </body>
 </html>

@@ -1382,6 +1382,59 @@ def admin_salvar_prompts():
     save_prompts(data)
     return jsonify({"ok": True})
 
+BRANDING_FILE = "branding_config.json"
+
+def load_branding():
+    try:
+        if os.path.exists(BRANDING_FILE):
+            with open(BRANDING_FILE) as f:
+                return json.load(f)
+    except: pass
+    return {"cor_primaria": "#1a2332", "cor_accent": "#4a9eff", "nome": "Kaelum Studio", "subtitulo": "AI Video Automation", "logo": "", "icone": ""}
+
+def save_branding(data):
+    with open(BRANDING_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+@app.route("/admin/branding", methods=["GET", "POST"])
+@login_required
+def admin_branding():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    if request.method == "POST":
+        branding = load_branding()
+        branding["cor_primaria"] = request.form.get("cor_primaria", branding["cor_primaria"])
+        branding["cor_accent"] = request.form.get("cor_accent", branding["cor_accent"])
+        branding["nome"] = request.form.get("nome", branding["nome"])
+        branding["subtitulo"] = request.form.get("subtitulo", branding["subtitulo"])
+
+        os.makedirs("static", exist_ok=True)
+        if "logo" in request.files and request.files["logo"].filename:
+            logo = request.files["logo"]
+            logo_path = os.path.join("static", "logo.png")
+            logo.save(logo_path)
+            branding["logo"] = "/static/logo.png"
+            # Enviar pra Stripe
+            try:
+                with open(logo_path, "rb") as f:
+                    file_upload = stripe.File.create(purpose="business_logo", file=f)
+                    # Não dá pra setar via API em conta própria, mas o arquivo fica disponível
+            except: pass
+
+        if "icone" in request.files and request.files["icone"].filename:
+            icone = request.files["icone"]
+            icone_path = os.path.join("static", "icone.png")
+            icone.save(icone_path)
+            branding["icone"] = "/static/icone.png"
+
+        save_branding(branding)
+        return jsonify({"ok": True})
+    return jsonify(load_branding())
+
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    return send_file(os.path.join("static", filename))
+
 @app.route("/admin/banco_imagens")
 @login_required
 def admin_banco_imagens():
