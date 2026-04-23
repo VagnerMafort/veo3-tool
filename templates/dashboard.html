@@ -804,11 +804,14 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}
 });
 
-function pollFinal(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();const prog=d.progresso||'';document.getElementById('statusTextFinal').textContent=prog;if(d.total>0)document.getElementById('progressFillFinal').style.width=Math.round((d.atual/d.total)*100)+'%';
+function pollFinal(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();const prog=d.progresso||'';
+  const pct=d.total>0?Math.round((d.atual/d.total)*100):0;
+  if(prog)document.getElementById('statusTextFinal').textContent=d.total>0?`${prog} (${pct}%)`:prog;
+  if(d.total>0)document.getElementById('progressFillFinal').style.width=pct+'%';
   const etapaEl=document.getElementById('statusEtapaFinal');
   if(etapaEl){
-    if(prog.includes('Narrando'))etapaEl.textContent='🎙️ Etapa 1 — Gerando narração por cena';
-    else if(prog.includes('Animando'))etapaEl.textContent='🎬 Etapa 2 — Animando cenas com IA (pode levar alguns minutos)';
+    if(prog.includes('Narrando'))etapaEl.textContent=`🎙️ Etapa 1 — Gerando narração por cena`;
+    else if(prog.includes('Animando'))etapaEl.textContent=`🎬 Etapa 2 — Animando cenas com IA (${d.atual||0} de ${d.total||'?'} prontas)`;
     else if(prog.includes('Montando'))etapaEl.textContent='🎞️ Etapa 3 — Montando vídeo final';
     else if(prog.includes('legendas')||prog.includes('SRT'))etapaEl.textContent='💬 Gerando legendas sincronizadas';
     else if(prog.includes('Compactando'))etapaEl.textContent='📦 Finalizando e compactando arquivos';
