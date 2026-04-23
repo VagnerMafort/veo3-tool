@@ -243,13 +243,11 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         </select>
         {% endif %}
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-          {% if user.minimax_key %}
           <div class="toggle-row">
             <label>🎬 Animar cenas com IA</label>
             <label class="toggle"><input type="checkbox" id="animarIA"><span class="slider"></span></label>
           </div>
-          <p class="tip">Transforma cada imagem em um clipe de vídeo animado (~5s por cena). Usa MiniMax Video.</p>
-          {% endif %}
+          <p class="tip">Transforma cada imagem em um clipe de vídeo animado (~5s por cena). Requer chave MiniMax configurada.</p>
           <div class="toggle-row">
             <label>💬 Legendas</label>
             <label class="toggle"><input type="checkbox" id="legendaAtivo"><span class="slider"></span></label>

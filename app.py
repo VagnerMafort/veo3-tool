@@ -335,12 +335,29 @@ def suavizar_prompt(prompt, api_key):
     except: pass
     return "a dramatic historical scene with warm golden light, ancient setting, photorealistic, 8K, vertical composition"
 
-def melhorar_prompt(texto, estilo, api_key):
+def melhorar_prompt(texto, estilo, api_key, contexto_roteiro=""):
     prompts = load_prompts()
     estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "photorealistic, natural lighting, high quality, vertical composition"
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         system = prompts.get("melhorar", DEFAULT_PROMPTS["melhorar"]).replace("{estilo}", estilo_det)
+        # Adicionar contexto do roteiro completo pra manter consistência
+        if contexto_roteiro:
+            system += f"""
+
+CRITICAL - CHARACTER CONSISTENCY:
+You are generating images for a SEQUENCE of scenes from this story:
+\"\"\"{contexto_roteiro}\"\"\"
+
+The current scene is: \"{texto}\"
+
+RULES FOR CONSISTENCY:
+1. Characters MUST look the SAME across all scenes. If scene 1 has an orange cat, ALL scenes must show the SAME orange cat.
+2. NEVER change a character's species, gender, age, or appearance between scenes.
+3. If the story mentions "he/she/it" refer back to the original character description.
+4. Describe the character with the SAME physical details every time (color, size, clothing, features).
+5. The setting can change between scenes, but characters must remain visually identical."""
+
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system}, {"role": "user", "content": texto}
         ], "max_tokens": 300}
@@ -657,11 +674,12 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
 
             jobs[job_id]["total"] = total
             blocos = []
+            roteiro_completo = texto_manual  # Contexto pra consistência
 
             def gerar_bloco(i_linha):
                 linha = linhas[i_linha]
                 if melhorar_prompts and user.provider == "openai":
-                    prompt_final = melhorar_prompt(linha, estilo, user.api_key)
+                    prompt_final = melhorar_prompt(linha, estilo, user.api_key, roteiro_completo)
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
