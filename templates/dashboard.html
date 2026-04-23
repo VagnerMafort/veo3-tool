@@ -834,7 +834,14 @@ async function buscarBanco(append){
   // Remover botão carregar mais anterior
   const btnMais=document.getElementById('btnCarregarMais');if(btnMais)btnMais.remove();
   if(d.imgs.length===0&&!append){grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text3)">Nenhum item encontrado</p>';return;}
-  d.imgs.forEach(img=>{_bancoCache[img.id]=img;const isVideo=img.tipo==='video';const badge=isVideo?'<span style="position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;font-size:.6rem;padding:2px 6px;border-radius:10px">🎬</span>':'';grid.innerHTML+=`<div class="banco-item" style="position:relative" onclick="selecionarBanco(${img.id})">${badge}${isVideo?`<video src="/banco_img/${img.path}" style="width:100%;display:block" muted></video>`:`<img src="/banco_img/${img.path}" alt=""/>`}<p title="${img.descricao||img.prompt}">${(img.descricao||img.prompt).substring(0,50)}</p></div>`;});
+  d.imgs.forEach(img=>{_bancoCache[img.id]=img;const isVideo=img.tipo==='video';const badge=isVideo?'<span style="position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;font-size:.6rem;padding:2px 6px;border-radius:10px">🎬</span>':'';
+    grid.innerHTML+=`<div class="banco-item" style="position:relative">
+      ${badge}
+      ${isVideo?`<video src="/banco_img/${img.path}" style="width:100%;display:block;border-radius:6px" controls muted playsinline preload="metadata"></video>`:`<img src="/banco_img/${img.path}" alt="" style="width:100%;display:block"/>`}
+      <p title="${img.descricao||img.prompt}" style="padding:6px;font-size:.72rem;color:var(--text3)">${(img.descricao||img.prompt).substring(0,60)}</p>
+      <button onclick="selecionarBanco(${img.id})" style="width:100%;padding:6px;background:var(--accent);color:#fff;border:none;border-radius:0 0 6px 6px;font-size:.75rem;cursor:pointer">Usar esta ${isVideo?'cena':'imagem'}</button>
+    </div>`;
+  });
   // Botão carregar mais
   if(d.tem_mais){
     const container=grid.parentElement;

@@ -1004,6 +1004,18 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         try:
                             gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
                             clipes_video[i] = clipe_path
+                            # Salvar no banco imediatamente (sqlite3 direto, sem Flask context)
+                            try:
+                                import sqlite3 as _sql3
+                                _nome = f"{uuid.uuid4().hex[:12]}.mp4"
+                                _destino = os.path.join(BANCO_IMG_FOLDER, _nome)
+                                shutil.copy(clipe_path, _destino)
+                                _conn = _sql3.connect('instance/veo3.db')
+                                _conn.execute("INSERT INTO banco_imagens (prompt, estilo, tags, path, tipo, categoria, descricao) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                                    (img["texto"], "", img["texto"].lower(), _destino, "video", "cena_animada", img["texto"][:100]))
+                                _conn.commit()
+                                _conn.close()
+                            except: pass
                             jobs[job_id]["atual"] = sum(1 for c in clipes_video if c is not None)
                             jobs[job_id]["progresso"] = f"Animando cenas... {jobs[job_id]['atual']}/{n_cenas} prontas (~{tempo_est} min)"
                             return
@@ -1030,13 +1042,6 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         list(executor.map(animar_cena, lote))
                     if lote_end < n_cenas:
                         _time.sleep(2)
-
-                # Salvar clipes no banco (dentro do app context)
-                for i, cp in enumerate(clipes_video):
-                    if cp and os.path.exists(cp):
-                        try:
-                            salvar_no_banco(imagens[i]["texto"], "", cp, tipo="video", categoria="cena_animada")
-                        except: pass
 
                 # Se pelo menos 1 clipe foi gerado, concatena os vídeos
                 if any(clipes_video):
