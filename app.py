@@ -914,9 +914,21 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 audios = []
                 imagens = []
                 t = 0
+                import time as _time
                 for i, bloco in enumerate(blocos):
+                    jobs[job_id]["progresso"] = f"Narrando cena {i+1} de {len(blocos)}..."
+                    jobs[job_id]["atual"] = i + 1
                     frase_path = os.path.join(job_dir, f"frase_{i:03d}.mp3")
-                    gerar_audio_minimax(bloco["texto"], user.minimax_key, user.minimax_group_id, voice_id, frase_path)
+                    # Retry com delay pra rate limit
+                    for tentativa in range(3):
+                        try:
+                            gerar_audio_minimax(bloco["texto"], user.minimax_key, user.minimax_group_id, voice_id, frase_path)
+                            break
+                        except Exception as e:
+                            if "1002" in str(e) or "rate" in str(e).lower():
+                                _time.sleep(15)
+                                continue
+                            raise
                     frase_audio = AudioSegment.from_file(frase_path)
                     if modo_video == "shorts":
                         frase_limpa = os.path.join(job_dir, f"frase_{i:03d}_limpa.mp3")
@@ -924,7 +936,6 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         frase_audio = AudioSegment.from_file(frase_limpa)
                     dur_frase = len(frase_audio) / 1000
                     audios.append(frase_audio)
-                    # 1 imagem por cena, duração = duração da frase narrada
                     img_src = os.path.join(sb_dir, bloco["img"])
                     img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
                     shutil.copy(img_src, img_dst)
@@ -932,6 +943,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                                     "inicio": round(t, 2), "fim": round(t + dur_frase, 2),
                                     "texto": bloco["texto"]})
                     t += dur_frase
+                    if i < len(blocos) - 1:
+                        _time.sleep(2)  # Delay entre narrações
                 audio_completo = audios[0]
                 for a in audios[1:]:
                     audio_completo += a
