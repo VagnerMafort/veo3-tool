@@ -990,8 +990,16 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         sys.stderr.flush()
                         clipes_video[i] = None
 
-                with ThreadPoolExecutor(max_workers=min(n_cenas, 5)) as executor:
-                    list(executor.map(animar_cena, range(n_cenas)))
+                # Animar em lotes de 3 pra evitar rate limit do MiniMax
+                import time as _time
+                lote_size = 3
+                for lote_start in range(0, n_cenas, lote_size):
+                    lote_end = min(lote_start + lote_size, n_cenas)
+                    lote = list(range(lote_start, lote_end))
+                    with ThreadPoolExecutor(max_workers=lote_size) as executor:
+                        list(executor.map(animar_cena, lote))
+                    if lote_end < n_cenas:
+                        _time.sleep(5)  # Esperar 5s entre lotes
 
                 # Se pelo menos 1 clipe foi gerado, concatena os vídeos
                 if any(clipes_video):
