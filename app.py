@@ -621,6 +621,20 @@ def gerar_imagem_openai(prompt, api_key, size, quality, output_path, modelo="dal
         sys.stderr.write(f"[IMG] gpt-image-1 erro em {dt:.1f}s: {erro}\n"); sys.stderr.flush()
         if "model" in erro.lower() or "access" in erro.lower() or "permission" in erro.lower():
             modelo = "dall-e-3"
+        elif "safety" in erro.lower() or "rejected" in erro.lower():
+            # Suavizar e tentar de novo com gpt-image-1
+            prompt = suavizar_prompt(prompt, api_key)
+            body["prompt"] = prompt
+            r2 = requests.post("https://api.openai.com/v1/images/generations", headers=headers, json=body, timeout=120)
+            if r2.ok:
+                data = r2.json()
+                img_bytes = base64.b64decode(data["data"][0]["b64_json"])
+                with open(output_path, "wb") as f:
+                    f.write(img_bytes)
+                sys.stderr.write(f"[IMG] gpt-image-1 OK (suavizado)\n"); sys.stderr.flush()
+                return
+            # Se falhar de novo, tenta dall-e-3
+            modelo = "dall-e-3"
         else:
             raise Exception(f"OpenAI erro {r.status_code}: {erro}")
 
