@@ -1017,30 +1017,29 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         try:
                             gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
                             clipes_video[i] = clipe_path
-                            # Salvar no banco imediatamente
+                            # Salvar no banco imediatamente (path absoluto)
                             try:
                                 import sqlite3 as _sql3
                                 _nome = f"{uuid.uuid4().hex[:12]}.mp4"
-                                _destino = os.path.join(BANCO_IMG_FOLDER, _nome)
+                                _destino = os.path.join(os.path.abspath(BANCO_IMG_FOLDER), _nome)
                                 shutil.copy(clipe_path, _destino)
-                                _conn = _sql3.connect('instance/veo3.db')
+                                _conn = _sql3.connect(os.path.join(os.path.abspath('instance'), 'veo3.db'))
                                 _conn.execute("INSERT INTO banco_imagens (prompt, estilo, tags, path, tipo, categoria, descricao) VALUES (?, ?, ?, ?, ?, ?, ?)",
                                     (img["texto"], "", img["texto"].lower(), _destino, "video", "cena_animada", img["texto"][:100]))
                                 _conn.commit()
                                 _conn.close()
-                            except: pass
+                                sys.stderr.write(f"[ANIMAR] Cena {i+1}: salva no banco\n"); sys.stderr.flush()
+                            except Exception as be:
+                                sys.stderr.write(f"[ANIMAR] Cena {i+1}: erro ao salvar no banco: {be}\n"); sys.stderr.flush()
                             jobs[job_id]["atual"] = sum(1 for c in clipes_video if c is not None)
                             jobs[job_id]["progresso"] = f"Animando cenas... {jobs[job_id]['atual']}/{n_cenas} prontas (~{tempo_est} min)"
                             return
                         except Exception as e:
                             erro_str = str(e)
+                            sys.stderr.write(f"[ANIMAR] Cena {i+1} tentativa {tentativa+1}: {erro_str}\n"); sys.stderr.flush()
                             if "1002" in erro_str or "rate" in erro_str.lower():
-                                sys.stderr.write(f"[ANIMAR] Rate limit cena {i+1}, tentativa {tentativa+1}, esperando 30s...\n")
-                                sys.stderr.flush()
                                 _t.sleep(30)
                                 continue
-                            sys.stderr.write(f"[ANIMAR] Erro na cena {i+1}: {e}\n")
-                            sys.stderr.flush()
                             clipes_video[i] = None
                             return
                     clipes_video[i] = None
