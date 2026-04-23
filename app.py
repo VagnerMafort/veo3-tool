@@ -335,28 +335,35 @@ def suavizar_prompt(prompt, api_key):
     except: pass
     return "a dramatic historical scene with warm golden light, ancient setting, photorealistic, 8K, vertical composition"
 
-def melhorar_prompt(texto, estilo, api_key, contexto_roteiro=""):
+def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personagens=""):
     prompts = load_prompts()
     estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "photorealistic, natural lighting, high quality, vertical composition"
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         system = prompts.get("melhorar", DEFAULT_PROMPTS["melhorar"]).replace("{estilo}", estilo_det)
-        # Adicionar contexto do roteiro completo pra manter consistência
-        if contexto_roteiro:
+        if ficha_personagens:
             system += f"""
 
 CRITICAL - CHARACTER CONSISTENCY:
-You are generating images for a SEQUENCE of scenes from this story:
-\"\"\"{contexto_roteiro}\"\"\"
+You MUST use these EXACT character descriptions in EVERY image:
+{ficha_personagens}
 
-The current scene is: \"{texto}\"
+Current scene: "{texto}"
+Full story context: "{contexto_roteiro}"
 
-RULES FOR CONSISTENCY:
-1. Characters MUST look the SAME across all scenes. If scene 1 has an orange cat, ALL scenes must show the SAME orange cat.
-2. NEVER change a character's species, gender, age, or appearance between scenes.
-3. If the story mentions "he/she/it" refer back to the original character description.
-4. Describe the character with the SAME physical details every time (color, size, clothing, features).
-5. The setting can change between scenes, but characters must remain visually identical."""
+RULES:
+1. Use the EXACT physical description from the character sheet above. Do NOT change ANY detail.
+2. If a character is described as "small orange tabby cat with green eyes", it MUST be that in EVERY scene.
+3. NEVER replace an animal with a human or vice-versa.
+4. NEVER change species, color, size, clothing, or any physical feature.
+5. Copy the character description WORD FOR WORD into your prompt."""
+        elif contexto_roteiro:
+            system += f"""
+
+CRITICAL - CHARACTER CONSISTENCY:
+Full story: "{contexto_roteiro}"
+Current scene: "{texto}"
+Keep ALL characters visually identical across scenes. NEVER change species, color, or appearance."""
 
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system}, {"role": "user", "content": texto}
@@ -366,6 +373,33 @@ RULES FOR CONSISTENCY:
             return r.json()["choices"][0]["message"]["content"].strip()
     except: pass
     return f"{estilo_det} of {texto}, no text no words"
+
+def extrair_personagens(roteiro, api_key):
+    """Extrai ficha de personagens do roteiro pra manter consistência visual"""
+    try:
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        system = """You are a character designer for an image generation pipeline.
+Given a story, extract ALL characters and create a detailed visual description for each one.
+
+OUTPUT FORMAT (one per line):
+CHARACTER_NAME: detailed physical description (species, color, size, clothing, distinctive features, age, gender)
+
+RULES:
+1. Be EXTREMELY specific about physical appearance
+2. If it's an animal, describe: species, breed, color, size, eye color, distinctive markings
+3. If it's a human, describe: gender, age, skin tone, hair color/style, clothing, build
+4. Include EVERY visual detail needed to recreate the character identically
+5. Output ONLY the character descriptions, nothing else
+6. Use the SAME LANGUAGE as the input story"""
+        body = {"model": "gpt-4o-mini", "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": roteiro}
+        ], "max_tokens": 400}
+        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
+        if r.ok:
+            return r.json()["choices"][0]["message"]["content"].strip()
+    except: pass
+    return ""
 
 def gerar_audio_minimax(texto, api_key, group_id, voice_id, output_path):
     url = f"https://api.minimaxi.chat/v1/t2a_v2?GroupId={group_id}"
@@ -674,12 +708,19 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
 
             jobs[job_id]["total"] = total
             blocos = []
-            roteiro_completo = texto_manual  # Contexto pra consistência
+            roteiro_completo = texto_manual
+
+            # Extrair ficha de personagens pra consistência visual
+            ficha = ""
+            if melhorar_prompts and user.provider == "openai":
+                jobs[job_id]["progresso"] = "Analisando personagens..."
+                ficha = extrair_personagens(texto_manual, user.api_key)
+                print(f"[FICHA] Personagens extraidos: {ficha}")
 
             def gerar_bloco(i_linha):
                 linha = linhas[i_linha]
                 if melhorar_prompts and user.provider == "openai":
-                    prompt_final = melhorar_prompt(linha, estilo, user.api_key, roteiro_completo)
+                    prompt_final = melhorar_prompt(linha, estilo, user.api_key, roteiro_completo, ficha)
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
