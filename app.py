@@ -993,8 +993,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 db.session.commit()
                 n_cenas = len(imagens)
                 minimax_key_cache = user.minimax_key  # Cache pra usar nas threads
-                tempo_est = max(3, min(8, n_cenas))  # 3-8 min estimado (paralelo)
-                jobs[job_id]["progresso"] = f"Animando {n_cenas} cenas com IA em paralelo. Tempo estimado: ~{tempo_est} minutos..."
+                tempo_est = max(5, (n_cenas // 3 + 1) * 2)  # ~2 min por lote de 3
+                jobs[job_id]["progresso"] = f"Animando {n_cenas} cenas com IA. Tempo estimado: ~{tempo_est} minutos..."
                 clipes_video = [None] * n_cenas
 
                 def animar_cena(i):
