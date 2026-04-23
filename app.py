@@ -846,18 +846,26 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             sys.stderr.write(f"[VIDEO] animar_ia={animar_ia}, minimax_key={'SIM' if user.minimax_key else 'NAO'}\n")
             sys.stderr.flush()
             if animar_ia and user.minimax_key:
-                jobs[job_id]["progresso"] = "Animando cenas com IA..."
-                clipes_video = []
-                for i, img in enumerate(imagens):
-                    jobs[job_id]["progresso"] = f"Animando cena {i+1} de {len(imagens)}..."
-                    jobs[job_id]["atual"] = i + 1
+                n_cenas = len(imagens)
+                tempo_est = max(3, min(8, n_cenas))  # 3-8 min estimado (paralelo)
+                jobs[job_id]["progresso"] = f"Animando {n_cenas} cenas com IA em paralelo. Tempo estimado: ~{tempo_est} minutos..."
+                clipes_video = [None] * n_cenas
+
+                def animar_cena(i):
+                    img = imagens[i]
                     clipe_path = os.path.join(job_dir, f"clipe_{i+1:04d}.mp4")
                     try:
                         gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
-                        clipes_video.append(clipe_path)
+                        clipes_video[i] = clipe_path
+                        jobs[job_id]["atual"] = sum(1 for c in clipes_video if c is not None)
+                        jobs[job_id]["progresso"] = f"Animando cenas... {jobs[job_id]['atual']}/{n_cenas} prontas (~{tempo_est} min)"
                     except Exception as e:
-                        print(f"[ANIMAR] Erro na cena {i+1}: {e}")
-                        clipes_video.append(None)  # fallback pra imagem estática
+                        sys.stderr.write(f"[ANIMAR] Erro na cena {i+1}: {e}\n")
+                        sys.stderr.flush()
+                        clipes_video[i] = None
+
+                with ThreadPoolExecutor(max_workers=min(n_cenas, 5)) as executor:
+                    list(executor.map(animar_cena, range(n_cenas)))
 
                 # Se pelo menos 1 clipe foi gerado, concatena os vídeos
                 if any(clipes_video):
