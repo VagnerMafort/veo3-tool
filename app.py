@@ -1004,7 +1004,6 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         try:
                             gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
                             clipes_video[i] = clipe_path
-                            salvar_no_banco(img["texto"], "", clipe_path, tipo="video", categoria="cena_animada")
                             jobs[job_id]["atual"] = sum(1 for c in clipes_video if c is not None)
                             jobs[job_id]["progresso"] = f"Animando cenas... {jobs[job_id]['atual']}/{n_cenas} prontas (~{tempo_est} min)"
                             return
@@ -1031,6 +1030,13 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         list(executor.map(animar_cena, lote))
                     if lote_end < n_cenas:
                         _time.sleep(2)
+
+                # Salvar clipes no banco (dentro do app context)
+                for i, cp in enumerate(clipes_video):
+                    if cp and os.path.exists(cp):
+                        try:
+                            salvar_no_banco(imagens[i]["texto"], "", cp, tipo="video", categoria="cena_animada")
+                        except: pass
 
                 # Se pelo menos 1 clipe foi gerado, concatena os vídeos
                 if any(clipes_video):
