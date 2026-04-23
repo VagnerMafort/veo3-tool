@@ -738,8 +738,19 @@ async function selecionarBanco(imgId){
     const fd=new FormData();fd.append('sb_id',sbId);fd.append('index',bancoTargetIdx);fd.append('img_id',imgId);
     const res=await fetch('/usar_banco_cena',{method:'POST',body:fd});
     const d=await res.json();
-    if(d.ok){const cena=document.getElementById('cena-'+bancoTargetIdx);cena.querySelector('img').src=`/storyboard_img/${sbId}/${String(bancoTargetIdx).padStart(3,'0')}.png?t=${Date.now()}`;}
-    else{alert('Erro: '+(d.erro||''));}
+    if(d.ok){
+      // Atualizar sbBlocos com tipo
+      const bloco=sbBlocos.find(b=>b.index===bancoTargetIdx);
+      if(bloco && d.tipo==='video'){
+        bloco.video=String(bancoTargetIdx).padStart(3,'0')+'.mp4';
+        bloco.tipo='video';
+      } else if(bloco){
+        delete bloco.video;
+        bloco.tipo='imagem';
+      }
+      // Re-renderizar storyboard pra mostrar vídeo ou imagem
+      mostrarStoryboard();
+    } else {alert('Erro: '+(d.erro||''));}
     fecharBanco();
   }
 }
@@ -801,7 +812,10 @@ function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/st
     mostrarErroSB(d.progresso);}
 },3000);}
 
-function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaPreview').style.display='none';document.getElementById('etapaStoryboard').style.display='block';const lista=document.getElementById('listaCenas');lista.innerHTML='';sbBlocos.forEach((b,i)=>{lista.innerHTML+=`<div class="sb-cena" id="cena-${b.index}"><div class="sb-num">Cena ${b.index}</div><img src="/storyboard_img/${sbId}/${b.img}?t=${Date.now()}" alt="Cena ${b.index}"/><div class="sb-texto" contenteditable="true" id="texto-${b.index}">${b.texto}</div><div class="sb-btns"><button class="btn-sm" style="background:var(--accent)" onclick="regerarCena(${b.index})">🔄 Regerar</button><button class="btn-sm" style="background:#f59e0b" onclick="girarCena(${b.index})">↻ Girar</button><label class="btn-sm" style="background:#1d4ed8;cursor:pointer">📤 Upload<input type="file" accept="image/*" style="display:none" onchange="uploadCena(${b.index},this)"/></label><button class="btn-sm" style="background:var(--green)" onclick="abrirBanco(${b.index})">🗃️ Banco</button></div></div>`;});}
+function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaPreview').style.display='none';document.getElementById('etapaStoryboard').style.display='block';const lista=document.getElementById('listaCenas');lista.innerHTML='';sbBlocos.forEach((b,i)=>{
+  const hasVideo=b.video?true:false;
+  const videoBadge=hasVideo?'<span style="background:var(--green);color:#fff;font-size:.65rem;padding:2px 8px;border-radius:10px;margin-left:6px">🎬 Vídeo do banco</span>':'';
+  lista.innerHTML+=`<div class="sb-cena" id="cena-${b.index}"><div class="sb-num">Cena ${b.index}${videoBadge}</div>${hasVideo?`<video src="/storyboard_img/${sbId}/${b.video}?t=${Date.now()}" style="width:100%;border-radius:8px;margin-bottom:10px" controls muted playsinline></video>`:`<img src="/storyboard_img/${sbId}/${b.img}?t=${Date.now()}" alt="Cena ${b.index}"/>`}<div class="sb-texto" contenteditable="true" id="texto-${b.index}">${b.texto}</div><div class="sb-btns"><button class="btn-sm" style="background:var(--accent)" onclick="regerarCena(${b.index})">🔄 Regerar</button><button class="btn-sm" style="background:#f59e0b" onclick="girarCena(${b.index})">↻ Girar</button><label class="btn-sm" style="background:#1d4ed8;cursor:pointer">📤 Upload<input type="file" accept="image/*" style="display:none" onchange="uploadCena(${b.index},this)"/></label><button class="btn-sm" style="background:var(--green)" onclick="abrirBanco(${b.index})">🗃️ Banco</button></div></div>`;});}
 
 async function regerarCena(idx){const texto=document.getElementById('texto-'+idx).textContent.trim();const cena=document.getElementById('cena-'+idx);cena.style.opacity='0.5';cena.querySelector('.sb-num').textContent='Cena '+idx+' — Gerando...';const fd=new FormData();fd.append('sb_id',sbId);fd.append('index',idx);fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');try{const res=await fetch('/regerar_cena',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);cena.querySelector('img').src=`/storyboard_img/${sbId}/${String(idx).padStart(3,'0')}.png?t=${Date.now()}`;atualizarCreditos();}catch(e){alert('Erro: '+e.message);}cena.style.opacity='1';cena.querySelector('.sb-num').textContent='Cena '+idx;}
 

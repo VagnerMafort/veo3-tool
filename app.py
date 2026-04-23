@@ -999,12 +999,25 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 def animar_cena(i):
                     img = imagens[i]
                     clipe_path = os.path.join(job_dir, f"clipe_{i+1:04d}.mp4")
+
+                    # Verificar se a cena já tem vídeo do banco
+                    bloco = blocos[i] if i < len(blocos) else {}
+                    if bloco.get("video"):
+                        video_banco = os.path.join(sb_dir, bloco["video"])
+                        if os.path.exists(video_banco):
+                            shutil.copy(video_banco, clipe_path)
+                            clipes_video[i] = clipe_path
+                            jobs[job_id]["atual"] = sum(1 for c in clipes_video if c is not None)
+                            jobs[job_id]["progresso"] = f"Animando cenas... {jobs[job_id]['atual']}/{n_cenas} prontas (~{tempo_est} min)"
+                            sys.stderr.write(f"[ANIMAR] Cena {i+1}: usando video do banco\n"); sys.stderr.flush()
+                            return
+
                     import time as _t
                     for tentativa in range(3):
                         try:
                             gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
                             clipes_video[i] = clipe_path
-                            # Salvar no banco imediatamente (sqlite3 direto, sem Flask context)
+                            # Salvar no banco imediatamente
                             try:
                                 import sqlite3 as _sql3
                                 _nome = f"{uuid.uuid4().hex[:12]}.mp4"
@@ -1690,11 +1703,32 @@ def usar_banco_cena():
         sb_data = json.load(f)
     bloco = sb_data["blocos"][index - 1]
     conn = sqlite3.connect('instance/veo3.db')
-    row = conn.execute("SELECT path FROM banco_imagens WHERE id=?", (img_id,)).fetchone()
+    try:
+        row = conn.execute("SELECT path, tipo FROM banco_imagens WHERE id=?", (img_id,)).fetchone()
+    except:
+        row = conn.execute("SELECT path FROM banco_imagens WHERE id=?", (img_id,)).fetchone()
+        if row: row = (row[0], "imagem")
     conn.close()
     if row and os.path.exists(row[0]):
-        shutil.copy(row[0], os.path.join(sb_dir, bloco["img"]))
-        return jsonify({"ok": True})
+        src_path = row[0]
+        tipo = row[1] if len(row) > 1 else "imagem"
+        if tipo == "video" or src_path.endswith(".mp4"):
+            # Salvar vídeo na pasta do storyboard
+            video_name = f"{index:03d}.mp4"
+            shutil.copy(src_path, os.path.join(sb_dir, video_name))
+            bloco["video"] = video_name
+            # Extrair thumbnail pra mostrar no storyboard
+            thumb_path = os.path.join(sb_dir, bloco["img"])
+            try:
+                subprocess.run(["ffmpeg", "-y", "-i", src_path, "-vframes", "1", "-q:v", "2", thumb_path],
+                               capture_output=True, text=True, timeout=10)
+            except: pass
+        else:
+            shutil.copy(src_path, os.path.join(sb_dir, bloco["img"]))
+            bloco.pop("video", None)
+        with open(sb_path, "w") as f:
+            json.dump(sb_data, f)
+        return jsonify({"ok": True, "tipo": tipo})
     return jsonify({"erro": "Imagem nao encontrada"}), 404
 
 # ── Rotas Voz ────────────────────────────────────────────
