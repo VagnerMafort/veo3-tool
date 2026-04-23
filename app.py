@@ -1020,7 +1020,15 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
 def index():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
-    return redirect(url_for("login"))
+    return render_template("landing.html")
+
+@app.route("/termos")
+def termos():
+    return render_template("termos.html")
+
+@app.route("/privacidade")
+def privacidade():
+    return render_template("privacidade.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kaelum Studio — AI Video Automation</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh}
+.hero{text-align:center;padding:60px 20px 40px;max-width:700px;margin:0 auto}
+.hero h1{font-size:2.2rem;font-weight:800;margin-bottom:8px}
+.hero h1 span{color:#4a9eff}
+.hero .sub{font-size:1rem;color:#94a3b8;margin-bottom:6px;letter-spacing:2px;text-transform:uppercase;font-size:.8rem}
+.hero p{font-size:1.05rem;color:#94a3b8;margin-bottom:30px;line-height:1.6}
+.hero .cta{display:inline-block;padding:15px 40px;background:#2563eb;color:#fff;border-radius:12px;font-size:1.1rem;font-weight:700;text-decoration:none;transition:.2s}
+.hero .cta:hover{background:#4a9eff}
+.hero .cta-sec{display:inline-block;padding:15px 40px;border:1px solid #1e3a5f;color:#94a3b8;border-radius:12px;font-size:1rem;text-decoration:none;margin-left:10px;transition:.2s}
+.hero .cta-sec:hover{border-color:#4a9eff;color:#e2e8f0}
+.features{max-width:800px;margin:0 auto;padding:40px 20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.feat{background:#111827;border:1px solid #1e3a5f;border-radius:14px;padding:24px;text-align:center}
+.feat .icon{font-size:2rem;margin-bottom:12px}
+.feat h3{font-size:.95rem;margin-bottom:8px;color:#e2e8f0}
+.feat p{font-size:.82rem;color:#94a3b8;line-height:1.5}
+.how{max-width:700px;margin:0 auto;padding:40px 20px}
+.how h2{text-align:center;font-size:1.4rem;margin-bottom:30px}
+.how h2 span{color:#4a9eff}
+.step{display:flex;gap:16px;margin-bottom:24px;align-items:flex-start}
+.step-num{background:#2563eb;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.step-text h3{font-size:.95rem;margin-bottom:4px}
+.step-text p{font-size:.85rem;color:#94a3b8}
+.pricing{max-width:800px;margin:0 auto;padding:40px 20px}
+.pricing h2{text-align:center;font-size:1.4rem;margin-bottom:30px}
+.pricing h2 span{color:#4a9eff}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.plan{background:#111827;border:2px solid #1e3a5f;border-radius:14px;padding:24px;text-align:center;transition:.2s}
+.plan:hover{border-color:#4a9eff}
+.plan.pop{border-color:#2563eb;position:relative}
+.plan.pop::before{content:"Popular";position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#2563eb;color:#fff;font-size:.7rem;padding:3px 12px;border-radius:20px;font-weight:600}
+.plan h3{font-size:1rem;margin-bottom:4px}
+.plan .price{font-size:1.6rem;font-weight:800;color:#4a9eff;margin-bottom:4px}
+.plan .price small{font-size:.8rem;color:#94a3b8;font-weight:400}
+.plan .desc{font-size:.82rem;color:#94a3b8;margin-bottom:16px}
+.plan .btn{display:block;padding:12px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:.9rem;transition:.2s}
+.plan .btn:hover{background:#4a9eff}
+.footer{text-align:center;padding:40px 20px;border-top:1px solid #1e3a5f;margin-top:40px}
+.footer p{font-size:.8rem;color:#475569}
+.footer a{color:#4a9eff;text-decoration:none}
+@media(max-width:600px){.features{grid-template-columns:1fr}.plans{grid-template-columns:1fr}.hero h1{font-size:1.6rem}.hero .cta-sec{margin-left:0;margin-top:10px;display:block}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="sub">AI Video Automation</div>
+  <h1>Kaelum <span>Studio</span></h1>
+  <p>Transforme roteiros em vídeos profissionais com inteligência artificial. Imagens, narração, legendas e animação — tudo automatizado.</p>
+  <a href="/cadastro" class="cta">Começar grátis</a>
+  <a href="/login" class="cta-sec">Já tenho conta</a>
+</div>
+
+<div class="features">
+  <div class="feat">
+    <div class="icon">🎬</div>
+    <h3>Roteiro → Vídeo</h3>
+    <p>Escreva um texto e o sistema cria cenas, imagens e vídeo automaticamente.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">🎙️</div>
+    <h3>Narração com IA</h3>
+    <p>Vozes naturais em português. Clone sua própria voz para narrar.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">✨</div>
+    <h3>Animação com IA</h3>
+    <p>Transforme imagens estáticas em clipes animados com movimento real.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">💬</div>
+    <h3>Legendas Sincronizadas</h3>
+    <p>Legendas palavra por palavra, sincronizadas com a narração.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">🗃️</div>
+    <h3>Banco de Imagens</h3>
+    <p>Reutilize imagens e cenas já geradas. Economize créditos.</p>
+  </div>
+  <div class="feat">
+    <div class="icon">🎨</div>
+    <h3>10+ Estilos Visuais</h3>
+    <p>Cinematográfico, cartoon, anime, 3D, aquarela e muito mais.</p>
+  </div>
+</div>
+
+<div class="how">
+  <h2>Como <span>funciona</span></h2>
+  <div class="step"><div class="step-num">1</div><div class="step-text"><h3>Escreva o roteiro</h3><p>Digite naturalmente. O sistema divide em cenas automaticamente.</p></div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-text"><h3>Revise o storyboard</h3><p>Veja as imagens geradas, edite textos, regere ou troque cenas.</p></div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-text"><h3>Configure o vídeo</h3><p>Escolha voz, legendas, animação e modo (longo ou shorts).</p></div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-text"><h3>Baixe o vídeo</h3><p>Vídeo pronto com narração, legendas e animação. Pronto pra publicar.</p></div></div>
+</div>
+
+<div class="pricing">
+  <h2>Planos e <span>preços</span></h2>
+  <div class="plans">
+    <div class="plan">
+      <h3>API Própria</h3>
+      <div class="price">R$29,90<small>/mês</small></div>
+      <div class="desc">Use suas próprias chaves de API. Geração ilimitada.</div>
+      <a href="/cadastro" class="btn">Começar</a>
+    </div>
+    <div class="plan pop">
+      <h3>Básico</h3>
+      <div class="price">R$39,90<small>/mês</small></div>
+      <div class="desc">500 créditos por mês. Ideal pra começar.</div>
+      <a href="/cadastro" class="btn">Começar</a>
+    </div>
+    <div class="plan">
+      <h3>Pro</h3>
+      <div class="price">R$79,90<small>/mês</small></div>
+      <div class="desc">1.500 créditos + animação com IA.</div>
+      <a href="/cadastro" class="btn">Começar</a>
+    </div>
+    <div class="plan">
+      <h3>Business</h3>
+      <div class="price">R$149,90<small>/mês</small></div>
+      <div class="desc">4.000 créditos + animação com IA. Produção em escala.</div>
+      <a href="/cadastro" class="btn">Começar</a>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>Kaelum Studio — AI Video Automation</p>
+  <p style="margin-top:8px"><a href="/termos">Termos de Uso</a> · <a href="/privacidade">Política de Privacidade</a></p>
+  <p style="margin-top:8px">© 2026 Grupo Mafort. Todos os direitos reservados.</p>
+</div>
+
+</body>
+</html>
