@@ -23,6 +23,11 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 stripe.api_key = STRIPE_SECRET_KEY
 
+# ── Chaves padrão do sistema (usadas quando usuário não tem API própria) ──
+SYSTEM_OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "")
+SYSTEM_MINIMAX_KEY = os.environ.get("MINIMAX_API_KEY", "")
+SYSTEM_MINIMAX_GROUP_ID = os.environ.get("MINIMAX_GROUP_ID", "")
+
 CREDITOS_POR_IMAGEM = 11  # Base: gerar imagem
 CREDITOS_MELHORAR_PROMPT = 3  # Melhorar prompt com IA
 CREDITOS_NARRACAO = 2  # Narração por cena
@@ -206,6 +211,26 @@ class User(UserMixin, db.Model):
         if self.plano and self.plano in PLANOS_STRIPE:
             return PLANOS_STRIPE[self.plano]
         return None
+
+    def get_api_key(self):
+        """Retorna chave OpenAI do usuário ou do sistema"""
+        if self.plano == "api_propria" and self.api_key:
+            return self.api_key
+        return self.api_key if self.api_key else SYSTEM_OPENAI_KEY
+
+    def get_provider(self):
+        """Retorna provider do usuário ou padrão"""
+        if self.provider:
+            return self.provider
+        return "openai" if SYSTEM_OPENAI_KEY else ""
+
+    def get_minimax_key(self):
+        """Retorna chave MiniMax do usuário ou do sistema"""
+        return self.minimax_key if self.minimax_key else SYSTEM_MINIMAX_KEY
+
+    def get_minimax_group_id(self):
+        """Retorna Group ID do usuário ou do sistema"""
+        return self.minimax_group_id if self.minimax_group_id else SYSTEM_MINIMAX_GROUP_ID
 
 
 def calcular_creditos_cena(melhorar_prompt=False, narracao=False, animar=False):
@@ -686,12 +711,16 @@ def gerar_imagem_replicate(prompt, api_key, output_path):
     raise Exception("Timeout Replicate")
 
 def gerar_imagem(prompt, user, output_path, estilo="", usar_banco=False):
-    if user.provider == "openai":
-        gerar_imagem_openai(prompt, user.api_key, user.image_size, user.quality, output_path, modelo="gpt-image-1")
-    elif user.provider == "replicate":
-        gerar_imagem_replicate(prompt, user.api_key, output_path)
+    provider = user.get_provider()
+    api_key = user.get_api_key()
+    if not api_key:
+        raise Exception("Nenhuma chave de API disponível. Entre em contato com o suporte.")
+    if provider == "openai":
+        gerar_imagem_openai(prompt, api_key, user.image_size or "1024x1792", user.quality or "standard", output_path, modelo="gpt-image-1")
+    elif provider == "replicate":
+        gerar_imagem_replicate(prompt, api_key, output_path)
     else:
-        raise Exception("Configure sua chave de API de imagens no perfil")
+        raise Exception("Nenhuma chave de API disponível. Entre em contato com o suporte.")
     salvar_no_banco(prompt, estilo, output_path, tipo="imagem")
 
 def gerar_srt(blocos, srt_path):
@@ -831,8 +860,8 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             jobs[job_id] = {"status": "processando", "progresso": "Analisando roteiro...", "total": 0, "atual": 0}
             sb_dir = os.path.join(STORYBOARD_FOLDER, job_id)
             os.makedirs(sb_dir, exist_ok=True)
-            if user.provider == "openai":
-                linhas = dividir_roteiro(texto_manual, user.api_key)
+            if user.get_provider() == "openai":
+                linhas = dividir_roteiro(texto_manual, user.get_api_key())
             else:
                 linhas = [l.strip() for l in texto_manual.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()]
 
@@ -861,14 +890,14 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
 
             # Extrair ficha de personagens pra consistência visual
             ficha = ""
-            if melhorar_prompts and user.provider == "openai" and cenas_a_gerar:
+            if melhorar_prompts and user.get_provider() == "openai" and cenas_a_gerar:
                 jobs[job_id]["progresso"] = "Analisando personagens..."
-                ficha = extrair_personagens(texto_manual, user.api_key)
+                ficha = extrair_personagens(texto_manual, user.get_api_key())
 
             def gerar_bloco(i_linha):
                 linha = linhas[i_linha]
-                if melhorar_prompts and user.provider == "openai":
-                    prompt_final = melhorar_prompt(linha, estilo, user.api_key, roteiro_completo, ficha, direcao_criativa)
+                if melhorar_prompts and user.get_provider() == "openai":
+                    prompt_final = melhorar_prompt(linha, estilo, user.get_api_key(), roteiro_completo, ficha, direcao_criativa)
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
@@ -908,7 +937,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             os.makedirs(job_dir, exist_ok=True)
             audio_final_path = None
 
-            if user.minimax_key and voice_id:
+            if user.get_minimax_key() and voice_id:
                 # Cobrar créditos de narração
                 creditos_narracao = len(blocos) * CREDITOS_NARRACAO
                 if not user.gastar_creditos(creditos_narracao):
@@ -926,7 +955,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 audio_completo_path = os.path.join(job_dir, "narracao.mp3")
                 for tentativa in range(3):
                     try:
-                        gerar_audio_minimax(texto_completo, user.minimax_key, user.minimax_group_id, voice_id, audio_completo_path)
+                        gerar_audio_minimax(texto_completo, user.get_minimax_key(), user.get_minimax_group_id(), voice_id, audio_completo_path)
                         break
                     except Exception as e:
                         if "1002" in str(e) or "rate" in str(e).lower():
@@ -976,9 +1005,9 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
 
             # Animar imagens com IA (MiniMax Video)
             import sys
-            sys.stderr.write(f"[VIDEO] animar_ia={animar_ia}, minimax_key={'SIM' if user.minimax_key else 'NAO'}\n")
+            sys.stderr.write(f"[VIDEO] animar_ia={animar_ia}, minimax_key={'SIM' if user.get_minimax_key() else 'NAO'}\n")
             sys.stderr.flush()
-            if animar_ia and user.minimax_key:
+            if animar_ia and user.get_minimax_key():
                 # Básico não tem animação
                 if user.plano == "basico":
                     import sys
@@ -992,7 +1021,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     return
                 db.session.commit()
                 n_cenas = len(imagens)
-                minimax_key_cache = user.minimax_key  # Cache pra usar nas threads
+                minimax_key_cache = user.get_minimax_key()  # Cache pra usar nas threads
                 tempo_est = max(5, (n_cenas // 3 + 1) * 2)  # ~2 min por lote de 3
                 jobs[job_id]["progresso"] = f"Animando {n_cenas} cenas com IA. Tempo estimado: ~{tempo_est} minutos..."
                 clipes_video = [None] * n_cenas
@@ -1778,8 +1807,8 @@ def dividir_roteiro_route():
     estilo = request.form.get("estilo", "").strip()
     melhorar = request.form.get("melhorar_prompts", "false") == "true"
 
-    if melhorar and current_user.provider == "openai" and current_user.api_key:
-        linhas = dividir_roteiro(texto, current_user.api_key)
+    if melhorar and current_user.get_provider() == "openai" and current_user.get_api_key():
+        linhas = dividir_roteiro(texto, current_user.get_api_key())
     else:
         linhas = [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()] or [texto.strip()]
 
@@ -1789,13 +1818,12 @@ def dividir_roteiro_route():
 @app.route("/gerar_storyboard", methods=["POST"])
 @login_required
 def gerar_storyboard_route():
-    if not current_user.api_key or not current_user.provider:
-        # Plano api_propria exige chave do usuário
-        if current_user.plano == "api_propria" and (not current_user.api_key or not current_user.provider):
-            return jsonify({"erro": "No plano API Própria, configure sua chave de API no perfil"}), 400
-        # Outros planos sem chave = usa chave da plataforma (futuro) ou exige config
-        if not current_user.api_key or not current_user.provider:
-            return jsonify({"erro": "Configure sua chave de API de imagens no perfil"}), 400
+    # Plano api_propria exige chave do usuário
+    if current_user.plano == "api_propria" and not current_user.api_key:
+        return jsonify({"erro": "No plano API Própria, configure sua chave de API no perfil"}), 400
+    # Verificar se tem alguma chave disponível (própria ou do sistema)
+    if not current_user.get_api_key():
+        return jsonify({"erro": "Sistema temporariamente indisponível. Tente novamente mais tarde."}), 400
 
     # Verificar se tem créditos (checagem básica)
     if not current_user.tem_creditos(CREDITOS_POR_IMAGEM):
@@ -1877,8 +1905,8 @@ def carregar_rascunho(sb_id):
 @app.route("/regerar_cena", methods=["POST"])
 @login_required
 def regerar_cena():
-    if not current_user.api_key:
-        return jsonify({"erro": "Configure API"}), 400
+    if not current_user.get_api_key():
+        return jsonify({"erro": "Nenhuma chave de API disponível"}), 400
     # Cobrar crédito por regeneração (só imagem base)
     if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM):
         return jsonify({"erro": f"Créditos insuficientes. Necessário: {CREDITOS_POR_IMAGEM}"}), 400
@@ -1896,8 +1924,8 @@ def regerar_cena():
             sb_data = json.load(f)
         bloco = sb_data["blocos"][index - 1]
         bloco["texto"] = texto
-        if melhorar and current_user.provider == "openai":
-            prompt = melhorar_prompt(texto, estilo, current_user.api_key)
+        if melhorar and current_user.get_provider() == "openai":
+            prompt = melhorar_prompt(texto, estilo, current_user.get_api_key())
         else:
             prompt = f"{texto}, {estilo}" if estilo else texto
         img_path = os.path.join(sb_dir, bloco["img"])
