@@ -344,19 +344,19 @@ def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personage
         if ficha_personagens:
             system += f"""
 
-CRITICAL - CHARACTER CONSISTENCY:
-You MUST use these EXACT character descriptions in EVERY image:
+CHARACTER SHEET (use these EXACT descriptions in every image):
 {ficha_personagens}
 
-Current scene: "{texto}"
-Full story context: "{contexto_roteiro}"
+Full story: "{contexto_roteiro}"
+Current scene to illustrate: "{texto}"
 
 RULES:
-1. Use the EXACT physical description from the character sheet above. Do NOT change ANY detail.
-2. If a character is described as "small orange tabby cat with green eyes", it MUST be that in EVERY scene.
-3. NEVER replace an animal with a human or vice-versa.
-4. NEVER change species, color, size, clothing, or any physical feature.
-5. Copy the character description WORD FOR WORD into your prompt."""
+1. Illustrate EXACTLY what the current scene describes. Include ALL elements mentioned: characters, objects, actions, setting.
+2. Use the character descriptions from the sheet above to keep them visually consistent.
+3. If the scene mentions a "dono/owner", show that person. If it mentions a "pote/bowl", show that object.
+4. EVERY noun in the scene description must appear in the image.
+5. NEVER omit characters or objects that are mentioned in the current scene.
+6. The scene description is the PRIORITY - show everything it says."""
         elif contexto_roteiro:
             system += f"""
 
@@ -375,22 +375,22 @@ Keep ALL characters visually identical across scenes. NEVER change species, colo
     return f"{estilo_det} of {texto}, no text no words"
 
 def extrair_personagens(roteiro, api_key):
-    """Extrai ficha de personagens do roteiro pra manter consistência visual"""
+    """Extrai ficha de personagens e elementos-chave do roteiro pra manter consistência visual"""
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        system = """You are a character designer for an image generation pipeline.
-Given a story, extract ALL characters and create a detailed visual description for each one.
+        system = """You are a character and scene designer for an image generation pipeline.
+Given a story, extract ALL characters AND important recurring objects.
 
 OUTPUT FORMAT (one per line):
-CHARACTER_NAME: detailed physical description (species, color, size, clothing, distinctive features, age, gender)
+NAME: detailed physical description
 
 RULES:
-1. Be EXTREMELY specific about physical appearance
-2. If it's an animal, describe: species, breed, color, size, eye color, distinctive markings
-3. If it's a human, describe: gender, age, skin tone, hair color/style, clothing, build
-4. Include EVERY visual detail needed to recreate the character identically
-5. Output ONLY the character descriptions, nothing else
-6. Use the SAME LANGUAGE as the input story"""
+1. For animals: species, breed, color, size, eye color, distinctive markings
+2. For humans: gender, approximate age, skin tone, hair color/style, clothing, build
+3. For important objects: color, size, material, distinctive features
+4. Be EXTREMELY specific - these descriptions will be copy-pasted into image prompts
+5. Output ONLY the descriptions, nothing else
+6. Write descriptions in ENGLISH even if the story is in another language"""
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": roteiro}
