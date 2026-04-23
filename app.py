@@ -851,7 +851,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 jobs[job_id]["progresso"] = f"Gerando imagem {len(blocos)} de {total}..."
 
             if cenas_a_gerar:
-                with ThreadPoolExecutor(max_workers=3) as executor:
+                with ThreadPoolExecutor(max_workers=5) as executor:
                     list(executor.map(gerar_bloco, cenas_a_gerar))
 
             # Gastar créditos apenas pelas cenas geradas
