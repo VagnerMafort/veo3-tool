@@ -307,26 +307,56 @@ def corrigir_orientacao(img_path):
         img.close()
     except: pass
 
+def gerar_descricao_banco(prompt, tipo="imagem"):
+    """Gera descrição e tags com IA pra facilitar busca no banco"""
+    try:
+        # Usa a chave do admin ou primeira chave disponível
+        conn = sqlite3.connect('instance/veo3.db')
+        row = conn.execute("SELECT api_key FROM user WHERE api_key != '' AND provider='openai' LIMIT 1").fetchone()
+        conn.close()
+        if not row:
+            return prompt.lower(), prompt
+        api_key = row[0]
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        tipo_label = "imagem" if tipo == "imagem" else "vídeo animado"
+        body = {"model": "gpt-4o-mini", "messages": [
+            {"role": "system", "content": f"Você é um catalogador de banco de {tipo_label}s. Dado o prompt usado pra gerar, crie:\n1. Uma descrição curta em português (max 100 chars)\n2. Tags de busca separadas por vírgula (palavras-chave em português)\n\nFormato:\nDESCRICAO: ...\nTAGS: ..."},
+            {"role": "user", "content": prompt}
+        ], "max_tokens": 150}
+        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=15)
+        if r.ok:
+            resultado = r.json()["choices"][0]["message"]["content"].strip()
+            descricao = ""
+            tags = prompt.lower()
+            for linha in resultado.split("\n"):
+                if linha.upper().startswith("DESCRICAO:") or linha.upper().startswith("DESCRIÇÃO:"):
+                    descricao = linha.split(":", 1)[1].strip()
+                elif linha.upper().startswith("TAGS:"):
+                    tags = linha.split(":", 1)[1].strip().lower()
+            return tags, descricao or prompt[:100]
+    except: pass
+    return prompt.lower(), prompt[:100]
+
 def salvar_no_banco(prompt, estilo, img_path, tipo="imagem", categoria=""):
-    """Salva imagem ou vídeo no banco com metadados completos"""
+    """Salva imagem ou vídeo no banco com metadados gerados por IA"""
     try:
         ext = img_path.rsplit(".", 1)[-1].lower() if "." in img_path else "png"
         nome = f"{uuid.uuid4().hex[:12]}.{ext}"
         destino = os.path.join(BANCO_IMG_FOLDER, nome)
         shutil.copy(img_path, destino)
+
+        # Gerar descrição e tags com IA
+        tags, descricao = gerar_descricao_banco(prompt, tipo)
+
         conn = sqlite3.connect('instance/veo3.db')
-        # Criar colunas novas se não existirem
-        try:
-            conn.execute("ALTER TABLE banco_imagens ADD COLUMN tipo TEXT DEFAULT 'imagem'")
+        try: conn.execute("ALTER TABLE banco_imagens ADD COLUMN tipo TEXT DEFAULT 'imagem'")
         except: pass
-        try:
-            conn.execute("ALTER TABLE banco_imagens ADD COLUMN categoria TEXT DEFAULT ''")
+        try: conn.execute("ALTER TABLE banco_imagens ADD COLUMN categoria TEXT DEFAULT ''")
         except: pass
-        try:
-            conn.execute("ALTER TABLE banco_imagens ADD COLUMN descricao TEXT DEFAULT ''")
+        try: conn.execute("ALTER TABLE banco_imagens ADD COLUMN descricao TEXT DEFAULT ''")
         except: pass
         conn.execute("INSERT INTO banco_imagens (prompt, estilo, tags, path, tipo, categoria, descricao) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                     (prompt, estilo, prompt.lower(), destino, tipo, categoria, prompt))
+                     (prompt, estilo, tags, destino, tipo, categoria, descricao))
         conn.commit()
         conn.close()
     except Exception as e:
