@@ -188,11 +188,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <label>🧠 Melhorar prompts com IA</label>
           <label class="toggle"><input type="checkbox" id="melhorarPrompts" checked><span class="slider"></span></label>
         </div>
-        <div class="toggle-row">
-          <label>🗃️ Usar banco de imagens</label>
-          <label class="toggle"><input type="checkbox" id="usarBanco"><span class="slider"></span></label>
         </div>
-        <p class="tip">Busca imagens similares já geradas antes de criar novas</p>
       </div>
       <button class="btn" id="btnGerarSB">Gerar Storyboard</button>
       <div class="status-box" id="statusSB">
@@ -439,8 +435,13 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 <!-- Modal Banco de Imagens -->
 <div class="banco-modal" id="bancoModal">
   <div class="banco-content">
-    <h2 style="margin-bottom:14px">🗃️ Banco de Imagens</h2>
-    <input type="text" id="bancoBusca" placeholder="Buscar por palavra-chave..." oninput="buscarBanco()"/>
+    <h2 style="margin-bottom:14px">🗃️ Banco de Imagens e Vídeos</h2>
+    <input type="text" id="bancoBusca" placeholder="Buscar por descrição ou palavra-chave..." oninput="buscarBanco()"/>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="modo-btn active" id="filtroTodos" onclick="filtrarBanco('')">Todos</button>
+      <button class="modo-btn" id="filtroImg" onclick="filtrarBanco('imagem')">🖼️ Imagens</button>
+      <button class="modo-btn" id="filtroVid" onclick="filtrarBanco('video')">🎬 Vídeos</button>
+    </div>
     <div class="banco-grid" id="bancoGrid"></div>
     <button class="btn-outline" onclick="fecharBanco()" style="margin-top:14px">Fechar</button>
   </div>
@@ -547,9 +548,11 @@ async function uploadCena(idx,input){if(!input.files[0])return;const cena=docume
 async function girarCena(idx){const cena=document.getElementById('cena-'+idx);cena.style.opacity='0.5';const fd=new FormData();fd.append('sb_id',sbId);fd.append('index',idx);fd.append('graus','90');try{const res=await fetch('/girar_cena',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);cena.querySelector('img').src=`/storyboard_img/${sbId}/${String(idx).padStart(3,'0')}.png?t=${Date.now()}`;}catch(e){alert('Erro: '+e.message);}cena.style.opacity='1';}
 
 // Banco de imagens
-function abrirBanco(idx){bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value='';buscarBanco();}
+let bancoFiltroTipo='';
+function abrirBanco(idx){bancoTargetIdx=idx;document.getElementById('bancoModal').style.display='block';document.getElementById('bancoBusca').value='';bancoFiltroTipo='';document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));document.getElementById('filtroTodos').classList.add('active');buscarBanco();}
 function fecharBanco(){document.getElementById('bancoModal').style.display='none';}
-async function buscarBanco(){const termo=document.getElementById('bancoBusca').value.trim();const res=await fetch('/buscar_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({termo:termo})});const d=await res.json();const grid=document.getElementById('bancoGrid');grid.innerHTML='';if(d.imgs.length===0){grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text3)">Nenhuma imagem encontrada</p>';return;}d.imgs.forEach(img=>{grid.innerHTML+=`<div class="banco-item" onclick="selecionarBanco(${img.id})"><img src="/banco_img/${img.path}" alt=""/><p>${img.prompt}</p></div>`;});}
+function filtrarBanco(tipo){bancoFiltroTipo=tipo;document.querySelectorAll('#bancoModal .modo-btn').forEach(b=>b.classList.remove('active'));if(tipo==='imagem')document.getElementById('filtroImg').classList.add('active');else if(tipo==='video')document.getElementById('filtroVid').classList.add('active');else document.getElementById('filtroTodos').classList.add('active');buscarBanco();}
+async function buscarBanco(){const termo=document.getElementById('bancoBusca').value.trim();const res=await fetch('/buscar_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({termo:termo,tipo:bancoFiltroTipo})});const d=await res.json();const grid=document.getElementById('bancoGrid');grid.innerHTML='';if(d.imgs.length===0){grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text3)">Nenhum item encontrado</p>';return;}d.imgs.forEach(img=>{const isVideo=img.tipo==='video';const badge=isVideo?'<span style="position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;font-size:.6rem;padding:2px 6px;border-radius:10px">🎬</span>':'';grid.innerHTML+=`<div class="banco-item" style="position:relative" onclick="selecionarBanco(${img.id})">${badge}${isVideo?`<video src="/banco_img/${img.path}" style="width:100%;display:block" muted></video>`:`<img src="/banco_img/${img.path}" alt=""/>`}<p title="${img.descricao||img.prompt}">${(img.descricao||img.prompt).substring(0,50)}</p></div>`;});}
 async function selecionarBanco(imgId){const fd=new FormData();fd.append('sb_id',sbId);fd.append('index',bancoTargetIdx);fd.append('img_id',imgId);const res=await fetch('/usar_banco_cena',{method:'POST',body:fd});const d=await res.json();if(d.ok){const cena=document.getElementById('cena-'+bancoTargetIdx);cena.querySelector('img').src=`/storyboard_img/${sbId}/${String(bancoTargetIdx).padStart(3,'0')}.png?t=${Date.now()}`;fecharBanco();}else{alert('Erro: '+(d.erro||''));}}
 
 document.getElementById('btnVoltarRoteiro').addEventListener('click',()=>{document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';});

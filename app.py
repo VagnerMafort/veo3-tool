@@ -285,17 +285,32 @@ def corrigir_orientacao(img_path):
         img.close()
     except: pass
 
-def salvar_no_banco(prompt, estilo, img_path):
+def salvar_no_banco(prompt, estilo, img_path, tipo="imagem", categoria=""):
+    """Salva imagem ou vídeo no banco com metadados completos"""
     try:
-        nome = f"{uuid.uuid4().hex[:12]}.png"
+        ext = img_path.rsplit(".", 1)[-1].lower() if "." in img_path else "png"
+        nome = f"{uuid.uuid4().hex[:12]}.{ext}"
         destino = os.path.join(BANCO_IMG_FOLDER, nome)
         shutil.copy(img_path, destino)
         conn = sqlite3.connect('instance/veo3.db')
-        conn.execute("INSERT INTO banco_imagens (prompt, estilo, tags, path) VALUES (?, ?, ?, ?)",
-                     (prompt, estilo, prompt.lower(), destino))
+        # Criar colunas novas se não existirem
+        try:
+            conn.execute("ALTER TABLE banco_imagens ADD COLUMN tipo TEXT DEFAULT 'imagem'")
+        except: pass
+        try:
+            conn.execute("ALTER TABLE banco_imagens ADD COLUMN categoria TEXT DEFAULT ''")
+        except: pass
+        try:
+            conn.execute("ALTER TABLE banco_imagens ADD COLUMN descricao TEXT DEFAULT ''")
+        except: pass
+        conn.execute("INSERT INTO banco_imagens (prompt, estilo, tags, path, tipo, categoria, descricao) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                     (prompt, estilo, prompt.lower(), destino, tipo, categoria, prompt))
         conn.commit()
         conn.close()
-    except: pass
+    except Exception as e:
+        import sys
+        sys.stderr.write(f"[BANCO] Erro ao salvar: {e}\n")
+        sys.stderr.flush()
 
 # Rastrear imagens já usadas no job atual pra não repetir
 _imagens_usadas = set()
@@ -584,19 +599,13 @@ def gerar_imagem_replicate(prompt, api_key, output_path):
     raise Exception("Timeout Replicate")
 
 def gerar_imagem(prompt, user, output_path, estilo="", usar_banco=False):
-    if usar_banco:
-        img_banco = buscar_no_banco(prompt, estilo)
-        if img_banco:
-            shutil.copy(img_banco, output_path)
-            return
     if user.provider == "openai":
-        # Tenta gpt-image-1 primeiro (melhor consistência), fallback pra dall-e-3
         gerar_imagem_openai(prompt, user.api_key, user.image_size, user.quality, output_path, modelo="gpt-image-1")
     elif user.provider == "replicate":
         gerar_imagem_replicate(prompt, user.api_key, output_path)
     else:
         raise Exception("Configure sua chave de API de imagens no perfil")
-    salvar_no_banco(prompt, estilo, output_path)
+    salvar_no_banco(prompt, estilo, output_path, tipo="imagem")
 
 def gerar_srt(blocos, srt_path):
     def fmt(s):
@@ -857,6 +866,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     try:
                         gerar_video_minimax(img["path"], img["texto"], user.minimax_key, clipe_path)
                         clipes_video[i] = clipe_path
+                        # Salvar cena animada no banco
+                        salvar_no_banco(img["texto"], sbEstilo if 'sbEstilo' in dir() else "", clipe_path, tipo="video", categoria="cena_animada")
                         jobs[job_id]["atual"] = sum(1 for c in clipes_video if c is not None)
                         jobs[job_id]["progresso"] = f"Animando cenas... {jobs[job_id]['atual']}/{n_cenas} prontas (~{tempo_est} min)"
                     except Exception as e:
@@ -1361,15 +1372,35 @@ def banco_img_file(filename):
 @login_required
 def buscar_banco():
     termo = request.json.get("termo", "").lower().strip()
+    tipo_filtro = request.json.get("tipo", "")  # "imagem", "video", ou "" (todos)
     estilo = request.json.get("estilo", "")
     conn = sqlite3.connect('instance/veo3.db')
+    query = "SELECT id, prompt, path, estilo, tipo, categoria, descricao FROM banco_imagens WHERE 1=1"
+    params = []
     if termo:
-        rows = conn.execute("SELECT id, prompt, path FROM banco_imagens WHERE tags LIKE ? ORDER BY id DESC LIMIT 20",
-                            (f"%{termo}%",)).fetchall()
-    else:
-        rows = conn.execute("SELECT id, prompt, path FROM banco_imagens ORDER BY id DESC LIMIT 20").fetchall()
+        query += " AND (tags LIKE ? OR prompt LIKE ? OR descricao LIKE ?)"
+        params += [f"%{termo}%", f"%{termo}%", f"%{termo}%"]
+    if tipo_filtro:
+        query += " AND tipo = ?"
+        params.append(tipo_filtro)
+    if estilo:
+        query += " AND estilo = ?"
+        params.append(estilo)
+    query += " ORDER BY id DESC LIMIT 30"
+    try:
+        rows = conn.execute(query, params).fetchall()
+    except:
+        # Fallback se colunas novas não existem ainda
+        rows = conn.execute("SELECT id, prompt, path, estilo, 'imagem', '', prompt FROM banco_imagens ORDER BY id DESC LIMIT 30").fetchall()
     conn.close()
-    imgs = [{"id": r[0], "prompt": r[1], "path": os.path.basename(r[2])} for r in rows if os.path.exists(r[2])]
+    imgs = []
+    for r in rows:
+        if os.path.exists(r[2]):
+            imgs.append({
+                "id": r[0], "prompt": r[1], "path": os.path.basename(r[2]),
+                "estilo": r[3] or "", "tipo": r[4] or "imagem",
+                "categoria": r[5] or "", "descricao": r[6] or r[1]
+            })
     return jsonify({"imgs": imgs})
 
 @app.route("/usar_banco_cena", methods=["POST"])
