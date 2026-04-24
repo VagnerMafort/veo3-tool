@@ -568,10 +568,10 @@ def gerar_audio_minimax(texto, api_key, group_id, voice_id, output_path):
             "audio_setting": {"sample_rate": 32000, "bitrate": 128000, "format": "mp3"}}
     r = requests.post(url, headers=headers, json=body, timeout=60)
     if not r.ok:
-        raise Exception(f"MiniMax TTS erro {r.status_code}: {r.text}")
+        raise Exception("Estamos com problemas técnicos na narração. Por favor, tente novamente mais tarde. Se o erro persistir, entre em contato com o suporte técnico.")
     data = r.json()
     if data.get("base_resp", {}).get("status_code") != 0:
-        raise Exception(f"MiniMax erro: {data.get('base_resp')}")
+        raise Exception("Estamos com problemas técnicos na narração. Por favor, tente novamente mais tarde. Se o erro persistir, entre em contato com o suporte técnico.")
     with open(output_path, "wb") as f:
         f.write(bytes.fromhex(data["data"]["audio"]))
 
@@ -583,18 +583,18 @@ def clonar_voz_minimax(api_key, group_id, audio_path, voice_id):
                           files={"file": (os.path.basename(audio_path), f, "audio/mpeg")},
                           data={"purpose": "voice_clone"}, timeout=60)
     if not r.ok:
-        raise Exception(f"MiniMax upload erro {r.status_code}: {r.text}")
+        raise Exception("Estamos com problemas técnicos na clonagem de voz. Por favor, tente novamente mais tarde.")
     file_id = r.json().get("file", {}).get("file_id")
     if not file_id:
-        raise Exception(f"MiniMax upload sem file_id: {r.json()}")
+        raise Exception("Estamos com problemas técnicos na clonagem de voz. Por favor, tente novamente mais tarde.")
     url_clone = f"https://api.minimaxi.chat/v1/voice_clone?GroupId={group_id}"
     r2 = requests.post(url_clone, headers={**headers, "Content-Type": "application/json"},
                        json={"file_id": int(file_id), "voice_id": voice_id, "need_noise_reduction": True, "need_volume_normalization": True}, timeout=120)
     if not r2.ok:
-        raise Exception(f"MiniMax clone erro {r2.status_code}: {r2.text}")
+        raise Exception("Estamos com problemas técnicos na clonagem de voz. Por favor, tente novamente mais tarde.")
     result = r2.json()
     if result.get("base_resp", {}).get("status_code") != 0:
-        raise Exception(f"MiniMax clone falhou: {result.get('base_resp')}")
+        raise Exception("Estamos com problemas técnicos na clonagem de voz. Por favor, tente novamente mais tarde.")
     return voice_id
 
 def remover_silencio(audio_path, output_path):
@@ -629,11 +629,11 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
     t0 = time.time()
     r = requests.post("https://api.minimax.io/v1/video_generation", headers=headers, json=body, timeout=60)
     if not r.ok:
-        raise Exception(f"MiniMax Video erro {r.status_code}: {r.text}")
+        raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
     data = r.json()
     task_id = data.get("task_id")
     if not task_id:
-        raise Exception(f"MiniMax Video sem task_id: {data}")
+        raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
     sys.stderr.write(f"[VIDEO] Task criada: {task_id}\n"); sys.stderr.flush()
 
     # Poll status (a cada 5s em vez de 10s)
@@ -649,14 +649,14 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
             if status == "Success":
                 file_id = status_data.get("file_id")
                 if not file_id:
-                    raise Exception("MiniMax Video: sucesso mas sem file_id")
+                    raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
                 r3 = requests.get("https://api.minimax.io/v1/files/retrieve",
                                   headers=headers, params={"file_id": file_id}, timeout=15)
                 if not r3.ok:
-                    raise Exception(f"MiniMax Video download erro: {r3.text}")
+                    raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
                 download_url = r3.json().get("file", {}).get("download_url")
                 if not download_url:
-                    raise Exception("MiniMax Video: sem download_url")
+                    raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
                 video_r = requests.get(download_url, timeout=120)
                 with open(output_path, "wb") as f:
                     f.write(video_r.content)
@@ -664,10 +664,10 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
                 sys.stderr.write(f"[VIDEO] OK em {dt:.0f}s\n"); sys.stderr.flush()
                 return True
             elif status == "Fail":
-                raise Exception(f"MiniMax Video falhou: {status_data.get('error_message', 'erro desconhecido')}")
+                raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
         except requests.exceptions.Timeout:
             continue
-    raise Exception("MiniMax Video: timeout aguardando geração")
+    raise Exception("Estamos com problemas técnicos na animação. Tempo limite excedido. Por favor, tente novamente mais tarde.")
 
 def gerar_imagem_openai(prompt, api_key, size, quality, output_path, modelo="dall-e-3"):
     import sys, time as _time
@@ -708,7 +708,7 @@ def gerar_imagem_openai(prompt, api_key, size, quality, output_path, modelo="dal
             # Se falhar de novo, tenta dall-e-3
             modelo = "dall-e-3"
         else:
-            raise Exception(f"OpenAI erro {r.status_code}: {erro}")
+            raise Exception("Estamos com problemas técnicos na geração de imagens. Por favor, tente novamente mais tarde. Se o erro persistir, entre em contato com o suporte técnico.")
 
     # DALL-E 3
     tamanhos_validos = ["1024x1024", "1792x1024", "1024x1792"]
@@ -731,7 +731,7 @@ def gerar_imagem_openai(prompt, api_key, size, quality, output_path, modelo="dal
         if ("safety" in erro.lower() or "content" in erro.lower()) and tentativa < 2:
             prompt = suavizar_prompt(prompt, api_key)
             continue
-        raise Exception(f"OpenAI erro {r.status_code}: {erro}")
+        raise Exception("Estamos com problemas técnicos na geração de imagens. Por favor, tente novamente mais tarde. Se o erro persistir, entre em contato com o suporte técnico.")
 
 def gerar_imagem_replicate(prompt, api_key, output_path):
     headers = {"Authorization": f"Token {api_key}", "Content-Type": "application/json"}
@@ -749,8 +749,8 @@ def gerar_imagem_replicate(prompt, api_key, output_path):
             with open(output_path, "wb") as f: f.write(img_r.content)
             return
         if d["status"] == "failed":
-            raise Exception("Replicate falhou: " + str(d.get("error")))
-    raise Exception("Timeout Replicate")
+            raise Exception("Estamos com problemas técnicos na geração de imagens. Por favor, tente novamente mais tarde.")
+    raise Exception("Estamos com problemas técnicos na geração de imagens. Tempo limite excedido. Por favor, tente novamente mais tarde.")
 
 def gerar_imagem(prompt, user, output_path, estilo="", usar_banco=False, formato="vertical"):
     provider = user.get_provider()
