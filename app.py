@@ -710,13 +710,16 @@ def gerar_imagem_replicate(prompt, api_key, output_path):
             raise Exception("Replicate falhou: " + str(d.get("error")))
     raise Exception("Timeout Replicate")
 
-def gerar_imagem(prompt, user, output_path, estilo="", usar_banco=False):
+def gerar_imagem(prompt, user, output_path, estilo="", usar_banco=False, formato="vertical"):
     provider = user.get_provider()
     api_key = user.get_api_key()
     if not api_key:
         raise Exception("Nenhuma chave de API disponível. Entre em contato com o suporte.")
+    # Mapear formato pra tamanho
+    formato_map = {"vertical": "1024x1792", "horizontal": "1792x1024", "quadrado": "1024x1024"}
+    size = formato_map.get(formato, user.image_size or "1024x1792")
     if provider == "openai":
-        gerar_imagem_openai(prompt, api_key, user.image_size or "1024x1792", user.quality or "standard", output_path, modelo="gpt-image-1")
+        gerar_imagem_openai(prompt, api_key, size, user.quality or "standard", output_path, modelo="gpt-image-1")
     elif provider == "replicate":
         gerar_imagem_replicate(prompt, api_key, output_path)
     else:
@@ -850,7 +853,7 @@ def dividir_roteiro(texto, api_key):
     except: pass
     return [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()] or [texto.strip()]
 
-def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco=False, cenas_preenchidas=None, direcao_criativa=""):
+def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco=False, cenas_preenchidas=None, direcao_criativa="", formato="vertical"):
     if cenas_preenchidas is None:
         cenas_preenchidas = {}
     with app.app_context():
@@ -901,7 +904,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
-                gerar_imagem(prompt_final, user, img_path, estilo)
+                gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
                 blocos.append({"index": i_linha+1, "texto": linha, "img": f"{i_linha+1:03d}.png"})
                 jobs[job_id]["atual"] = len(blocos)
                 jobs[job_id]["progresso"] = f"Gerando imagem {len(blocos)} de {total}..."
@@ -1045,7 +1048,9 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     import time as _t
                     for tentativa in range(3):
                         try:
-                            gerar_video_minimax(img["path"], img["texto"], minimax_key_cache, clipe_path)
+                            # Melhorar prompt pra animação dinâmica
+                            anim_prompt = f"[Tracking shot] {img['texto']}. Dynamic motion, cinematic camera movement, characters moving naturally, expressive body language, fluid animation."
+                            gerar_video_minimax(img["path"], anim_prompt, minimax_key_cache, clipe_path)
                             clipes_video[i] = clipe_path
                             # Salvar no banco imediatamente (path absoluto)
                             try:
@@ -1843,10 +1848,11 @@ def gerar_storyboard_route():
         cenas_preenchidas = {}
 
     direcao_criativa = request.form.get("direcao_criativa", "").strip()
+    formato = request.form.get("formato", "vertical")
 
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, False, cenas_preenchidas, direcao_criativa))
+    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, False, cenas_preenchidas, direcao_criativa, formato))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})

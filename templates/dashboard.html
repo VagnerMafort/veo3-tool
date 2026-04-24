@@ -179,6 +179,13 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <h2>1. Escreva o roteiro</h2>
         <p class="tip" style="margin-bottom:14px">Escreva naturalmente. O sistema divide em cenas automaticamente.</p>
         <textarea id="textoRoteiro" placeholder="Ex: Davi venceu o gigante Golias, mais o rei Saul ficou com ciúmes e perseguiu Davi"></textarea>
+        <label>Formato do vídeo</label>
+        <div class="modo-btns">
+          <div class="modo-btn active" id="btnVertical" onclick="setFormato('vertical')">📱 Vertical (9:16)</div>
+          <div class="modo-btn" id="btnHorizontal" onclick="setFormato('horizontal')">🖥️ Horizontal (16:9)</div>
+          <div class="modo-btn" id="btnQuadrado" onclick="setFormato('quadrado')">⬜ Quadrado (1:1)</div>
+        </div>
+        <input type="hidden" id="formatoVideo" value="vertical"/>
         <label>Estilo visual</label>
         <select id="estilo">
           <option value="">Padrão</option>
@@ -609,6 +616,8 @@ function trocarAba(aba){
 
 function setModo(m){document.getElementById('modoVideo').value=m;document.getElementById('btnModoLongo').classList.toggle('active',m==='longo');document.getElementById('btnModoShorts').classList.toggle('active',m==='shorts');}
 
+function setFormato(f){document.getElementById('formatoVideo').value=f;document.getElementById('btnVertical').classList.toggle('active',f==='vertical');document.getElementById('btnHorizontal').classList.toggle('active',f==='horizontal');document.getElementById('btnQuadrado').classList.toggle('active',f==='quadrado');}
+
 const cfgProvider=document.getElementById('cfgProvider'),opcoesOpenAI=document.getElementById('opcoesOpenAI');
 function toggleOpenAI(){if(opcoesOpenAI)opcoesOpenAI.style.display=cfgProvider&&cfgProvider.value==='openai'?'block':'none';}
 if(cfgProvider)cfgProvider.addEventListener('change',toggleOpenAI);
@@ -685,7 +694,7 @@ document.getElementById('btnGerarSB').addEventListener('click',async()=>{
   pbar.style.width='0%';
   const animBar=setInterval(()=>{progresso=Math.min(progresso+Math.random()*15,90);pbar.style.width=progresso+'%';},500);
   sbEstilo=document.getElementById('estilo').value;
-  const fd=new FormData();fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');fd.append('direcao_criativa',document.getElementById('direcaoCriativa').value.trim());
+  const fd=new FormData();fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');fd.append('direcao_criativa',document.getElementById('direcaoCriativa').value.trim());fd.append('formato',document.getElementById('formatoVideo').value);
   try{
     const res=await fetch('/dividir_roteiro',{method:'POST',body:fd});
     clearInterval(animBar);pbar.style.width='100%';
@@ -771,6 +780,7 @@ document.getElementById('btnGerarFaltantes').addEventListener('click',async()=>{
   fd.append('texto',texto);fd.append('estilo',sbEstilo);
   fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');
   fd.append('direcao_criativa',document.getElementById('direcaoCriativa').value.trim());
+  fd.append('formato',document.getElementById('formatoVideo').value);
   fd.append('cenas_preenchidas',JSON.stringify(cenasPreenchidas));
   try{
     const res=await fetch('/gerar_storyboard',{method:'POST',body:fd});
