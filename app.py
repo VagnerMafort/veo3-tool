@@ -629,10 +629,15 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
     t0 = time.time()
     r = requests.post("https://api.minimax.io/v1/video_generation", headers=headers, json=body, timeout=60)
     if not r.ok:
+        if r.status_code == 429 or "rate" in r.text.lower():
+            raise Exception("RATE_LIMIT:Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde.")
         raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
     data = r.json()
     task_id = data.get("task_id")
     if not task_id:
+        resp_str = str(data)
+        if "1002" in resp_str or "1008" in resp_str or "rate" in resp_str.lower() or "insufficient" in resp_str.lower():
+            raise Exception("RATE_LIMIT:Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde.")
         raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
     sys.stderr.write(f"[VIDEO] Task criada: {task_id}\n"); sys.stderr.flush()
 
@@ -998,15 +1003,20 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 # Narrar texto completo de uma vez (evita rate limit)
                 texto_completo = ". ".join([b["texto"] for b in blocos])
                 audio_completo_path = os.path.join(job_dir, "narracao.mp3")
+                narracao_ok = False
                 for tentativa in range(3):
                     try:
                         gerar_audio_minimax(texto_completo, user.get_minimax_key(), user.get_minimax_group_id(), voice_id, audio_completo_path)
+                        narracao_ok = True
                         break
                     except Exception as e:
                         if "1002" in str(e) or "rate" in str(e).lower():
                             _time.sleep(15)
                             continue
                         raise
+                if not narracao_ok:
+                    jobs[job_id] = {"status": "erro", "progresso": "Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde.", "total": 0, "atual": 0}
+                    return
 
                 # Transcrever pra pegar timestamps de cada frase
                 jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
@@ -1184,8 +1194,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         if result.returncode != 0:
                             raise Exception(f"FFmpeg concat erro: {result.stderr[-500:]}")
                 else:
-                    # Nenhum clipe gerado — avisar o usuário
-                    jobs[job_id] = {"status": "erro", "progresso": "Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde. Se o erro persistir, entre em contato com o suporte técnico.", "total": 0, "atual": 0}
+                    # Nenhum clipe gerado — verificar se foi rate limit ou erro técnico
+                    jobs[job_id] = {"status": "erro", "progresso": "Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde. Se o erro persistir, entre em contato com o suporte técnico.", "total": 0, "atual": 0}
                     return
             else:
                 # Verificar se alguma cena tem vídeo do banco
