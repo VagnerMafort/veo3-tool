@@ -510,11 +510,11 @@ Current scene to illustrate: "{texto}"
 CRITICAL RULES:
 1. ONLY illustrate what THIS SPECIFIC SCENE describes. Do NOT add elements from other scenes or future events.
 2. If this scene does NOT mention fire, horses of fire, or supernatural events — do NOT include them.
-3. DAYLIGHT: Unless the scene explicitly says "night" or "madrugada/dawn", use bright daylight, clear sky, warm sunlight.
-4. If the scene says "madrugada/dawn", use early morning light (blue-orange sky), NOT pitch black night.
+3. BRIGHT LIGHTING: ALL images must have bright, well-lit scenes. Use golden sunlight, clear blue sky, warm daylight. NEVER use dark/moody lighting unless the scene explicitly says "night". Even dawn scenes should be bright with orange-pink sky.
+4. If the scene says "madrugada/dawn", use bright early morning light with colorful sky, NOT dark.
 5. THE SCENE IS THE PRIORITY. Show what the text describes, not just the main character.
-6. If the scene describes an ARMY, show the ARMY as the main subject (wide shot). Character can be small.
-7. If the scene describes FIRE or supernatural events — make them DOMINANT, filling 80% of the image.
+6. If the scene describes an ARMY, show THOUSANDS of soldiers in a massive wide panoramic shot. The army must look overwhelming in scale.
+7. If the scene describes supernatural events (fire horses, chariots of fire, celestial army) — make it SPECTACULAR and MASSIVE. Show HUNDREDS of flaming horses and chariots filling the ENTIRE sky and mountains. It must look like the most epic scene ever painted. Bright golden-white fire, not dark orange.
 8. VARY the composition: wide shots for armies/landscapes, medium for dialogue, close-up only for intense emotions.
 9. When characters appear, use their description from the reference above.
 10. NEVER add elements that are NOT mentioned in the current scene text."""
@@ -1039,16 +1039,43 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     duracao_total = len(audio_completo_seg) / 1000
                     audio_completo_path = audio_limpo_path
 
-                # Dividir duração proporcionalmente entre cenas
-                dur_por_cena = duracao_total / len(blocos)
-                for i, bloco in enumerate(blocos):
-                    img_src = os.path.join(sb_dir, bloco["img"])
-                    img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
-                    shutil.copy(img_src, img_dst)
-                    imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur_por_cena, 2),
-                                    "inicio": round(t, 2), "fim": round(t + dur_por_cena, 2),
-                                    "texto": bloco["texto"]})
-                    t += dur_por_cena
+                # Sincronizar cenas com áudio usando Whisper
+                jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
+                try:
+                    model = get_whisper_model()
+                    resultado_whisper = model.transcribe(audio_completo_path, word_timestamps=True, fp16=False)
+                    # Pegar timestamps de cada segmento
+                    segmentos = resultado_whisper.get("segments", [])
+                    if segmentos and len(segmentos) >= len(blocos):
+                        # Distribuir segmentos entre cenas
+                        segs_por_cena = max(1, len(segmentos) // len(blocos))
+                        for i, bloco in enumerate(blocos):
+                            seg_inicio = i * segs_por_cena
+                            seg_fim = min((i + 1) * segs_por_cena, len(segmentos))
+                            if i == len(blocos) - 1:
+                                seg_fim = len(segmentos)
+                            inicio = segmentos[seg_inicio]["start"] if seg_inicio < len(segmentos) else t
+                            fim = segmentos[min(seg_fim, len(segmentos)) - 1]["end"] if seg_fim > 0 else inicio + 3
+                            dur = max(1.5, fim - inicio)
+                            img_src = os.path.join(sb_dir, bloco["img"])
+                            img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
+                            shutil.copy(img_src, img_dst)
+                            imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur, 2),
+                                            "inicio": round(inicio, 2), "fim": round(fim, 2),
+                                            "texto": bloco["texto"]})
+                    else:
+                        raise Exception("fallback")
+                except:
+                    # Fallback: divisão proporcional
+                    dur_por_cena = duracao_total / len(blocos)
+                    for i, bloco in enumerate(blocos):
+                        img_src = os.path.join(sb_dir, bloco["img"])
+                        img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
+                        shutil.copy(img_src, img_dst)
+                        imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur_por_cena, 2),
+                                        "inicio": round(t, 2), "fim": round(t + dur_por_cena, 2),
+                                        "texto": bloco["texto"]})
+                        t += dur_por_cena
 
                 audio_final_path = audio_completo_path
             else:
