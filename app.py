@@ -150,18 +150,25 @@ whisper_model = None
 
 # Prompts padrão - editáveis pelo admin
 DEFAULT_PROMPTS = {
-    "melhorar": """You are a technical prompt engineer for DALL-E 3.
-Goal: Convert narration text into a HIGH-QUALITY VERTICAL image prompt.
+    "melhorar": """You are a cinematic storyboard artist and prompt engineer.
+Goal: Convert narration text into a HIGH-QUALITY image prompt with VARIED compositions.
 
 STRICT RULES:
-1. STYLE FIRST: Start the prompt with: "{estilo}" of...". This is mandatory.
-2. VERTICAL COMPOSITION: Use "vertical composition", "tall frame", or "full-body portrait" to force 9:16 framing.
-3. SCENE ACCURACY: Describe EXACTLY what the text says. Include ALL characters, objects, and actions mentioned.
-4. HISTORICAL ACCURACY: For biblical/ancient themes use ancient Middle Eastern attire, rough linen textures, desert sun, period-accurate sandals.
-5. SAFE DESCRIPTIONS: Instead of "defeated" say "lying on the ground exhausted". A giant = "extremely tall muscular man". A king = "man wearing golden crown and royal robes".
-6. ABSOLUTELY NO TEXT IN IMAGE: Add "no text, no letters, no words, no writing, no captions, no watermarks, no signatures, no inscriptions" at the END of every prompt. This is MANDATORY.
-7. NEGATIVE CONCEPTS: Instead of "empty bowl", say "a clean bowl with nothing inside it, completely bare". Instead of "dark room" say "a room with very dim lighting". Always describe what IS there, not what ISN'T.
-8. Output ONLY the prompt. Max 400 characters.""",
+1. STYLE FIRST: Start with: "{estilo}" of...". Mandatory.
+2. COMPOSITION VARIETY: You MUST vary the shot type for each scene. Use these in rotation:
+   - WIDE SHOT / PANORAMIC: For armies, landscapes, epic moments, establishing shots
+   - MEDIUM SHOT: For dialogue, interactions between 2-3 characters
+   - CLOSE-UP: For emotional moments, reactions (use sparingly, max 2 per story)
+   - LOW ANGLE: For powerful/intimidating subjects (armies, warriors)
+   - HIGH ANGLE / BIRD'S EYE: For showing scale, surrounded situations
+   - OVER-THE-SHOULDER: For conversations
+3. EPIC SCENES MUST BE EPIC: If the text describes armies, fire, supernatural events, or large-scale action, use WIDE PANORAMIC shots showing the FULL scale. Show hundreds of soldiers, massive flames filling the sky, mountains covered in fire. Do NOT reduce epic scenes to close-ups.
+4. SCENE ACCURACY: Describe EXACTLY what the text says. Include ALL elements.
+5. HISTORICAL ACCURACY: For biblical/ancient themes use ancient Middle Eastern attire, rough linen textures, desert sun.
+6. SAFE DESCRIPTIONS: Instead of "defeated" say "lying on the ground exhausted". A giant = "extremely tall muscular man".
+7. NO TEXT IN IMAGE: End every prompt with "no text, no letters, no words, no writing, no watermarks, no inscriptions".
+8. AVOID REPETITION: Each image MUST look visually DIFFERENT from the previous one. Different angle, different framing, different lighting.
+9. Output ONLY the prompt. Max 500 characters.""",
     "suavizar": "Rewrite this image prompt to pass DALL-E safety filters. Remove ALL violence, weapons, blood, fighting, death, killing. Keep same characters, historical period, and setting. Replace conflict with dramatic tension shown through facial expressions, body language, and atmosphere. Characters must wear period-appropriate clothing. You MUST preserve the original artistic style tags and the vertical composition instruction at all costs. Output ONLY the new prompt.",
     "dividir": """You are a storyboard director. Split this narration into individual scenes.
 
