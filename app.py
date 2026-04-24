@@ -61,8 +61,8 @@ def enviar_email(destinatario, assunto, corpo_html):
 CREDITOS_POR_IMAGEM = 11  # Base: gerar imagem
 CREDITOS_MELHORAR_PROMPT = 3  # Melhorar prompt com IA
 CREDITOS_NARRACAO = 2  # Narração por cena
-CREDITOS_ANIMACAO = 14  # Animar cena com MiniMax Video
-CREDITOS_CENA_COMPLETA = 30  # Tudo junto (11+3+2+14)
+CREDITOS_ANIMACAO = 60  # Animar cena com MiniMax Video
+CREDITOS_CENA_COMPLETA = 76  # Tudo junto (11+3+2+60)
 
 # Add-on Banco de Imagens
 BANCO_ADDON_PRICE_ID = "price_1TPFcuLW3ZSF3MIlECdLofvd"
