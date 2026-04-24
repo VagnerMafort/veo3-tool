@@ -505,18 +505,19 @@ You MUST incorporate this creative direction into every image prompt. It defines
 CHARACTER REFERENCE (use ONLY when the character appears in this scene):
 {ficha_personagens}
 
-Full story: "{contexto_roteiro}"
 Current scene to illustrate: "{texto}"
 
 CRITICAL RULES:
-1. THE SCENE IS THE PRIORITY. Illustrate what the scene DESCRIBES, not just the main character.
-2. If the scene describes an ARMY, show the ARMY as the main subject (wide shot, hundreds of soldiers). The character can be small in the frame or not visible.
-3. If the scene describes FIRE, HORSES OF FIRE, supernatural events — make them the DOMINANT element. Fill 80% of the image with the spectacular element.
-4. Only show a character in close-up if the scene is specifically about their EMOTION or DIALOGUE.
-5. VARY the main subject: sometimes the landscape, sometimes the army, sometimes the character, sometimes the supernatural event.
-6. When characters appear, use their description from the reference above to keep them consistent.
-7. NEVER put the same character as the main close-up subject in more than 2 consecutive scenes.
-8. For scenes with armies/battles: use WIDE PANORAMIC shots, bird's eye view, or dramatic low angles showing scale."""
+1. ONLY illustrate what THIS SPECIFIC SCENE describes. Do NOT add elements from other scenes or future events.
+2. If this scene does NOT mention fire, horses of fire, or supernatural events — do NOT include them.
+3. DAYLIGHT: Unless the scene explicitly says "night" or "madrugada/dawn", use bright daylight, clear sky, warm sunlight.
+4. If the scene says "madrugada/dawn", use early morning light (blue-orange sky), NOT pitch black night.
+5. THE SCENE IS THE PRIORITY. Show what the text describes, not just the main character.
+6. If the scene describes an ARMY, show the ARMY as the main subject (wide shot). Character can be small.
+7. If the scene describes FIRE or supernatural events — make them DOMINANT, filling 80% of the image.
+8. VARY the composition: wide shots for armies/landscapes, medium for dialogue, close-up only for intense emotions.
+9. When characters appear, use their description from the reference above.
+10. NEVER add elements that are NOT mentioned in the current scene text."""
         elif contexto_roteiro:
             system += f"""
 
