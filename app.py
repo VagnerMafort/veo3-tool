@@ -266,6 +266,10 @@ class BancoImagens(db.Model):
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+MUSICAS_FOLDER = "musicas"
+os.makedirs(MUSICAS_FOLDER, exist_ok=True)
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -927,7 +931,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
         except Exception as e:
             jobs[job_id] = {"status": "erro", "progresso": str(e), "total": 0, "atual": 0}
 
-def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia=False):
+def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia=False, musica_path=""):
     with app.app_context():
         try:
             user = User.query.get(user_id)
@@ -1149,6 +1153,27 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 jobs[job_id]["progresso"] = "Montando video..."
                 video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
                 montar_video(imagens, audio_final_path, video_path, legenda_cfg)
+
+            # Mixar música de fundo se selecionada
+            if musica_path and os.path.exists(musica_path) and os.path.exists(video_path):
+                jobs[job_id]["progresso"] = "Adicionando música de fundo..."
+                video_com_musica = video_path.replace(".mp4", "_music.mp4")
+                try:
+                    # Mixar: narração em volume normal + música em volume baixo
+                    if audio_final_path and os.path.exists(audio_final_path):
+                        cmd = ["ffmpeg", "-y", "-i", video_path, "-i", musica_path,
+                               "-filter_complex", "[1:a]volume=0.15[bg];[0:a][bg]amix=inputs=2:duration=first[aout]",
+                               "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-shortest", video_com_musica]
+                    else:
+                        # Sem narração: música como áudio principal (volume normal)
+                        cmd = ["ffmpeg", "-y", "-i", video_path, "-i", musica_path,
+                               "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-shortest", video_com_musica]
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                    if result.returncode == 0 and os.path.exists(video_com_musica):
+                        os.replace(video_com_musica, video_path)
+                except Exception as e:
+                    import sys
+                    sys.stderr.write(f"[MUSICA] Erro ao mixar: {e}\n"); sys.stderr.flush()
 
             jobs[job_id]["progresso"] = "Compactando..."
             zip_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.zip")
@@ -1801,6 +1826,66 @@ def deletar_voz():
     db.session.commit()
     return jsonify({"ok": True})
 
+# ── Rotas Música ─────────────────────────────────────────
+@app.route("/upload_musica", methods=["POST"])
+@login_required
+def upload_musica():
+    if "musica" not in request.files or not request.files["musica"].filename:
+        return jsonify({"erro": "Envie um arquivo de música"}), 400
+    musica = request.files["musica"]
+    nome = request.form.get("nome", "").strip() or musica.filename
+    if not musica.filename.endswith((".mp3", ".wav", ".m4a", ".ogg")):
+        return jsonify({"erro": "Formato inválido. Use MP3, WAV, M4A ou OGG"}), 400
+    musica_id = f"mus_{current_user.id}_{uuid.uuid4().hex[:8]}"
+    filename = f"{musica_id}.mp3"
+    filepath = os.path.join(MUSICAS_FOLDER, filename)
+    musica.save(filepath)
+    # Salvar na lista do usuário (usando sqlite direto)
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        try: conn.execute("CREATE TABLE IF NOT EXISTS musicas (id INTEGER PRIMARY KEY, user_id INTEGER, nome TEXT, path TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        except: pass
+        conn.execute("INSERT INTO musicas (user_id, nome, path) VALUES (?, ?, ?)", (current_user.id, nome, filepath))
+        conn.commit()
+        conn.close()
+    except: pass
+    return jsonify({"ok": True, "nome": nome})
+
+@app.route("/minhas_musicas")
+@login_required
+def minhas_musicas():
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        try: conn.execute("CREATE TABLE IF NOT EXISTS musicas (id INTEGER PRIMARY KEY, user_id INTEGER, nome TEXT, path TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        except: pass
+        rows = conn.execute("SELECT id, nome, path FROM musicas WHERE user_id=? ORDER BY id DESC", (current_user.id,)).fetchall()
+        conn.close()
+        musicas = [{"id": r[0], "nome": r[1], "path": os.path.basename(r[2])} for r in rows if os.path.exists(r[2])]
+        return jsonify({"musicas": musicas})
+    except:
+        return jsonify({"musicas": []})
+
+@app.route("/deletar_musica", methods=["POST"])
+@login_required
+def deletar_musica():
+    musica_id = request.json.get("id")
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        row = conn.execute("SELECT path FROM musicas WHERE id=? AND user_id=?", (musica_id, current_user.id)).fetchone()
+        if row and os.path.exists(row[0]):
+            os.remove(row[0])
+        conn.execute("DELETE FROM musicas WHERE id=? AND user_id=?", (musica_id, current_user.id))
+        conn.commit()
+        conn.close()
+        return jsonify({"ok": True})
+    except:
+        return jsonify({"erro": "Erro ao deletar"}), 500
+
+@app.route("/musica_file/<path:filename>")
+@login_required
+def musica_file(filename):
+    return send_file(os.path.join(MUSICAS_FOLDER, filename))
+
 # ── Rotas Storyboard ─────────────────────────────────────
 @app.route("/dividir_roteiro", methods=["POST"])
 @login_required
@@ -2014,12 +2099,22 @@ def finalizar_video_route():
         "sombra": request.form.get("legenda_sombra", "true") == "true",
     }
     animar_ia = request.form.get("animar_ia", "false") == "true"
+    musica_id = request.form.get("musica_id", "").strip()
+    musica_path = ""
+    if musica_id:
+        try:
+            conn = sqlite3.connect('instance/veo3.db')
+            row = conn.execute("SELECT path FROM musicas WHERE id=? AND user_id=?", (int(musica_id), current_user.id)).fetchone()
+            conn.close()
+            if row and os.path.exists(row[0]):
+                musica_path = row[0]
+        except: pass
     import sys
-    sys.stderr.write(f"[ROTA] animar_ia={animar_ia}, form_value={request.form.get('animar_ia', 'NAO_ENVIADO')}\n")
+    sys.stderr.write(f"[ROTA] animar_ia={animar_ia}, musica={musica_path or 'nenhuma'}\n")
     sys.stderr.flush()
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia))
+    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia, musica_path))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})

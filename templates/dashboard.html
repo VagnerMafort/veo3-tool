@@ -277,7 +277,12 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         </select>
         {% endif %}
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-          <div class="toggle-row">
+          <label>🎵 Música de fundo</label>
+          <select id="musicaId" style="margin-bottom:10px">
+            <option value="">— Sem música —</option>
+          </select>
+          <p class="tip">Faça upload de músicas na aba 🎙️ Voz</p>
+          <div class="toggle-row" style="margin-top:14px">
             <label>🎬 Animar cenas com IA</label>
             <label class="toggle"><input type="checkbox" id="animarIA"><span class="slider"></span></label>
           </div>
@@ -467,6 +472,25 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <div class="vazio" id="vozVazio">Nenhuma voz clonada.</div>
         {% endif %}
       </div>
+    </div>
+
+    <!-- MÚSICAS -->
+    <div class="card">
+      <h2>🎵 Minhas músicas</h2>
+      <p class="tip" style="margin-bottom:14px">Faça upload de músicas pra usar como trilha de fundo nos vídeos.</p>
+      <label>Nome da música</label>
+      <input type="text" id="nomeMusica" placeholder="Ex: Trilha épica"/>
+      <label>Arquivo de música</label>
+      <div class="drop-area" id="dropAreaMusica">
+        <input type="file" id="fileInputMusica" accept=".mp3,.wav,.m4a,.ogg"/>
+        <div class="drop-icon">🎵</div>
+        <p>Selecionar música</p>
+        <p class="fmt">MP3 · WAV · M4A · OGG</p>
+      </div>
+      <div class="file-name" id="fileNameMusica"></div>
+      <button class="btn" id="btnUploadMusica">Upload Música</button>
+      <div class="erro-box" id="erroMusica"></div>
+      <div id="listaMusicas" style="margin-top:14px"></div>
     </div>
   </div>
 
@@ -678,6 +702,31 @@ document.getElementById('btnClonar').addEventListener('click',async()=>{
   catch(e){document.getElementById('statusClone').style.display='none';document.getElementById('btnClonar').disabled=false;document.getElementById('erroClone').textContent='❌ '+e.message;document.getElementById('erroClone').style.display='block';}
 });
 async function deletarVoz(vid){if(!confirm('Remover?'))return;await fetch('/deletar_voz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice_id:vid})});const el=document.getElementById('voz-'+vid);if(el)el.remove();}
+
+// Músicas
+const fileInputMusica=document.getElementById('fileInputMusica'),fileNameMusica=document.getElementById('fileNameMusica');
+let arquivoMusica=null;
+if(fileInputMusica)fileInputMusica.addEventListener('change',()=>{arquivoMusica=fileInputMusica.files[0];fileNameMusica.textContent=arquivoMusica?arquivoMusica.name:'';});
+document.getElementById('btnUploadMusica').addEventListener('click',async()=>{
+  const nome=document.getElementById('nomeMusica').value.trim();
+  if(!arquivoMusica){document.getElementById('erroMusica').textContent='❌ Selecione um arquivo';document.getElementById('erroMusica').style.display='block';return;}
+  document.getElementById('erroMusica').style.display='none';
+  const fd=new FormData();fd.append('musica',arquivoMusica);fd.append('nome',nome||arquivoMusica.name);
+  try{const res=await fetch('/upload_musica',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);alert('Música enviada!');carregarMusicas();document.getElementById('nomeMusica').value='';fileNameMusica.textContent='';arquivoMusica=null;}
+  catch(e){document.getElementById('erroMusica').textContent='❌ '+e.message;document.getElementById('erroMusica').style.display='block';}
+});
+async function carregarMusicas(){
+  const res=await fetch('/minhas_musicas');const d=await res.json();
+  const lista=document.getElementById('listaMusicas');
+  const select=document.getElementById('musicaId');
+  lista.innerHTML='';select.innerHTML='<option value="">— Sem música —</option>';
+  d.musicas.forEach(m=>{
+    lista.innerHTML+=`<div class="voz-item"><div><div class="voz-nome">🎵 ${m.nome}</div><audio src="/musica_file/${m.path}" controls preload="metadata" style="height:28px;margin-top:4px"></audio></div><button class="btn-danger" onclick="deletarMusica(${m.id})">Remover</button></div>`;
+    select.innerHTML+=`<option value="${m.id}">${m.nome}</option>`;
+  });
+}
+async function deletarMusica(mid){if(!confirm('Remover?'))return;await fetch('/deletar_musica',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:mid})});carregarMusicas();}
+carregarMusicas();
 </script>
 
 <script>
@@ -884,6 +933,7 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   const fd=new FormData();fd.append('sb_id',sbId);const voiceEl=document.getElementById('voiceId');fd.append('voice_id',voiceEl?voiceEl.value:'');fd.append('modo_video',document.getElementById('modoVideo').value);fd.append('intervalo',document.getElementById('intervalo').value);
   fd.append('legenda_ativo',legendaAtivo&&legendaAtivo.checked?'true':'false');fd.append('legenda_fonte',document.getElementById('legendaFonte')?document.getElementById('legendaFonte').value:'Arial');fd.append('legenda_tamanho',document.getElementById('legendaTamanho')?document.getElementById('legendaTamanho').value:'18');fd.append('legenda_cor',document.getElementById('legendaCor')?document.getElementById('legendaCor').value:'&H00FFFFFF');fd.append('legenda_posicao',document.getElementById('legendaPosicao')?document.getElementById('legendaPosicao').value:'2');fd.append('legenda_sombra',document.getElementById('legendaSombra')&&document.getElementById('legendaSombra').checked?'true':'false');
   const animarEl=document.getElementById('animarIA');fd.append('animar_ia',animarEl&&animarEl.checked?'true':'false');
+  fd.append('musica_id',document.getElementById('musicaId').value);
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}
 });
 
