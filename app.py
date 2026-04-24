@@ -495,19 +495,20 @@ You MUST incorporate this creative direction into every image prompt. It defines
         if ficha_personagens:
             system += f"""
 
-CHARACTER SHEET (use these EXACT descriptions in every image):
+CHARACTER SHEET (COPY these EXACT descriptions into your prompt):
 {ficha_personagens}
 
 Full story: "{contexto_roteiro}"
 Current scene to illustrate: "{texto}"
 
-RULES:
-1. Illustrate EXACTLY what the current scene describes. Include ALL elements mentioned: characters, objects, actions, setting.
-2. Use the character descriptions from the sheet above to keep them visually consistent.
-3. If the scene mentions a "dono/owner", show that person. If it mentions a "pote/bowl", show that object.
-4. EVERY noun in the scene description must appear in the image.
-5. NEVER omit characters or objects that are mentioned in the current scene.
-6. The scene description is the PRIORITY - show everything it says."""
+ABSOLUTE RULES:
+1. COPY the character description WORD FOR WORD from the sheet above into your prompt. Do NOT change ANY detail.
+2. The character's face, hair, clothing colors, and body must be IDENTICAL to the sheet in EVERY image.
+3. Use the SAME background color/setting defined in the sheet for ALL scenes.
+4. Illustrate EXACTLY what the current scene describes - include ALL elements mentioned.
+5. ANATOMY ACCURACY: "peito do pé" = "top of the foot / instep" (the upper surface), NOT the sole/bottom. "sola do pé" = "sole/bottom of the foot".
+6. NEVER change clothing colors between scenes. If the sheet says "bright orange t-shirt", it MUST be bright orange in EVERY scene.
+7. NEVER change the character's facial expression style between scenes."""
         elif contexto_roteiro:
             system += f"""
 
@@ -526,26 +527,32 @@ Keep ALL characters visually identical across scenes. NEVER change species, colo
     return f"{estilo_det} of {texto}, no text no words"
 
 def extrair_personagens(roteiro, api_key):
-    """Extrai ficha de personagens e elementos-chave do roteiro pra manter consistência visual"""
+    """Extrai ficha de personagens ultra-detalhada pra consistência visual"""
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        system = """You are a character and scene designer for an image generation pipeline.
-Given a story, extract ALL characters AND important recurring objects.
+        system = """You are a character designer creating a STRICT visual reference sheet for an AI image generator.
+Given a story, create an EXTREMELY detailed and FIXED description for each character and important object.
 
 OUTPUT FORMAT (one per line):
-NAME: detailed physical description
+CHARACTER_NAME: [complete visual description]
 
-RULES:
-1. For animals: species, breed, color, size, eye color, distinctive markings
-2. For humans: gender, approximate age, skin tone, hair color/style, clothing, build
-3. For important objects: color, size, material, distinctive features
-4. Be EXTREMELY specific - these descriptions will be copy-pasted into image prompts
-5. Output ONLY the descriptions, nothing else
-6. Write descriptions in ENGLISH even if the story is in another language"""
+CRITICAL RULES:
+1. FACE: Describe exact eye shape (round/almond/squinted), eye size (small/medium/large), eye color, eyebrow shape, nose shape, mouth expression (MUST be the same in every scene), face shape
+2. HAIR: Exact color, length, style (spiky/straight/curly), parting
+3. CLOTHING: Exact colors (use specific color names like "bright orange" not just "orange"), exact garment types, patterns
+4. BODY: Build (thin/average/stocky), height, skin tone (exact shade)
+5. BACKGROUND: Define a CONSISTENT background color or setting for ALL scenes
+6. ANATOMY: If the story mentions body parts, translate them ACCURATELY:
+   - "peito do pé" = "top of the foot / instep" (NOT sole, NOT bottom)
+   - "sola do pé" = "sole of the foot / bottom"
+   - "palma da mão" = "palm of the hand"
+7. Every detail MUST be identical across all scenes - same colors, same proportions, same expression style
+8. Write in ENGLISH even if the story is in another language
+9. Be so specific that two different AI models would generate nearly identical characters"""
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": roteiro}
-        ], "max_tokens": 400}
+        ], "max_tokens": 600}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
         if r.ok:
             return r.json()["choices"][0]["message"]["content"].strip()
