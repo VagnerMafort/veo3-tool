@@ -502,20 +502,21 @@ You MUST incorporate this creative direction into every image prompt. It defines
         if ficha_personagens:
             system += f"""
 
-CHARACTER SHEET (COPY these EXACT descriptions into your prompt):
+CHARACTER REFERENCE (use ONLY when the character appears in this scene):
 {ficha_personagens}
 
 Full story: "{contexto_roteiro}"
 Current scene to illustrate: "{texto}"
 
-ABSOLUTE RULES:
-1. COPY the character description WORD FOR WORD from the sheet above into your prompt. Do NOT change ANY detail.
-2. The character's face, hair, clothing colors, and body must be IDENTICAL to the sheet in EVERY image.
-3. Use the SAME background color/setting defined in the sheet for ALL scenes.
-4. Illustrate EXACTLY what the current scene describes - include ALL elements mentioned.
-5. ANATOMY ACCURACY: "peito do pé" = "top of the foot / instep" (the upper surface), NOT the sole/bottom. "sola do pé" = "sole/bottom of the foot".
-6. NEVER change clothing colors between scenes. If the sheet says "bright orange t-shirt", it MUST be bright orange in EVERY scene.
-7. NEVER change the character's facial expression style between scenes."""
+CRITICAL RULES:
+1. THE SCENE IS THE PRIORITY. Illustrate what the scene DESCRIBES, not just the main character.
+2. If the scene describes an ARMY, show the ARMY as the main subject (wide shot, hundreds of soldiers). The character can be small in the frame or not visible.
+3. If the scene describes FIRE, HORSES OF FIRE, supernatural events — make them the DOMINANT element. Fill 80% of the image with the spectacular element.
+4. Only show a character in close-up if the scene is specifically about their EMOTION or DIALOGUE.
+5. VARY the main subject: sometimes the landscape, sometimes the army, sometimes the character, sometimes the supernatural event.
+6. When characters appear, use their description from the reference above to keep them consistent.
+7. NEVER put the same character as the main close-up subject in more than 2 consecutive scenes.
+8. For scenes with armies/battles: use WIDE PANORAMIC shots, bird's eye view, or dramatic low angles showing scale."""
         elif contexto_roteiro:
             system += f"""
 
