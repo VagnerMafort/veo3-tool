@@ -1184,8 +1184,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         if result.returncode != 0:
                             raise Exception(f"FFmpeg concat erro: {result.stderr[-500:]}")
                 else:
-                    # Nenhum clipe gerado — avisar o usuário com erro claro
-                    jobs[job_id] = {"status": "erro", "progresso": "Erro na animação: serviço de vídeo indisponível (saldo insuficiente ou limite atingido). Tente novamente sem animação.", "total": 0, "atual": 0}
+                    # Nenhum clipe gerado — avisar o usuário
+                    jobs[job_id] = {"status": "erro", "progresso": "Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde. Se o erro persistir, entre em contato com o suporte técnico.", "total": 0, "atual": 0}
                     return
             else:
                 # Verificar se alguma cena tem vídeo do banco
