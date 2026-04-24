@@ -526,29 +526,30 @@ Keep ALL characters visually identical across scenes. NEVER change species, colo
     except: pass
     return f"{estilo_det} of {texto}, no text no words"
 
-def extrair_personagens(roteiro, api_key):
+def extrair_personagens(roteiro, api_key, estilo=""):
     """Extrai ficha de personagens ultra-detalhada pra consistência visual"""
+    estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "default style"
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        system = """You are a character designer creating a STRICT visual reference sheet for an AI image generator.
+        system = f"""You are a character designer creating a STRICT visual reference sheet for an AI image generator.
+The art style is: {estilo_det}
 Given a story, create an EXTREMELY detailed and FIXED description for each character and important object.
 
 OUTPUT FORMAT (one per line):
 CHARACTER_NAME: [complete visual description]
+ART_STYLE: [exact art style rules for ALL images]
+BACKGROUND: [consistent background for ALL scenes]
 
 CRITICAL RULES:
-1. FACE: Describe exact eye shape (round/almond/squinted), eye size (small/medium/large), eye color, eyebrow shape, nose shape, mouth expression (MUST be the same in every scene), face shape
-2. HAIR: Exact color, length, style (spiky/straight/curly), parting
-3. CLOTHING: Exact colors (use specific color names like "bright orange" not just "orange"), exact garment types, patterns
-4. BODY: Build (thin/average/stocky), height, skin tone (exact shade)
-5. BACKGROUND: Define a CONSISTENT background color or setting for ALL scenes
-6. ANATOMY: If the story mentions body parts, translate them ACCURATELY:
-   - "peito do pé" = "top of the foot / instep" (NOT sole, NOT bottom)
-   - "sola do pé" = "sole of the foot / bottom"
-   - "palma da mão" = "palm of the hand"
-7. Every detail MUST be identical across all scenes - same colors, same proportions, same expression style
-8. Write in ENGLISH even if the story is in another language
-9. Be so specific that two different AI models would generate nearly identical characters"""
+1. ART STYLE CONSISTENCY: Define the EXACT art style once (line thickness, color palette, shading type, eye style) and it MUST be identical in every scene. For cartoon: specify "thick black outlines, flat colors, simple shapes". For anime: specify "cel shading, large expressive eyes, thin lines".
+2. FACE: Describe exact eye shape, eye SIZE (small/medium/large), eye COLOR, eyebrow shape, nose shape, mouth expression. For cartoon/anime: describe the EXACT eye style (dot eyes, round eyes, anime eyes with highlights, etc.)
+3. HAIR: Exact color (use hex if possible), length, style
+4. CLOTHING: Exact colors with specific names (e.g. "bright orange #FF8C00 t-shirt"), exact garment types. These MUST NOT change between scenes.
+5. SKIN: Exact skin tone that stays consistent
+6. BACKGROUND: Define ONE consistent background color or setting for ALL scenes (e.g. "solid light blue #87CEEB background" or "solid yellow #FFD700 background")
+7. ANATOMY: "peito do pé" = "top of the foot / instep" (NOT sole). "sola do pé" = "sole / bottom of the foot"
+8. Write in ENGLISH
+9. Be so specific that the same character looks IDENTICAL in every single frame"""
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": roteiro}
@@ -936,7 +937,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             ficha = ""
             if melhorar_prompts and user.get_provider() == "openai" and cenas_a_gerar:
                 jobs[job_id]["progresso"] = "Analisando personagens..."
-                ficha = extrair_personagens(texto_manual, user.get_api_key())
+                ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
 
             def gerar_bloco(i_linha):
                 linha = linhas[i_linha]
@@ -1187,9 +1188,45 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
                     montar_video(imagens, audio_final_path, video_path, legenda_cfg)
             else:
-                jobs[job_id]["progresso"] = "Montando video..."
-                video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
-                montar_video(imagens, audio_final_path, video_path, legenda_cfg)
+                # Verificar se alguma cena tem vídeo do banco
+                tem_video_banco = any(b.get("video") for b in blocos)
+                if tem_video_banco:
+                    # Montar com mix de imagens e vídeos
+                    jobs[job_id]["progresso"] = "Montando video com cenas mistas..."
+                    video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
+                    concat_path = os.path.join(job_dir, "concat_mix.txt")
+                    clipes_temp = []
+                    for i, img in enumerate(imagens):
+                        bloco = blocos[i] if i < len(blocos) else {}
+                        if bloco.get("video"):
+                            video_banco = os.path.join(sb_dir, bloco["video"])
+                            if os.path.exists(video_banco):
+                                clipes_temp.append(video_banco)
+                                continue
+                        # Imagem estática: criar clipe com zoompan
+                        clipe_img = os.path.join(job_dir, f"clip_img_{i:04d}.mp4")
+                        dur = img["duracao"]
+                        cmd_img = ["ffmpeg", "-y", "-loop", "1", "-t", str(dur+1), "-i", os.path.abspath(img["path"]),
+                                   "-vf", f"scale=1024:1792,zoompan=z='min(zoom+0.0008,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(dur*25)}:s=1024x1792:fps=25,trim=duration={dur},setpts=PTS-STARTPTS",
+                                   "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p", clipe_img]
+                        subprocess.run(cmd_img, capture_output=True, text=True, timeout=60)
+                        if os.path.exists(clipe_img):
+                            clipes_temp.append(clipe_img)
+                    # Concatenar
+                    with open(concat_path, "w") as f:
+                        for cp in clipes_temp:
+                            f.write(f"file '{os.path.abspath(cp)}'\n")
+                    cmd_concat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_path]
+                    if audio_final_path and os.path.exists(audio_final_path):
+                        cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+                    else:
+                        cmd_concat += ["-c:v", "copy"]
+                    cmd_concat += [video_path]
+                    subprocess.run(cmd_concat, capture_output=True, text=True, timeout=300)
+                else:
+                    jobs[job_id]["progresso"] = "Montando video..."
+                    video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
+                    montar_video(imagens, audio_final_path, video_path, legenda_cfg)
 
             # Mixar música de fundo se selecionada
             if musica_path and os.path.exists(musica_path) and os.path.exists(video_path):
