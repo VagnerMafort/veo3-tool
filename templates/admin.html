@@ -87,6 +87,10 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
   <!-- MÉTRICAS -->
   <div class="pane active" id="paneMetricas">
     <div class="card">
+      <h2>🔌 Status das APIs</h2>
+      <div id="apiStatus"><div class="vazio">Verificando...</div></div>
+    </div>
+    <div class="card">
       <h2>📊 Visão Geral</h2>
       <div class="metric-row"><span class="metric-label">Total de usuários</span><span class="metric-value">{{ users|length }}</span></div>
       <div class="metric-row"><span class="metric-label">Novos (últimos 7 dias)</span><span class="metric-value">{{ users_recentes }}</span></div>
@@ -339,6 +343,18 @@ async function salvarBranding(){
 // Carregar branding atual
 fetch('/admin/branding').then(r=>r.json()).then(d=>{
   document.getElementById('brandNome').value=d.nome||'Kaelum Studio';
+
+// Verificar APIs
+fetch('/admin/verificar_apis').then(r=>r.json()).then(d=>{
+  const el=document.getElementById('apiStatus');
+  el.innerHTML='';
+  ['openai','minimax','stripe'].forEach(api=>{
+    const info=d[api]||{status:'erro',msg:'Não verificado'};
+    const icon=info.status==='ok'?'🟢':'🔴';
+    const nome={openai:'OpenAI (Imagens)',minimax:'MiniMax (Vídeo/Áudio)',stripe:'Stripe (Pagamentos)'}[api];
+    el.innerHTML+=`<div class="metric-row"><span class="metric-label">${icon} ${nome}</span><span class="metric-value">${info.msg}</span></div>`;
+  });
+});
   document.getElementById('brandSubtitulo').value=d.subtitulo||'AI Video Automation';
   document.getElementById('brandCorPrimariaHex').value=d.cor_primaria||'#1a2332';
   document.getElementById('brandCorPrimaria').value=d.cor_primaria||'#1a2332';

@@ -7,6 +7,9 @@ from pydub import AudioSegment
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ExifTags
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "veo3-secret-key-mude-isso")
@@ -27,6 +30,33 @@ stripe.api_key = STRIPE_SECRET_KEY
 SYSTEM_OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "")
 SYSTEM_MINIMAX_KEY = os.environ.get("MINIMAX_API_KEY", "")
 SYSTEM_MINIMAX_GROUP_ID = os.environ.get("MINIMAX_GROUP_ID", "")
+
+# ── Email Config ──
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
+EMAIL_FROM = os.environ.get("EMAIL_FROM", SMTP_USER)
+
+def enviar_email(destinatario, assunto, corpo_html):
+    """Envia email em background"""
+    if not SMTP_USER or not SMTP_PASS:
+        return
+    def _enviar():
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = assunto
+            msg["From"] = f"Kaelum Studio <{EMAIL_FROM}>"
+            msg["To"] = destinatario
+            msg.attach(MIMEText(corpo_html, "html"))
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(EMAIL_FROM, destinatario, msg.as_string())
+        except Exception as e:
+            import sys
+            sys.stderr.write(f"[EMAIL] Erro: {e}\n"); sys.stderr.flush()
+    threading.Thread(target=_enviar, daemon=True).start()
 
 CREDITOS_POR_IMAGEM = 11  # Base: gerar imagem
 CREDITOS_MELHORAR_PROMPT = 3  # Melhorar prompt com IA
@@ -1232,6 +1262,16 @@ def cadastro():
         user = User(email=data["email"], nome=data["nome"], senha=generate_password_hash(data["senha"]))
         db.session.add(user)
         db.session.commit()
+        # Email de boas-vindas
+        enviar_email(user.email, "Bem-vindo ao Kaelum Studio! 🎬", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
+            <h1 style="color:#4a9eff">Kaelum Studio</h1>
+            <p>Olá <b>{user.nome}</b>! 👋</p>
+            <p>Sua conta foi criada com sucesso. Agora você pode criar vídeos incríveis com inteligência artificial.</p>
+            <p>Escolha um plano e comece a criar:</p>
+            <a href="https://kaelumstudio.grupomafort.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Acessar Kaelum Studio</a>
+            <p style="color:#888;font-size:12px;margin-top:20px">Kaelum Studio — AI Video Automation</p>
+        </div>""")
         login_user(user)
         return jsonify({"ok": True})
     return render_template("cadastro.html")
@@ -1584,6 +1624,41 @@ def admin_salvar_prompts():
     data = request.json
     save_prompts(data)
     return jsonify({"ok": True})
+
+@app.route("/admin/verificar_apis")
+@login_required
+def admin_verificar_apis():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    resultado = {}
+    # Verificar OpenAI
+    try:
+        headers = {"Authorization": f"Bearer {SYSTEM_OPENAI_KEY}"}
+        r = requests.get("https://api.openai.com/v1/models", headers=headers, timeout=10)
+        if r.ok:
+            resultado["openai"] = {"status": "ok", "msg": "API funcionando"}
+        else:
+            resultado["openai"] = {"status": "erro", "msg": r.json().get("error", {}).get("message", "Erro desconhecido")}
+    except Exception as e:
+        resultado["openai"] = {"status": "erro", "msg": str(e)}
+    # Verificar MiniMax
+    try:
+        headers = {"Authorization": f"Bearer {SYSTEM_MINIMAX_KEY}"}
+        r = requests.get("https://api.minimax.io/v1/query/video_generation", headers=headers, params={"task_id": "test"}, timeout=10)
+        if r.status_code != 401:
+            resultado["minimax"] = {"status": "ok", "msg": "API funcionando"}
+        else:
+            resultado["minimax"] = {"status": "erro", "msg": "Chave inválida"}
+    except Exception as e:
+        resultado["minimax"] = {"status": "erro", "msg": str(e)}
+    # Verificar Stripe
+    try:
+        bal = stripe.Balance.retrieve()
+        saldo_brl = sum(b.amount/100 for b in bal.available if b.currency == "brl")
+        resultado["stripe"] = {"status": "ok", "msg": f"Saldo: R${saldo_brl:.2f}"}
+    except Exception as e:
+        resultado["stripe"] = {"status": "erro", "msg": str(e)}
+    return jsonify(resultado)
 
 BRANDING_FILE = "branding_config.json"
 
