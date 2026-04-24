@@ -1058,16 +1058,11 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     import sys
                     sys.stderr.write("[VIDEO] Plano basico nao tem animacao, pulando\n")
                     animar_ia = False
-                else:
-                    # Cobrar créditos de animação
-                    creditos_animacao = len(imagens) * CREDITOS_ANIMACAO
-                if not user.gastar_creditos(creditos_animacao):
-                    jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes para animação. Necessário: {creditos_animacao}", "total": 0, "atual": 0}
-                    return
-                db.session.commit()
+
+            if animar_ia and user.get_minimax_key():
                 n_cenas = len(imagens)
-                minimax_key_cache = user.get_minimax_key()  # Cache pra usar nas threads
-                tempo_est = max(5, (n_cenas // 3 + 1) * 2)  # ~2 min por lote de 3
+                minimax_key_cache = user.get_minimax_key()
+                tempo_est = max(5, (n_cenas // 3 + 1) * 2)
                 jobs[job_id]["progresso"] = f"Animando {n_cenas} cenas com IA. Tempo estimado: ~{tempo_est} minutos..."
                 clipes_video = [None] * n_cenas
 
@@ -1133,6 +1128,12 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     if lote_end < n_cenas:
                         _time.sleep(2)
 
+                # Cobrar créditos só pelas animações que deram certo
+                cenas_animadas = sum(1 for c in clipes_video if c is not None)
+                if cenas_animadas > 0:
+                    user.gastar_creditos(cenas_animadas * CREDITOS_ANIMACAO)
+                    db.session.commit()
+
                 # Se pelo menos 1 clipe foi gerado, concatena os vídeos
                 if any(clipes_video):
                     jobs[job_id]["progresso"] = "Juntando clipes animados..."
@@ -1183,10 +1184,9 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         if result.returncode != 0:
                             raise Exception(f"FFmpeg concat erro: {result.stderr[-500:]}")
                 else:
-                    # Nenhum clipe gerado, fallback pra montagem normal
-                    jobs[job_id]["progresso"] = "Montando video (sem animação)..."
-                    video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
-                    montar_video(imagens, audio_final_path, video_path, legenda_cfg)
+                    # Nenhum clipe gerado — avisar o usuário com erro claro
+                    jobs[job_id] = {"status": "erro", "progresso": "Erro na animação: serviço de vídeo indisponível (saldo insuficiente ou limite atingido). Tente novamente sem animação.", "total": 0, "atual": 0}
+                    return
             else:
                 # Verificar se alguma cena tem vídeo do banco
                 tem_video_banco = any(b.get("video") for b in blocos)
