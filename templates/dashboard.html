@@ -403,11 +403,9 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <div class="erro-box" id="erroThumbTab"></div>
       <div id="thumbResultadoTab" style="display:none;margin-top:14px">
         <img id="thumbImgTab" style="width:100%;border-radius:10px;margin-bottom:10px"/>
-        <label>Prompt usado (edite e regere)</label>
-        <textarea id="thumbPromptEdit" style="min-height:80px;font-size:.82rem"></textarea>
         <div style="display:flex;gap:8px;margin-top:10px">
           <a href="#" id="btnDownloadThumbTab" class="btn-download" style="flex:1;text-align:center;font-size:.82rem">⬇ Baixar</a>
-          <button class="btn-sm" style="background:var(--accent);flex:1;font-size:.82rem" id="btnRegerarThumbTab">🔄 Regerar com prompt editado</button>
+          <button class="btn-sm" style="background:var(--accent);flex:1;font-size:.82rem" id="btnRegerarThumbTab">🔄 Regerar</button>
         </div>
       </div>
     </div>
@@ -1119,23 +1117,22 @@ document.getElementById('btnGerarThumbTab').addEventListener('click',async()=>{
 });
 
 document.getElementById('btnRegerarThumbTab').addEventListener('click',async()=>{
-  const prompt=document.getElementById('thumbPromptEdit').value.trim();
-  if(!prompt){alert('Prompt vazio');return;}
+  const roteiro=document.getElementById('thumbRoteiro').value.trim();
+  if(!roteiro){alert('Escreva o roteiro');return;}
   document.getElementById('btnRegerarThumbTab').disabled=true;
   document.getElementById('statusThumbTab').style.display='block';
   const fd=new FormData();
-  fd.append('prompt',prompt);
-  fd.append('roteiro',document.getElementById('thumbRoteiro').value.trim());
+  fd.append('roteiro',roteiro);
   fd.append('estilo_thumb',document.getElementById('thumbEstiloTab').value);
-  fd.append('thumb_id',_thumbIdAtual);
+  fd.append('texto_thumb',document.getElementById('thumbSemTexto').checked?'':document.getElementById('thumbTexto').value.trim());
+  fd.append('sem_texto',document.getElementById('thumbSemTexto').checked?'true':'false');
   try{
-    const res=await fetch('/regerar_thumbnail',{method:'POST',body:fd});
+    const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
     const d=await res.json();
     if(d.erro)throw new Error(d.erro);
     _thumbIdAtual=d.thumb_id;
     document.getElementById('thumbImgTab').src=`/ver_thumbnail/${d.thumb_id}?t=${Date.now()}`;
     document.getElementById('btnDownloadThumbTab').href=`/download_thumbnail/${d.thumb_id}`;
-    document.getElementById('thumbPromptEdit').value=d.prompt_usado||'';
     atualizarCreditos();
     carregarThumbnails();
   }catch(e){alert('❌ '+e.message);}
@@ -1157,23 +1154,11 @@ async function carregarThumbnails(){
         <div style="font-size:.8rem;color:var(--text2);margin-bottom:8px;max-height:40px;overflow:hidden">${(t.prompt||'').substring(0,120)}...</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <a href="/download_thumbnail/${t.thumb_id}" class="btn-dl-hist btn-dl-zip" style="font-size:.75rem">⬇ Baixar</a>
-          <button class="btn-sm" style="background:var(--accent);font-size:.75rem" onclick="editarThumb('${t.thumb_id}',\`${(t.prompt||'').replace(/`/g,"'").replace(/\\/g,"\\\\")}\`,\`${(t.roteiro||'').replace(/`/g,"'").replace(/\\/g,"\\\\")}\`,'${t.estilo}')">✏️ Editar</button>
           <button class="btn-danger" style="font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑️</button>
         </div>
       </div>`;
     });
   }catch(e){lista.innerHTML='<div class="vazio">Erro ao carregar.</div>';}
-}
-
-function editarThumb(thumbId,prompt,roteiro,estilo){
-  _thumbIdAtual=thumbId;
-  document.getElementById('thumbRoteiro').value=roteiro;
-  document.getElementById('thumbEstiloTab').value=estilo||'youtube';
-  document.getElementById('thumbPromptEdit').value=prompt;
-  document.getElementById('thumbImgTab').src=`/ver_thumbnail/${thumbId}?t=${Date.now()}`;
-  document.getElementById('btnDownloadThumbTab').href=`/download_thumbnail/${thumbId}`;
-  document.getElementById('thumbResultadoTab').style.display='block';
-  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 async function deletarThumb(thumbId){
