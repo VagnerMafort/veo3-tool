@@ -46,7 +46,7 @@ def enviar_email(destinatario, assunto, corpo_html):
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = assunto
-            msg["From"] = f"Kaelum Studio <{EMAIL_FROM}>"
+            msg["From"] = f"Klyonclaw Studio <{EMAIL_FROM}>"
             msg["To"] = destinatario
             msg.attach(MIMEText(corpo_html, "html"))
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
@@ -1424,14 +1424,14 @@ def cadastro():
         db.session.add(user)
         db.session.commit()
         # Email de boas-vindas
-        enviar_email(user.email, "Bem-vindo ao Kaelum Studio! 🎬", f"""
+        enviar_email(user.email, "Bem-vindo ao Klyonclaw Studio! 🎬", f"""
         <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
-            <h1 style="color:#4a9eff">Kaelum Studio</h1>
+            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
             <p>Olá <b>{user.nome}</b>! 👋</p>
             <p>Sua conta foi criada com sucesso. Agora você pode criar vídeos incríveis com inteligência artificial.</p>
             <p>Escolha um plano e comece a criar:</p>
-            <a href="https://kaelumstudio.grupomafort.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Acessar Kaelum Studio</a>
-            <p style="color:#888;font-size:12px;margin-top:20px">Kaelum Studio — AI Video Automation</p>
+            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Acessar Klyonclaw Studio</a>
+            <p style="color:#888;font-size:12px;margin-top:20px">Klyonclaw Studio — AI Video Automation</p>
         </div>""")
         login_user(user)
         return jsonify({"ok": True})
@@ -2035,7 +2035,7 @@ def load_branding():
             with open(BRANDING_FILE) as f:
                 return json.load(f)
     except: pass
-    return {"cor_primaria": "#1a2332", "cor_accent": "#4a9eff", "nome": "Kaelum Studio", "subtitulo": "AI Video Automation", "logo": "", "icone": ""}
+    return {"cor_primaria": "#1a2332", "cor_accent": "#4a9eff", "nome": "Klyonclaw Studio", "subtitulo": "AI Video Automation", "logo": "", "icone": ""}
 
 def save_branding(data):
     with open(BRANDING_FILE, "w") as f:

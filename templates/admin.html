@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Admin — Kaelum Studio</title>
+<title>Admin — Klyonclaw Studio</title>
 <style>
 :root{--bg:#0b1120;--bg2:#111827;--bg3:#0f172a;--border:#1e3a5f;--text:#e2e8f0;--text2:#94a3b8;--text3:#475569;--accent:#4a9eff;--accent2:#2563eb;--green:#059669;--red:#dc2626;--red-bg:#1a0a0a;--red-border:#7f1d1d;--red-text:#fca5a5}
 [data-theme="light"]{--bg:#f0f4f8;--bg2:#fff;--bg3:#e8edf2;--border:#c8d6e5;--text:#1a2332;--text2:#4a5568;--text3:#718096;--accent:#2563eb;--accent2:#1d4ed8;--red-bg:#fff5f5;--red-border:#feb2b2;--red-text:#c53030}
@@ -63,7 +63,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
 <body>
 <div class="container">
   <div class="header">
-    <h1>⚙️ Admin <span>Kaelum Studio</span></h1>
+    <h1>⚙️ Admin <span>Klyonclaw Studio</span></h1>
     <div class="header-right">
       <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙</button>
       <a href="/dashboard">← Dashboard</a>
@@ -204,7 +204,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
       <div style="display:flex;gap:14px;flex-wrap:wrap">
         <div style="flex:1">
           <label>Nome da marca</label>
-          <input type="text" id="brandNome" value="Kaelum Studio"/>
+          <input type="text" id="brandNome" value="Klyonclaw Studio"/>
         </div>
         <div style="flex:1">
           <label>Subtítulo</label>
@@ -343,7 +343,7 @@ async function salvarBranding(){
 
 // Carregar branding atual
 fetch('/admin/branding').then(r=>r.json()).then(d=>{
-  document.getElementById('brandNome').value=d.nome||'Kaelum Studio';
+  document.getElementById('brandNome').value=d.nome||'Klyonclaw Studio';
 
 // Verificar APIs
 fetch('/admin/verificar_apis').then(r=>r.json()).then(d=>{
