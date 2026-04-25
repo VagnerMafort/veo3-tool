@@ -334,7 +334,11 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           </select>
           <label>Texto na thumbnail <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
           <input type="text" id="thumbTextoResult" placeholder="Ex: ELE VOLTOU!, O SEGREDO..." style="margin-bottom:4px"/>
-          <p class="tip">Deixe vazio pra IA criar o texto automaticamente.</p>
+          <div class="toggle-row" style="margin-top:6px">
+            <label>Sem texto na thumbnail</label>
+            <label class="toggle"><input type="checkbox" id="thumbSemTextoResult"><span class="slider"></span></label>
+          </div>
+          <p class="tip">Ative pra gerar só a imagem, sem nenhum texto.</p>
           <button class="btn" id="btnGerarThumb" style="margin-top:12px">🖼️ Gerar Thumbnail</button>
           <div class="status-box" id="statusThumb" style="display:none">
             <div class="spinner"></div>
@@ -386,7 +390,11 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       </select>
       <label>Texto na thumbnail <span style="color:var(--text3);font-weight:400">(opcional — se vazio, a IA sugere)</span></label>
       <input type="text" id="thumbTexto" placeholder="Ex: ELE VOLTOU!, O SEGREDO, IMPOSSÍVEL..." style="margin-bottom:4px"/>
-      <p class="tip">Texto grande e chamativo que aparece na thumbnail. Deixe vazio pra IA criar automaticamente.</p>
+      <div class="toggle-row" style="margin-top:6px">
+        <label>Sem texto na thumbnail</label>
+        <label class="toggle"><input type="checkbox" id="thumbSemTexto"><span class="slider"></span></label>
+      </div>
+      <p class="tip">Ative pra gerar só a imagem, sem nenhum texto.</p>
       <button class="btn" id="btnGerarThumbTab">🖼️ Gerar Thumbnail</button>
       <div class="status-box" id="statusThumbTab" style="display:none">
         <div class="spinner"></div>
@@ -1058,7 +1066,8 @@ document.getElementById('btnGerarThumb').addEventListener('click',async()=>{
   const fd=new FormData();
   fd.append('roteiro',roteiro);
   fd.append('estilo_thumb',document.getElementById('thumbEstilo').value);
-  fd.append('texto_thumb',document.getElementById('thumbTextoResult').value.trim());
+  fd.append('texto_thumb',document.getElementById('thumbSemTextoResult').checked?'':document.getElementById('thumbTextoResult').value.trim());
+  fd.append('sem_texto',document.getElementById('thumbSemTextoResult').checked?'true':'false');
   try{
     const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
     const d=await res.json();
@@ -1088,7 +1097,8 @@ document.getElementById('btnGerarThumbTab').addEventListener('click',async()=>{
   const fd=new FormData();
   fd.append('roteiro',roteiro);
   fd.append('estilo_thumb',document.getElementById('thumbEstiloTab').value);
-  fd.append('texto_thumb',document.getElementById('thumbTexto').value.trim());
+  fd.append('texto_thumb',document.getElementById('thumbSemTexto').checked?'':document.getElementById('thumbTexto').value.trim());
+  fd.append('sem_texto',document.getElementById('thumbSemTexto').checked?'true':'false');
   try{
     const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
     const d=await res.json();

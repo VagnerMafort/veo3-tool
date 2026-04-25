@@ -1448,28 +1448,37 @@ THUMB_ESTILOS = {
 THUMB_FOLDER = "thumbnails"
 os.makedirs(THUMB_FOLDER, exist_ok=True)
 
-def gerar_prompt_thumbnail(roteiro, estilo_thumb, api_key, texto_thumb=""):
+def gerar_prompt_thumbnail(roteiro, estilo_thumb, api_key, texto_thumb="", sem_texto=False):
     """Usa IA pra criar o prompt ideal de thumbnail baseado no roteiro"""
     estilo_desc = THUMB_ESTILOS.get(estilo_thumb, THUMB_ESTILOS["youtube"])
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
-        if texto_thumb:
+        if sem_texto:
+            texto_instrucao = """
+TEXT RULES:
+- ABSOLUTELY NO text, letters, words, writing, watermarks, or inscriptions in the image.
+- The image must be purely visual with zero typography."""
+        elif texto_thumb:
             texto_instrucao = f"""
 TEXT ON THE THUMBNAIL:
 - The thumbnail MUST contain this exact text: "{texto_thumb}"
-- The text must be HUGE, BOLD, and highly readable — it's the main visual element.
-- Use thick block letters with strong outline/shadow for maximum contrast.
+- Use a MODERN, bold sans-serif font style (like Montserrat Black, Bebas Neue, or Impact).
+- The text must be HUGE, BOLD, and highly readable with clean sharp edges.
+- Use thick white or bright colored letters with a strong dark drop shadow or black outline for maximum contrast.
 - Text should occupy 30-40% of the image area.
-- Place text strategically: top or bottom third, never covering the main subject's face."""
+- Place text strategically: top or bottom third, never covering the main subject's face.
+- The typography must look like a modern YouTube thumbnail — clean, punchy, professional."""
         else:
             texto_instrucao = """
 TEXT ON THE THUMBNAIL:
 - You MUST add a short, punchy text (2-5 words max) that creates curiosity or shock.
 - The text should be in the SAME LANGUAGE as the script.
-- The text must be HUGE, BOLD, and highly readable.
-- Use thick block letters with strong outline/shadow for maximum contrast.
+- Use a MODERN, bold sans-serif font style (like Montserrat Black, Bebas Neue, or Impact).
+- The text must be HUGE, BOLD, and highly readable with clean sharp edges.
+- Use thick white or bright colored letters with a strong dark drop shadow or black outline for maximum contrast.
 - Text should occupy 30-40% of the image area.
+- The typography must look like a modern YouTube thumbnail — clean, punchy, professional.
 - Examples of good thumbnail text: "ELE VOLTOU!", "IMPOSSÍVEL!", "NINGUÉM ESPERAVA", "O SEGREDO", "REVELADO!"
 - The text must relate to the most dramatic moment of the script."""
 
@@ -1522,6 +1531,7 @@ def gerar_thumbnail_route():
     estilo_thumb = request.form.get("estilo_thumb", "youtube").strip()
     prompt_custom = request.form.get("prompt_custom", "").strip()
     texto_thumb = request.form.get("texto_thumb", "").strip()
+    sem_texto = request.form.get("sem_texto", "false") == "true"
     if not roteiro and not prompt_custom:
         return jsonify({"erro": "Roteiro vazio"}), 400
     if not current_user.get_api_key():
@@ -1533,7 +1543,7 @@ def gerar_thumbnail_route():
         if prompt_custom:
             prompt = prompt_custom
         else:
-            prompt = gerar_prompt_thumbnail(roteiro, estilo_thumb, current_user.get_api_key(), texto_thumb)
+            prompt = gerar_prompt_thumbnail(roteiro, estilo_thumb, current_user.get_api_key(), texto_thumb, sem_texto)
         # Shorts = vertical, resto = horizontal
         size = "1024x1792" if estilo_thumb == "shorts" else "1792x1024"
         thumb_id = uuid.uuid4().hex[:12]
