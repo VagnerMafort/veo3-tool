@@ -161,7 +161,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
     <div class="tab" onclick="trocarAba('thumbs')">🖼️ Thumbs</div>
     <div class="tab" onclick="trocarAba('planos')">💎 Planos</div>
     <div class="tab" onclick="trocarAba('historico')">🗂️ Histórico</div>
-    <div class="tab" onclick="trocarAba('clonar')">🎙️ Voz/Música</div>
+    <div class="tab" onclick="trocarAba('clonar')">🎙️ Áudio</div>
     <div class="tab" onclick="trocarAba('ajuda')">❓ Ajuda</div>
     <div class="tab" onclick="trocarAba('perfil')">👤 Perfil <span class="badge {% if user.api_key %}badge-ok{% else %}badge-none{% endif %}" id="badgePerfil">{% if user.api_key %}✓{% else %}—{% endif %}</span></div>
   </div>
@@ -590,7 +590,6 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">🎙️ Narração por cena</span><span style="font-weight:700;color:var(--accent)">+5</span></div>
         <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">🎬 Animar cena com IA</span><span style="font-weight:700;color:var(--accent)">+60</span></div>
         <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">🖼️ Gerar thumbnail</span><span style="font-weight:700;color:var(--accent)">12</span></div>
-        <div style="display:flex;justify-content:space-between;padding:12px 16px;background:rgba(74,158,255,0.08)"><span style="font-weight:700;color:var(--text);font-size:.85rem">Cena completa (máximo)</span><span style="font-weight:800;color:var(--accent);font-size:1rem">80</span></div>
       </div>
       <p class="tip" style="margin-top:10px">Cenas do banco de imagens não gastam créditos de geração.</p>
     </div>
@@ -648,7 +647,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
           <div style="font-size:1rem;margin-bottom:8px">🎙️ Como clonar sua voz</div>
           <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
-            <li>Vá na aba <b>Voz/Música</b></li>
+            <li>Vá na aba <b>Áudio</b></li>
             <li>Dê um nome pra voz e envie um áudio de 10-30 segundos</li>
             <li>Clique em <b>Clonar Voz</b></li>
             <li>A voz clonada aparece na lista de vozes ao configurar o vídeo</li>
@@ -658,7 +657,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px">
           <div style="font-size:1rem;margin-bottom:8px">🎵 Como adicionar música de fundo</div>
           <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
-            <li>Vá na aba <b>Voz/Música</b> e faça upload da música</li>
+            <li>Vá na aba <b>Áudio</b> e faça upload da música</li>
             <li>Na hora de gerar o vídeo, selecione a música em <b>Música de fundo</b></li>
             <li>A música é mixada em volume baixo junto com a narração</li>
           </ol>
