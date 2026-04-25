@@ -157,11 +157,12 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 
   <div class="tabs">
     <div class="tab active" onclick="trocarAba('gerar')">🎬 Criar</div>
-    <div class="tab" onclick="trocarAba('rascunhos')">📝 Rascunhos</div>
+    <div class="tab" onclick="trocarAba('rascunhos')">📝 Rasc.</div>
     <div class="tab" onclick="trocarAba('thumbs')">🖼️ Thumbs</div>
     <div class="tab" onclick="trocarAba('planos')">💎 Planos</div>
     <div class="tab" onclick="trocarAba('historico')">🗂️ Histórico</div>
-    <div class="tab" onclick="trocarAba('clonar')">🎙️ Voz</div>
+    <div class="tab" onclick="trocarAba('clonar')">🎙️ Voz/Música</div>
+    <div class="tab" onclick="trocarAba('ajuda')">❓ Ajuda</div>
     <div class="tab" onclick="trocarAba('perfil')">👤 Perfil <span class="badge {% if user.api_key %}badge-ok{% else %}badge-none{% endif %}" id="badgePerfil">{% if user.api_key %}✓{% else %}—{% endif %}</span></div>
   </div>
 
@@ -578,6 +579,95 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
     </div>
   </div>
 
+  <!-- AJUDA -->
+  <div class="pane" id="paneAjuda">
+    <div class="card">
+      <h2>💰 Tabela de Créditos</h2>
+      <p class="tip" style="margin-bottom:14px">Cada ação consome créditos do seu plano.</p>
+      <div style="background:var(--bg3);border-radius:10px;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">🖼️ Gerar imagem por cena</span><span style="font-weight:700;color:var(--accent)">12</span></div>
+        <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">🧠 Melhorar prompt com IA</span><span style="font-weight:700;color:var(--accent)">+3</span></div>
+        <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">🎙️ Narração por cena</span><span style="font-weight:700;color:var(--accent)">+5</span></div>
+        <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">🎬 Animar cena com IA</span><span style="font-weight:700;color:var(--accent)">+60</span></div>
+        <div style="display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">🖼️ Gerar thumbnail</span><span style="font-weight:700;color:var(--accent)">12</span></div>
+        <div style="display:flex;justify-content:space-between;padding:12px 16px;background:rgba(74,158,255,0.08)"><span style="font-weight:700;color:var(--text);font-size:.85rem">Cena completa (máximo)</span><span style="font-weight:800;color:var(--accent);font-size:1rem">80</span></div>
+      </div>
+      <p class="tip" style="margin-top:10px">Cenas do banco de imagens não gastam créditos de geração.</p>
+    </div>
+
+    <div class="card">
+      <h2>📖 Como usar o Kaelum Studio</h2>
+      <div style="margin-top:14px">
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="font-size:1rem;margin-bottom:8px">🎬 Como gerar um vídeo animado</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Na aba <b>Criar</b>, escreva o roteiro do vídeo</li>
+            <li>Escolha o estilo visual e formato</li>
+            <li>Clique em <b>Dividir em Cenas</b> — a IA separa o roteiro</li>
+            <li>Revise as cenas e edite se quiser</li>
+            <li>Em <b>Configurar vídeo</b>, escolha a voz de narração</li>
+            <li>Ative <b>Animar cenas com IA</b> — cada cena vira um clipe animado</li>
+            <li>Clique em <b>Gerar Vídeo Final</b> e aguarde</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="font-size:1rem;margin-bottom:8px">📹 Como gerar um vídeo sem animação</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Siga os mesmos passos acima até a etapa de configuração</li>
+            <li>Deixe <b>Animar cenas com IA</b> desativado</li>
+            <li>O vídeo será montado com as imagens estáticas + efeito de zoom</li>
+            <li>Ideal pra economizar créditos (sem custo de animação)</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="font-size:1rem;margin-bottom:8px">🖼️ Como gerar uma thumbnail</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Vá na aba <b>Thumbs</b></li>
+            <li>Cole o roteiro ou descreva o conteúdo do vídeo</li>
+            <li>Escolha o estilo/nicho (YouTube, Shorts, Bíblico, etc.)</li>
+            <li>Opcionalmente, escreva o texto que quer na thumbnail</li>
+            <li>Clique em <b>Gerar Thumbnail</b></li>
+            <li>Baixe ou regere quantas vezes quiser</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="font-size:1rem;margin-bottom:8px">🗃️ Como usar o banco de imagens</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Após dividir o roteiro em cenas, clique em <b>Buscar no banco</b> em qualquer cena</li>
+            <li>Busque por palavra-chave ou navegue pelas imagens e vídeos</li>
+            <li>Clique em <b>Usar esta imagem/cena</b> pra preencher a cena</li>
+            <li>Cenas preenchidas do banco <b>não gastam créditos</b> de geração</li>
+            <li>Todas as imagens e vídeos que você gera são salvos automaticamente no banco</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="font-size:1rem;margin-bottom:8px">🎙️ Como clonar sua voz</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Vá na aba <b>Voz/Música</b></li>
+            <li>Dê um nome pra voz e envie um áudio de 10-30 segundos</li>
+            <li>Clique em <b>Clonar Voz</b></li>
+            <li>A voz clonada aparece na lista de vozes ao configurar o vídeo</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px">
+          <div style="font-size:1rem;margin-bottom:8px">🎵 Como adicionar música de fundo</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Vá na aba <b>Voz/Música</b> e faça upload da música</li>
+            <li>Na hora de gerar o vídeo, selecione a música em <b>Música de fundo</b></li>
+            <li>A música é mixada em volume baixo junto com a narração</li>
+          </ol>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- PERFIL -->
   <div class="pane" id="panePerfil">
     <div class="card">
@@ -715,7 +805,7 @@ function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=docu
 applyTheme();
 
 function trocarAba(aba){
-  const abas=['gerar','rascunhos','thumbs','planos','historico','clonar','perfil'];
+  const abas=['gerar','rascunhos','thumbs','planos','historico','clonar','ajuda','perfil'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
