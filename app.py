@@ -250,23 +250,40 @@ class User(UserMixin, db.Model):
         return None
 
     def get_api_key(self):
-        """Retorna chave OpenAI do usuário ou do sistema"""
+        """Retorna chave OpenAI — só se tiver plano ativo ou for admin"""
+        if self.is_admin:
+            return self.api_key if self.api_key else SYSTEM_OPENAI_KEY
+        if not self.plano:
+            return ""  # Sem plano = sem acesso
         if self.plano == "api_propria" and self.api_key:
             return self.api_key
-        return self.api_key if self.api_key else SYSTEM_OPENAI_KEY
+        # Planos com créditos usam chave do sistema
+        return SYSTEM_OPENAI_KEY
 
     def get_provider(self):
-        """Retorna provider do usuário ou padrão"""
+        """Retorna provider — só se tiver plano ativo ou for admin"""
+        if self.is_admin:
+            return self.provider if self.provider else ("openai" if SYSTEM_OPENAI_KEY else "")
+        if not self.plano:
+            return ""
         if self.provider:
             return self.provider
         return "openai" if SYSTEM_OPENAI_KEY else ""
 
     def get_minimax_key(self):
-        """Retorna chave MiniMax do usuário ou do sistema"""
+        """Retorna chave MiniMax — só se tiver plano ativo ou for admin"""
+        if self.is_admin:
+            return self.minimax_key if self.minimax_key else SYSTEM_MINIMAX_KEY
+        if not self.plano:
+            return ""
         return self.minimax_key if self.minimax_key else SYSTEM_MINIMAX_KEY
 
     def get_minimax_group_id(self):
-        """Retorna Group ID do usuário ou do sistema"""
+        """Retorna Group ID — só se tiver plano ativo ou for admin"""
+        if self.is_admin:
+            return self.minimax_group_id if self.minimax_group_id else SYSTEM_MINIMAX_GROUP_ID
+        if not self.plano:
+            return ""
         return self.minimax_group_id if self.minimax_group_id else SYSTEM_MINIMAX_GROUP_ID
 
 
