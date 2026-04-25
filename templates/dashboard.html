@@ -158,6 +158,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
   <div class="tabs">
     <div class="tab active" onclick="trocarAba('gerar')">🎬 Criar</div>
     <div class="tab" onclick="trocarAba('rascunhos')">📝 Rascunhos</div>
+    <div class="tab" onclick="trocarAba('thumbs')">🖼️ Thumbs</div>
     <div class="tab" onclick="trocarAba('planos')">💎 Planos</div>
     <div class="tab" onclick="trocarAba('historico')">🗂️ Histórico</div>
     <div class="tab" onclick="trocarAba('clonar')">🎙️ Voz</div>
@@ -315,6 +316,36 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <a href="#" id="btnDownload" class="btn-download">⬇ ZIP</a>
           <a href="#" id="btnVideo" class="btn-video">🎬 Vídeo</a>
         </div>
+        <!-- Thumbnail -->
+        <div class="card" style="margin-top:18px;text-align:left">
+          <h2>🖼️ Gerar Thumbnail</h2>
+          <p class="tip" style="margin-bottom:12px">Cria uma thumbnail otimizada baseada no roteiro do vídeo.</p>
+          <label>Estilo / Nicho</label>
+          <select id="thumbEstilo">
+            <option value="youtube">🎬 YouTube (chamativo)</option>
+            <option value="shorts">📱 Shorts / TikTok</option>
+            <option value="biblico">✝️ Bíblico / Religioso</option>
+            <option value="horror">👻 Horror / Terror</option>
+            <option value="infantil">🧸 Infantil / Kids</option>
+            <option value="motivacional">💪 Motivacional</option>
+            <option value="educativo">📚 Educativo</option>
+            <option value="gaming">🎮 Gaming</option>
+            <option value="curiosidades">🔍 Curiosidades</option>
+          </select>
+          <button class="btn" id="btnGerarThumb" style="margin-top:12px">🖼️ Gerar Thumbnail ({{creditos_por_imagem}} créditos)</button>
+          <div class="status-box" id="statusThumb" style="display:none">
+            <div class="spinner"></div>
+            <div class="status-text">Gerando thumbnail...</div>
+          </div>
+          <div class="erro-box" id="erroThumb"></div>
+          <div id="thumbResultado" style="display:none;margin-top:14px">
+            <img id="thumbImg" style="width:100%;border-radius:10px;margin-bottom:10px"/>
+            <div style="display:flex;gap:8px">
+              <a href="#" id="btnDownloadThumb" class="btn-download" style="flex:1;text-align:center;font-size:.82rem">⬇ Baixar Thumbnail</a>
+              <button class="btn-sm" style="background:var(--accent);flex:1;font-size:.82rem" onclick="document.getElementById('thumbResultado').style.display='none';document.getElementById('btnGerarThumb').style.display='block'">🔄 Gerar outra</button>
+            </div>
+          </div>
+        </div>
         <button class="btn-outline" id="btnNovo">Criar novo</button>
       </div>
       <div class="erro-box" id="erroFinal"></div>
@@ -328,6 +359,47 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <h2>📝 Seus rascunhos</h2>
       <p class="tip" style="margin-bottom:14px">Storyboards salvos automaticamente. Clique pra continuar editando.</p>
       <div id="listaRascunhos"><div class="vazio">Carregando...</div></div>
+    </div>
+  </div>
+
+  <!-- THUMBNAILS -->
+  <div class="pane" id="paneThumbs">
+    <div class="card">
+      <h2>🖼️ Gerar Thumbnail</h2>
+      <p class="tip" style="margin-bottom:14px">Cria thumbnails otimizadas com IA baseadas no seu roteiro.</p>
+      <label>Roteiro / Descrição do vídeo</label>
+      <textarea id="thumbRoteiro" placeholder="Cole o roteiro do vídeo ou descreva o conteúdo..." style="min-height:80px"></textarea>
+      <label>Estilo / Nicho</label>
+      <select id="thumbEstiloTab">
+        <option value="youtube">🎬 YouTube (chamativo)</option>
+        <option value="shorts">📱 Shorts / TikTok</option>
+        <option value="biblico">✝️ Bíblico / Religioso</option>
+        <option value="horror">👻 Horror / Terror</option>
+        <option value="infantil">🧸 Infantil / Kids</option>
+        <option value="motivacional">💪 Motivacional</option>
+        <option value="educativo">📚 Educativo</option>
+        <option value="gaming">🎮 Gaming</option>
+        <option value="curiosidades">🔍 Curiosidades</option>
+      </select>
+      <button class="btn" id="btnGerarThumbTab">🖼️ Gerar Thumbnail ({{creditos_por_imagem}} créditos)</button>
+      <div class="status-box" id="statusThumbTab" style="display:none">
+        <div class="spinner"></div>
+        <div class="status-text">Gerando thumbnail com IA...</div>
+      </div>
+      <div class="erro-box" id="erroThumbTab"></div>
+      <div id="thumbResultadoTab" style="display:none;margin-top:14px">
+        <img id="thumbImgTab" style="width:100%;border-radius:10px;margin-bottom:10px"/>
+        <label>Prompt usado (edite e regere)</label>
+        <textarea id="thumbPromptEdit" style="min-height:80px;font-size:.82rem"></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <a href="#" id="btnDownloadThumbTab" class="btn-download" style="flex:1;text-align:center;font-size:.82rem">⬇ Baixar</a>
+          <button class="btn-sm" style="background:var(--accent);flex:1;font-size:.82rem" id="btnRegerarThumbTab">🔄 Regerar com prompt editado</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>📂 Minhas Thumbnails</h2>
+      <div id="listaThumbsHist"><div class="vazio">Carregando...</div></div>
     </div>
   </div>
 
@@ -631,11 +703,12 @@ function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=docu
 applyTheme();
 
 function trocarAba(aba){
-  const abas=['gerar','rascunhos','planos','historico','clonar','perfil'];
+  const abas=['gerar','rascunhos','thumbs','planos','historico','clonar','perfil'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
   if(aba==='rascunhos')carregarRascunhos();
+  if(aba==='thumbs')carregarThumbnails();
 }
 
 function setModo(m){document.getElementById('modoVideo').value=m;document.getElementById('btnModoLongo').classList.toggle('active',m==='longo');document.getElementById('btnModoShorts').classList.toggle('active',m==='shorts');}
@@ -966,7 +1039,130 @@ function mostrarErroSB(msg){
   }
 }
 
-document.getElementById('btnNovo').addEventListener('click',()=>{document.getElementById('resultado').style.display='none';document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';document.getElementById('textoRoteiro').value='';});
+document.getElementById('btnNovo').addEventListener('click',()=>{document.getElementById('resultado').style.display='none';document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';document.getElementById('textoRoteiro').value='';document.getElementById('thumbResultado').style.display='none';document.getElementById('btnGerarThumb').style.display='block';});
+
+// Thumbnail - na tela de resultado
+document.getElementById('btnGerarThumb').addEventListener('click',async()=>{
+  const roteiro=document.getElementById('textoRoteiro').value.trim();
+  if(!roteiro){document.getElementById('erroThumb').textContent='❌ Roteiro vazio';document.getElementById('erroThumb').style.display='block';return;}
+  document.getElementById('erroThumb').style.display='none';
+  document.getElementById('btnGerarThumb').disabled=true;
+  document.getElementById('statusThumb').style.display='block';
+  document.getElementById('thumbResultado').style.display='none';
+  const fd=new FormData();
+  fd.append('roteiro',roteiro);
+  fd.append('estilo_thumb',document.getElementById('thumbEstilo').value);
+  try{
+    const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.erro)throw new Error(d.erro);
+    document.getElementById('thumbImg').src=`/ver_thumbnail/${d.thumb_id}?t=${Date.now()}`;
+    document.getElementById('btnDownloadThumb').href=`/download_thumbnail/${d.thumb_id}`;
+    document.getElementById('thumbResultado').style.display='block';
+    document.getElementById('btnGerarThumb').style.display='none';
+    atualizarCreditos();
+  }catch(e){
+    document.getElementById('erroThumb').textContent='❌ '+e.message;
+    document.getElementById('erroThumb').style.display='block';
+  }
+  document.getElementById('statusThumb').style.display='none';
+  document.getElementById('btnGerarThumb').disabled=false;
+});
+
+// Thumbnail - aba dedicada
+let _thumbIdAtual='';
+document.getElementById('btnGerarThumbTab').addEventListener('click',async()=>{
+  const roteiro=document.getElementById('thumbRoteiro').value.trim();
+  if(!roteiro){document.getElementById('erroThumbTab').textContent='❌ Escreva o roteiro ou descrição';document.getElementById('erroThumbTab').style.display='block';return;}
+  document.getElementById('erroThumbTab').style.display='none';
+  document.getElementById('btnGerarThumbTab').disabled=true;
+  document.getElementById('statusThumbTab').style.display='block';
+  document.getElementById('thumbResultadoTab').style.display='none';
+  const fd=new FormData();
+  fd.append('roteiro',roteiro);
+  fd.append('estilo_thumb',document.getElementById('thumbEstiloTab').value);
+  try{
+    const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.erro)throw new Error(d.erro);
+    _thumbIdAtual=d.thumb_id;
+    document.getElementById('thumbImgTab').src=`/ver_thumbnail/${d.thumb_id}?t=${Date.now()}`;
+    document.getElementById('btnDownloadThumbTab').href=`/download_thumbnail/${d.thumb_id}`;
+    document.getElementById('thumbPromptEdit').value=d.prompt_usado||'';
+    document.getElementById('thumbResultadoTab').style.display='block';
+    atualizarCreditos();
+    carregarThumbnails();
+  }catch(e){
+    document.getElementById('erroThumbTab').textContent='❌ '+e.message;
+    document.getElementById('erroThumbTab').style.display='block';
+  }
+  document.getElementById('statusThumbTab').style.display='none';
+  document.getElementById('btnGerarThumbTab').disabled=false;
+});
+
+document.getElementById('btnRegerarThumbTab').addEventListener('click',async()=>{
+  const prompt=document.getElementById('thumbPromptEdit').value.trim();
+  if(!prompt){alert('Prompt vazio');return;}
+  document.getElementById('btnRegerarThumbTab').disabled=true;
+  document.getElementById('statusThumbTab').style.display='block';
+  const fd=new FormData();
+  fd.append('prompt',prompt);
+  fd.append('roteiro',document.getElementById('thumbRoteiro').value.trim());
+  fd.append('estilo_thumb',document.getElementById('thumbEstiloTab').value);
+  fd.append('thumb_id',_thumbIdAtual);
+  try{
+    const res=await fetch('/regerar_thumbnail',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.erro)throw new Error(d.erro);
+    _thumbIdAtual=d.thumb_id;
+    document.getElementById('thumbImgTab').src=`/ver_thumbnail/${d.thumb_id}?t=${Date.now()}`;
+    document.getElementById('btnDownloadThumbTab').href=`/download_thumbnail/${d.thumb_id}`;
+    document.getElementById('thumbPromptEdit').value=d.prompt_usado||'';
+    atualizarCreditos();
+    carregarThumbnails();
+  }catch(e){alert('❌ '+e.message);}
+  document.getElementById('statusThumbTab').style.display='none';
+  document.getElementById('btnRegerarThumbTab').disabled=false;
+});
+
+async function carregarThumbnails(){
+  const lista=document.getElementById('listaThumbsHist');
+  try{
+    const res=await fetch('/minhas_thumbnails');
+    const d=await res.json();
+    if(!d.thumbnails||d.thumbnails.length===0){lista.innerHTML='<div class="vazio">Nenhuma thumbnail gerada ainda.</div>';return;}
+    lista.innerHTML='';
+    d.thumbnails.forEach(t=>{
+      lista.innerHTML+=`<div class="historico-item" style="padding:12px">
+        <img src="/ver_thumbnail/${t.thumb_id}?t=1" style="width:100%;border-radius:8px;margin-bottom:8px" onerror="this.parentElement.remove()"/>
+        <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px">${t.criado_em} · ${t.estilo}</div>
+        <div style="font-size:.8rem;color:var(--text2);margin-bottom:8px;max-height:40px;overflow:hidden">${(t.prompt||'').substring(0,120)}...</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <a href="/download_thumbnail/${t.thumb_id}" class="btn-dl-hist btn-dl-zip" style="font-size:.75rem">⬇ Baixar</a>
+          <button class="btn-sm" style="background:var(--accent);font-size:.75rem" onclick="editarThumb('${t.thumb_id}',\`${(t.prompt||'').replace(/`/g,"'").replace(/\\/g,"\\\\")}\`,\`${(t.roteiro||'').replace(/`/g,"'").replace(/\\/g,"\\\\")}\`,'${t.estilo}')">✏️ Editar</button>
+          <button class="btn-danger" style="font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑️</button>
+        </div>
+      </div>`;
+    });
+  }catch(e){lista.innerHTML='<div class="vazio">Erro ao carregar.</div>';}
+}
+
+function editarThumb(thumbId,prompt,roteiro,estilo){
+  _thumbIdAtual=thumbId;
+  document.getElementById('thumbRoteiro').value=roteiro;
+  document.getElementById('thumbEstiloTab').value=estilo||'youtube';
+  document.getElementById('thumbPromptEdit').value=prompt;
+  document.getElementById('thumbImgTab').src=`/ver_thumbnail/${thumbId}?t=${Date.now()}`;
+  document.getElementById('btnDownloadThumbTab').href=`/download_thumbnail/${thumbId}`;
+  document.getElementById('thumbResultadoTab').style.display='block';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function deletarThumb(thumbId){
+  if(!confirm('Deletar esta thumbnail?'))return;
+  await fetch('/deletar_thumbnail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({thumb_id:thumbId})});
+  carregarThumbnails();
+}
 
 document.getElementById('btnMudarSenha').addEventListener('click',async()=>{
   const atual=document.getElementById('senhaAtual').value;const nova=document.getElementById('novaSenha').value;

@@ -1220,20 +1220,39 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     user.gastar_creditos(cenas_animadas * CREDITOS_ANIMACAO)
                     db.session.commit()
 
-                # Se pelo menos 1 clipe foi gerado, concatena os vídeos
+                # Se pelo menos 1 clipe foi gerado, trimma e concatena os vídeos
                 if any(clipes_video):
+                    jobs[job_id]["progresso"] = "Ajustando duração das cenas..."
+
+                    # Trimmar cada clipe de 6s pra durar o tempo da narração da cena
+                    clipes_trimmados = []
+                    for i, cp in enumerate(clipes_video):
+                        if not cp or not os.path.exists(cp):
+                            continue
+                        dur_cena = imagens[i]["duracao"] if i < len(imagens) else 6
+                        # Duração mínima de 2s, máxima de 6s (duração original do clipe)
+                        dur_trim = max(2.0, min(6.0, dur_cena))
+                        trimmed_path = os.path.join(job_dir, f"trim_{i+1:04d}.mp4")
+                        cmd_trim = ["ffmpeg", "-y", "-i", cp, "-t", str(dur_trim),
+                                    "-c:v", "copy", "-an", trimmed_path]
+                        res = subprocess.run(cmd_trim, capture_output=True, text=True)
+                        if res.returncode == 0 and os.path.exists(trimmed_path):
+                            clipes_trimmados.append(trimmed_path)
+                            sys.stderr.write(f"[TRIM] Cena {i+1}: {dur_cena:.1f}s narração -> {dur_trim:.1f}s clipe\n"); sys.stderr.flush()
+                        else:
+                            clipes_trimmados.append(cp)
+
                     jobs[job_id]["progresso"] = "Juntando clipes animados..."
-                    # Criar lista de concat
                     concat_path = os.path.join(job_dir, "concat_list.txt")
                     with open(concat_path, "w") as f:
-                        for cp in clipes_video:
-                            if cp and os.path.exists(cp):
-                                f.write(f"file '{os.path.abspath(cp)}'\n")
+                        for cp in clipes_trimmados:
+                            f.write(f"file '{os.path.abspath(cp)}'\n")
                     video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
-                    # Concatenar clipes
+
+                    # Concatenar clipes trimmados + áudio (sem -shortest, durações já batem)
                     cmd_concat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_path]
                     if audio_final_path and os.path.exists(audio_final_path):
-                        cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+                        cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k"]
                     else:
                         cmd_concat += ["-c:v", "copy"]
 
@@ -1246,21 +1265,16 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         tam = legenda_cfg.get("tamanho", "18")
                         pos = legenda_cfg.get("posicao", "2")
                         sombra = "1" if legenda_cfg.get("sombra", True) else "0"
-                        # Precisa re-encode pra adicionar legendas
                         video_temp = os.path.join(job_dir, "temp_concat.mp4")
                         cmd_concat += [video_temp]
                         result = subprocess.run(cmd_concat, capture_output=True, text=True)
                         if result.returncode != 0:
                             raise Exception(f"FFmpeg concat erro: {result.stderr[-500:]}")
                         srt_esc = os.path.abspath(srt_path)
-                        cmd_sub = ["ffmpeg", "-y", "-i", video_temp]
-                        if audio_final_path and os.path.exists(audio_final_path):
-                            cmd_sub += ["-i", audio_final_path]
-                        cmd_sub += ["-vf", f"subtitles={srt_esc}:force_style='FontName={fonte},FontSize={tam},PrimaryColour={cor},Alignment={pos},Shadow={sombra},Bold=1'",
-                                    "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p"]
-                        if audio_final_path and os.path.exists(audio_final_path):
-                            cmd_sub += ["-c:a", "aac", "-b:a", "192k", "-shortest"]
-                        cmd_sub += [video_path]
+                        cmd_sub = ["ffmpeg", "-y", "-i", video_temp,
+                                   "-vf", f"subtitles={srt_esc}:force_style='FontName={fonte},FontSize={tam},PrimaryColour={cor},Alignment={pos},Shadow={sombra},Bold=1'",
+                                   "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p",
+                                   "-c:a", "copy", video_path]
                         result = subprocess.run(cmd_sub, capture_output=True, text=True)
                         if result.returncode != 0:
                             raise Exception(f"FFmpeg legendas erro: {result.stderr[-500:]}")
@@ -1304,7 +1318,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                             f.write(f"file '{os.path.abspath(cp)}'\n")
                     cmd_concat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_path]
                     if audio_final_path and os.path.exists(audio_final_path):
-                        cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+                        cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k"]
                     else:
                         cmd_concat += ["-c:v", "copy"]
                     cmd_concat += [video_path]
@@ -1417,6 +1431,177 @@ def esqueci_senha():
     user.senha = generate_password_hash(nova_senha)
     db.session.commit()
     return jsonify({"ok": True, "nova_senha": nova_senha})
+
+# ── Thumbnail ────────────────────────────────────────────
+THUMB_ESTILOS = {
+    "youtube": "Bold YouTube thumbnail style, extremely eye-catching, dramatic facial expression close-up, bright saturated colors, high contrast, thick bold text overlay area on the side, professional YouTube creator aesthetic, 4K, horizontal 16:9",
+    "shorts": "Vertical mobile-first thumbnail, vibrant neon accents, bold single subject centered, clean background with gradient, TikTok/Shorts viral aesthetic, punchy colors, 4K",
+    "biblico": "Epic biblical cinematic scene, golden divine light rays from heaven, ancient Middle Eastern setting, dramatic clouds, oil painting style with photorealistic details, awe-inspiring composition, 4K, horizontal 16:9",
+    "horror": "Dark horror movie poster style, eerie atmosphere, deep shadows, desaturated colors with red accents, fog and mist, unsettling composition, cinematic horror lighting, 4K, horizontal 16:9",
+    "infantil": "Colorful children's cartoon style, cute rounded characters, bright pastel colors, friendly and fun atmosphere, clean illustration, Pixar-inspired aesthetic, 4K, horizontal 16:9",
+    "motivacional": "Inspirational cinematic scene, golden hour lighting, silhouette against dramatic sky, warm tones, epic landscape, motivational poster aesthetic, lens flare, 4K, horizontal 16:9",
+    "educativo": "Clean modern educational thumbnail, professional look, subtle gradient background, clear visual hierarchy, infographic style elements, trustworthy and informative aesthetic, 4K, horizontal 16:9",
+    "gaming": "Dynamic gaming thumbnail, neon glow effects, action pose, dark background with vibrant color splashes, esports aesthetic, energetic composition, 4K, horizontal 16:9",
+    "curiosidades": "Intriguing mystery style, magnifying glass effect, question mark visual elements, split composition showing before/after or comparison, clickbait-worthy but tasteful, bright colors, 4K, horizontal 16:9",
+}
+
+THUMB_FOLDER = "thumbnails"
+os.makedirs(THUMB_FOLDER, exist_ok=True)
+
+def gerar_prompt_thumbnail(roteiro, estilo_thumb, api_key):
+    """Usa IA pra criar o prompt ideal de thumbnail baseado no roteiro"""
+    estilo_desc = THUMB_ESTILOS.get(estilo_thumb, THUMB_ESTILOS["youtube"])
+    try:
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        system = f"""You are a thumbnail designer for viral content. Given a video script, create ONE powerful image prompt for the thumbnail.
+
+STYLE: {estilo_desc}
+
+RULES:
+1. Identify the MOST dramatic, emotional, or curiosity-inducing moment from the script.
+2. The thumbnail must make someone STOP scrolling and CLICK.
+3. Focus on ONE strong visual element — not a busy scene.
+4. Include dramatic lighting, strong emotions on faces, or a striking visual contrast.
+5. NEVER include any text, letters, words, or writing in the image.
+6. The image must work as a standalone thumbnail without context.
+7. Output ONLY the image prompt. Max 400 characters."""
+        body = {"model": "gpt-4o-mini", "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": roteiro}
+        ], "max_tokens": 300}
+        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
+        if r.ok:
+            return r.json()["choices"][0]["message"]["content"].strip()
+    except:
+        pass
+    return f"{estilo_desc}, dramatic scene inspired by: {roteiro[:100]}, no text no words"
+
+def _init_thumbnails_table():
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("""CREATE TABLE IF NOT EXISTS thumbnails (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            thumb_id TEXT NOT NULL,
+            roteiro TEXT,
+            prompt TEXT,
+            estilo TEXT,
+            path TEXT,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
+        conn.commit()
+        conn.close()
+    except:
+        pass
+
+@app.route("/gerar_thumbnail", methods=["POST"])
+@login_required
+def gerar_thumbnail_route():
+    roteiro = request.form.get("roteiro", "").strip()
+    estilo_thumb = request.form.get("estilo_thumb", "youtube").strip()
+    prompt_custom = request.form.get("prompt_custom", "").strip()
+    if not roteiro and not prompt_custom:
+        return jsonify({"erro": "Roteiro vazio"}), 400
+    if not current_user.get_api_key():
+        return jsonify({"erro": "Nenhuma chave de API disponível"}), 400
+    if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM):
+        return jsonify({"erro": f"Créditos insuficientes. Necessário: {CREDITOS_POR_IMAGEM}"}), 400
+    db.session.commit()
+    try:
+        if prompt_custom:
+            prompt = prompt_custom
+        else:
+            prompt = gerar_prompt_thumbnail(roteiro, estilo_thumb, current_user.get_api_key())
+        thumb_id = uuid.uuid4().hex[:12]
+        thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
+        gerar_imagem_openai(prompt, current_user.get_api_key(), "1792x1024", "standard", thumb_path, modelo="gpt-image-1")
+        # Salvar no histórico
+        _init_thumbnails_table()
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?, ?, ?, ?, ?, ?)",
+                     (current_user.id, thumb_id, roteiro[:500], prompt, estilo_thumb, thumb_path))
+        conn.commit()
+        conn.close()
+        return jsonify({"ok": True, "thumb_id": thumb_id, "prompt_usado": prompt})
+    except Exception as e:
+        current_user.creditos += CREDITOS_POR_IMAGEM
+        db.session.commit()
+        return jsonify({"erro": str(e)}), 500
+
+@app.route("/regerar_thumbnail", methods=["POST"])
+@login_required
+def regerar_thumbnail_route():
+    """Regera thumbnail com prompt editado"""
+    thumb_id_antigo = request.form.get("thumb_id", "").strip()
+    prompt_editado = request.form.get("prompt", "").strip()
+    estilo_thumb = request.form.get("estilo_thumb", "youtube").strip()
+    roteiro = request.form.get("roteiro", "").strip()
+    if not prompt_editado:
+        return jsonify({"erro": "Prompt vazio"}), 400
+    if not current_user.get_api_key():
+        return jsonify({"erro": "Nenhuma chave de API disponível"}), 400
+    if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM):
+        return jsonify({"erro": f"Créditos insuficientes. Necessário: {CREDITOS_POR_IMAGEM}"}), 400
+    db.session.commit()
+    try:
+        thumb_id = uuid.uuid4().hex[:12]
+        thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
+        gerar_imagem_openai(prompt_editado, current_user.get_api_key(), "1792x1024", "standard", thumb_path, modelo="gpt-image-1")
+        _init_thumbnails_table()
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?, ?, ?, ?, ?, ?)",
+                     (current_user.id, thumb_id, roteiro[:500], prompt_editado, estilo_thumb, thumb_path))
+        conn.commit()
+        conn.close()
+        return jsonify({"ok": True, "thumb_id": thumb_id, "prompt_usado": prompt_editado})
+    except Exception as e:
+        current_user.creditos += CREDITOS_POR_IMAGEM
+        db.session.commit()
+        return jsonify({"erro": str(e)}), 500
+
+@app.route("/minhas_thumbnails")
+@login_required
+def minhas_thumbnails():
+    _init_thumbnails_table()
+    conn = sqlite3.connect('instance/veo3.db')
+    rows = conn.execute("SELECT thumb_id, roteiro, prompt, estilo, criado_em FROM thumbnails WHERE user_id=? ORDER BY id DESC LIMIT 50",
+                        (current_user.id,)).fetchall()
+    conn.close()
+    thumbs = []
+    for r in rows:
+        path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{r[0]}.png")
+        if os.path.exists(path):
+            thumbs.append({"thumb_id": r[0], "roteiro": r[1] or "", "prompt": r[2] or "", "estilo": r[3] or "youtube", "criado_em": r[4] or ""})
+    return jsonify({"thumbnails": thumbs})
+
+@app.route("/deletar_thumbnail", methods=["POST"])
+@login_required
+def deletar_thumbnail():
+    thumb_id = request.json.get("thumb_id", "")
+    path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
+    if os.path.exists(path):
+        os.remove(path)
+    conn = sqlite3.connect('instance/veo3.db')
+    conn.execute("DELETE FROM thumbnails WHERE user_id=? AND thumb_id=?", (current_user.id, thumb_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+@app.route("/download_thumbnail/<thumb_id>")
+@login_required
+def download_thumbnail(thumb_id):
+    thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
+    if not os.path.exists(thumb_path):
+        return jsonify({"erro": "Thumbnail não encontrada"}), 404
+    return send_file(thumb_path, as_attachment=True, download_name=f"thumbnail_{thumb_id}.png")
+
+@app.route("/ver_thumbnail/<thumb_id>")
+@login_required
+def ver_thumbnail(thumb_id):
+    thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
+    if not os.path.exists(thumb_path):
+        return jsonify({"erro": "Thumbnail não encontrada"}), 404
+    return send_file(thumb_path)
 
 @app.route("/logout")
 @login_required
@@ -1906,7 +2091,13 @@ def admin_definir_plano():
 @app.route("/banco_img/<path:filename>")
 @login_required
 def banco_img_file(filename):
-    return send_file(os.path.join(BANCO_IMG_FOLDER, filename))
+    # Prevenir path traversal
+    if ".." in filename or filename.startswith("/"):
+        return jsonify({"erro": "Acesso negado"}), 403
+    filepath = os.path.join(BANCO_IMG_FOLDER, filename)
+    if not os.path.exists(filepath):
+        return jsonify({"erro": "Arquivo não encontrado"}), 404
+    return send_file(filepath)
 
 @app.route("/buscar_banco", methods=["POST"])
 @login_required
@@ -2089,7 +2280,17 @@ def deletar_musica():
 @app.route("/musica_file/<path:filename>")
 @login_required
 def musica_file(filename):
-    return send_file(os.path.join(MUSICAS_FOLDER, filename))
+    # Verificar se a música pertence ao usuário
+    filepath = os.path.join(MUSICAS_FOLDER, filename)
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        row = conn.execute("SELECT id FROM musicas WHERE user_id=? AND path=?", (current_user.id, filepath)).fetchone()
+        conn.close()
+        if not row:
+            return jsonify({"erro": "Acesso negado"}), 403
+    except:
+        return jsonify({"erro": "Acesso negado"}), 403
+    return send_file(filepath)
 
 # ── Rotas Storyboard ─────────────────────────────────────
 @app.route("/dividir_roteiro", methods=["POST"])
@@ -2150,7 +2351,21 @@ def gerar_storyboard_route():
 @app.route("/storyboard_img/<sb_id>/<filename>")
 @login_required
 def storyboard_img(sb_id, filename):
-    return send_file(os.path.join(STORYBOARD_FOLDER, sb_id, filename))
+    # Verificar se o storyboard pertence ao usuário (ou se é admin)
+    if not current_user.is_admin:
+        criacao = Criacao.query.filter_by(job_id=sb_id, user_id=current_user.id).first()
+        if not criacao:
+            # Verificar se o job está em memória e pertence ao usuário
+            job = jobs.get(sb_id)
+            if not job:
+                # Pode ser um storyboard em edição — verificar se o sb_dir existe
+                sb_path = os.path.join(STORYBOARD_FOLDER, sb_id, "storyboard.json")
+                if not os.path.exists(sb_path):
+                    return jsonify({"erro": "Acesso negado"}), 403
+    filepath = os.path.join(STORYBOARD_FOLDER, sb_id, filename)
+    if not os.path.exists(filepath):
+        return jsonify({"erro": "Arquivo não encontrado"}), 404
+    return send_file(filepath)
 
 @app.route("/rascunhos")
 @login_required
