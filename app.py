@@ -1039,34 +1039,74 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     duracao_total = len(audio_completo_seg) / 1000
                     audio_completo_path = audio_limpo_path
 
-                # Sincronizar cenas com áudio usando Whisper
+                # Sincronizar cenas com áudio usando Whisper (word-level)
                 jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
                 try:
+                    from difflib import SequenceMatcher
                     model = get_whisper_model()
                     resultado_whisper = model.transcribe(audio_completo_path, word_timestamps=True, fp16=False)
-                    # Pegar timestamps de cada segmento
-                    segmentos = resultado_whisper.get("segments", [])
-                    if segmentos and len(segmentos) >= len(blocos):
-                        # Distribuir segmentos entre cenas
-                        segs_por_cena = max(1, len(segmentos) // len(blocos))
-                        for i, bloco in enumerate(blocos):
-                            seg_inicio = i * segs_por_cena
-                            seg_fim = min((i + 1) * segs_por_cena, len(segmentos))
-                            if i == len(blocos) - 1:
-                                seg_fim = len(segmentos)
-                            inicio = segmentos[seg_inicio]["start"] if seg_inicio < len(segmentos) else t
-                            fim = segmentos[min(seg_fim, len(segmentos)) - 1]["end"] if seg_fim > 0 else inicio + 3
-                            dur = max(1.5, fim - inicio)
-                            img_src = os.path.join(sb_dir, bloco["img"])
-                            img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
-                            shutil.copy(img_src, img_dst)
-                            imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur, 2),
-                                            "inicio": round(inicio, 2), "fim": round(fim, 2),
-                                            "texto": bloco["texto"]})
-                    else:
+                    # Extrair todas as palavras com timestamps
+                    palavras = []
+                    for seg in resultado_whisper.get("segments", []):
+                        for w in seg.get("words", []):
+                            palavras.append({"word": w.get("word", "").strip(), "start": w["start"], "end": w["end"]})
+                    if not palavras:
                         raise Exception("fallback")
-                except:
+
+                    # Mapear palavras às cenas usando o texto original
+                    # Reconstruir o texto narrado e achar onde cada cena começa/termina
+                    textos_cenas = [b["texto"].strip() for b in blocos]
+                    texto_narrado_completo = " ".join([w["word"] for w in palavras]).lower()
+
+                    # Para cada cena, encontrar a posição no texto narrado via busca acumulativa
+                    pos_cursor = 0  # posição em caracteres no texto narrado
+                    palavra_cursor = 0  # índice da palavra atual
+
+                    for i, bloco in enumerate(blocos):
+                        cena_texto = textos_cenas[i].lower()
+                        cena_palavras = cena_texto.split()
+                        n_palavras_cena = len(cena_palavras)
+
+                        # Início: palavra atual do cursor
+                        idx_inicio = palavra_cursor
+                        # Fim: avançar pelo número de palavras da cena
+                        # Usar similaridade para encontrar o melhor ponto de corte
+                        melhor_fim = min(palavra_cursor + n_palavras_cena, len(palavras))
+
+                        # Busca flexível: testar janelas ao redor do ponto esperado
+                        if i < len(blocos) - 1:
+                            melhor_score = -1
+                            for offset in range(-3, 6):
+                                candidato = palavra_cursor + n_palavras_cena + offset
+                                if candidato <= palavra_cursor or candidato > len(palavras):
+                                    continue
+                                trecho = " ".join([palavras[j]["word"] for j in range(palavra_cursor, candidato)]).lower()
+                                score = SequenceMatcher(None, cena_texto, trecho).ratio()
+                                if score > melhor_score:
+                                    melhor_score = score
+                                    melhor_fim = candidato
+                        else:
+                            # Última cena: pega tudo que sobrou
+                            melhor_fim = len(palavras)
+
+                        idx_inicio = min(idx_inicio, len(palavras) - 1)
+                        idx_fim = min(melhor_fim, len(palavras))
+
+                        inicio = palavras[idx_inicio]["start"]
+                        fim = palavras[idx_fim - 1]["end"] if idx_fim > 0 else inicio + 3
+                        dur = max(1.5, fim - inicio)
+
+                        img_src = os.path.join(sb_dir, bloco["img"])
+                        img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
+                        shutil.copy(img_src, img_dst)
+                        imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur, 2),
+                                        "inicio": round(inicio, 2), "fim": round(fim, 2),
+                                        "texto": bloco["texto"]})
+                        palavra_cursor = idx_fim
+                except Exception:
                     # Fallback: divisão proporcional
+                    imagens = []
+                    t = 0
                     dur_por_cena = duracao_total / len(blocos)
                     for i, bloco in enumerate(blocos):
                         img_src = os.path.join(sb_dir, bloco["img"])
