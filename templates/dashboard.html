@@ -671,6 +671,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
   <div class="pane" id="panePerfil">
     <div class="card">
       <h2>Olá, {{ user.nome }} 👋</h2>
+
+      {% if user.plano == 'api_propria' or user.is_admin %}
       <h3>🖼️ Imagens</h3>
       <label>Provedor</label>
       <select id="cfgProvider">
@@ -698,6 +700,20 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <input type="password" id="cfgMinimaxKey" value="{{ user.minimax_key }}" placeholder="sk-api-..."/>
       <label>Group ID</label>
       <input type="text" id="cfgMinimaxGroupId" value="{{ user.minimax_group_id }}" placeholder="1234567890"/>
+      {% else %}
+      <h3>🔑 Chaves de API</h3>
+      <div style="background:var(--bg3);border:2px solid var(--border);border-radius:12px;padding:20px;text-align:center;margin-top:10px">
+        <div style="font-size:2rem;margin-bottom:10px">🔒</div>
+        <p style="color:var(--text);font-size:.9rem;font-weight:600;margin-bottom:6px">Use suas próprias chaves de API</p>
+        <p style="color:var(--text2);font-size:.82rem;margin-bottom:16px">Assine o plano <b>API Própria</b> para configurar suas chaves OpenAI e MiniMax e ter geração ilimitada.</p>
+        <button class="btn" onclick="trocarAba('planos')" style="max-width:280px;margin:0 auto">💎 Ver plano API Própria — R$29,90/mês</button>
+      </div>
+      <input type="hidden" id="cfgProvider" value="{{ user.provider }}"/>
+      <input type="hidden" id="cfgApiKey" value=""/>
+      <input type="hidden" id="cfgMinimaxKey" value=""/>
+      <input type="hidden" id="cfgMinimaxGroupId" value=""/>
+      {% endif %}
+
       <h3>🔒 Alterar Senha</h3>
       <label>Senha atual</label>
       <input type="password" id="senhaAtual" placeholder="••••••••"/>
