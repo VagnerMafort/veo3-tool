@@ -323,7 +323,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <label>Estilo / Nicho</label>
           <select id="thumbEstilo">
             <option value="youtube">🎬 YouTube (chamativo)</option>
-            <option value="shorts">📱 Shorts / TikTok</option>
+            <option value="shorts">📱 Shorts / TikTok (vertical)</option>
             <option value="biblico">✝️ Bíblico / Religioso</option>
             <option value="horror">👻 Horror / Terror</option>
             <option value="infantil">🧸 Infantil / Kids</option>
@@ -332,6 +332,9 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
             <option value="gaming">🎮 Gaming</option>
             <option value="curiosidades">🔍 Curiosidades</option>
           </select>
+          <label>Texto na thumbnail <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
+          <input type="text" id="thumbTextoResult" placeholder="Ex: ELE VOLTOU!, O SEGREDO..." style="margin-bottom:4px"/>
+          <p class="tip">Deixe vazio pra IA criar o texto automaticamente.</p>
           <button class="btn" id="btnGerarThumb" style="margin-top:12px">🖼️ Gerar Thumbnail ({{creditos_por_imagem}} créditos)</button>
           <div class="status-box" id="statusThumb" style="display:none">
             <div class="spinner"></div>
@@ -372,7 +375,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <label>Estilo / Nicho</label>
       <select id="thumbEstiloTab">
         <option value="youtube">🎬 YouTube (chamativo)</option>
-        <option value="shorts">📱 Shorts / TikTok</option>
+        <option value="shorts">📱 Shorts / TikTok (vertical)</option>
         <option value="biblico">✝️ Bíblico / Religioso</option>
         <option value="horror">👻 Horror / Terror</option>
         <option value="infantil">🧸 Infantil / Kids</option>
@@ -381,6 +384,9 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <option value="gaming">🎮 Gaming</option>
         <option value="curiosidades">🔍 Curiosidades</option>
       </select>
+      <label>Texto na thumbnail <span style="color:var(--text3);font-weight:400">(opcional — se vazio, a IA sugere)</span></label>
+      <input type="text" id="thumbTexto" placeholder="Ex: ELE VOLTOU!, O SEGREDO, IMPOSSÍVEL..." style="margin-bottom:4px"/>
+      <p class="tip">Texto grande e chamativo que aparece na thumbnail. Deixe vazio pra IA criar automaticamente.</p>
       <button class="btn" id="btnGerarThumbTab">🖼️ Gerar Thumbnail ({{creditos_por_imagem}} créditos)</button>
       <div class="status-box" id="statusThumbTab" style="display:none">
         <div class="spinner"></div>
@@ -1052,6 +1058,7 @@ document.getElementById('btnGerarThumb').addEventListener('click',async()=>{
   const fd=new FormData();
   fd.append('roteiro',roteiro);
   fd.append('estilo_thumb',document.getElementById('thumbEstilo').value);
+  fd.append('texto_thumb',document.getElementById('thumbTextoResult').value.trim());
   try{
     const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
     const d=await res.json();
@@ -1081,6 +1088,7 @@ document.getElementById('btnGerarThumbTab').addEventListener('click',async()=>{
   const fd=new FormData();
   fd.append('roteiro',roteiro);
   fd.append('estilo_thumb',document.getElementById('thumbEstiloTab').value);
+  fd.append('texto_thumb',document.getElementById('thumbTexto').value.trim());
   try{
     const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
     const d=await res.json();

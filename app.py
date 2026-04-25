@@ -1448,33 +1448,54 @@ THUMB_ESTILOS = {
 THUMB_FOLDER = "thumbnails"
 os.makedirs(THUMB_FOLDER, exist_ok=True)
 
-def gerar_prompt_thumbnail(roteiro, estilo_thumb, api_key):
+def gerar_prompt_thumbnail(roteiro, estilo_thumb, api_key, texto_thumb=""):
     """Usa IA pra criar o prompt ideal de thumbnail baseado no roteiro"""
     estilo_desc = THUMB_ESTILOS.get(estilo_thumb, THUMB_ESTILOS["youtube"])
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+        if texto_thumb:
+            texto_instrucao = f"""
+TEXT ON THE THUMBNAIL:
+- The thumbnail MUST contain this exact text: "{texto_thumb}"
+- The text must be HUGE, BOLD, and highly readable — it's the main visual element.
+- Use thick block letters with strong outline/shadow for maximum contrast.
+- Text should occupy 30-40% of the image area.
+- Place text strategically: top or bottom third, never covering the main subject's face."""
+        else:
+            texto_instrucao = """
+TEXT ON THE THUMBNAIL:
+- You MUST add a short, punchy text (2-5 words max) that creates curiosity or shock.
+- The text should be in the SAME LANGUAGE as the script.
+- The text must be HUGE, BOLD, and highly readable.
+- Use thick block letters with strong outline/shadow for maximum contrast.
+- Text should occupy 30-40% of the image area.
+- Examples of good thumbnail text: "ELE VOLTOU!", "IMPOSSÍVEL!", "NINGUÉM ESPERAVA", "O SEGREDO", "REVELADO!"
+- The text must relate to the most dramatic moment of the script."""
+
         system = f"""You are a thumbnail designer for viral content. Given a video script, create ONE powerful image prompt for the thumbnail.
 
 STYLE: {estilo_desc}
+
+{texto_instrucao}
 
 RULES:
 1. Identify the MOST dramatic, emotional, or curiosity-inducing moment from the script.
 2. The thumbnail must make someone STOP scrolling and CLICK.
 3. Focus on ONE strong visual element — not a busy scene.
 4. Include dramatic lighting, strong emotions on faces, or a striking visual contrast.
-5. NEVER include any text, letters, words, or writing in the image.
-6. The image must work as a standalone thumbnail without context.
-7. Output ONLY the image prompt. Max 400 characters."""
+5. The image must work as a standalone thumbnail without context.
+6. Output ONLY the image prompt. Max 500 characters."""
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": roteiro}
-        ], "max_tokens": 300}
+        ], "max_tokens": 350}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
         if r.ok:
             return r.json()["choices"][0]["message"]["content"].strip()
     except:
         pass
-    return f"{estilo_desc}, dramatic scene inspired by: {roteiro[:100]}, no text no words"
+    return f"{estilo_desc}, dramatic scene inspired by: {roteiro[:100]}"
 
 def _init_thumbnails_table():
     try:
@@ -1500,6 +1521,7 @@ def gerar_thumbnail_route():
     roteiro = request.form.get("roteiro", "").strip()
     estilo_thumb = request.form.get("estilo_thumb", "youtube").strip()
     prompt_custom = request.form.get("prompt_custom", "").strip()
+    texto_thumb = request.form.get("texto_thumb", "").strip()
     if not roteiro and not prompt_custom:
         return jsonify({"erro": "Roteiro vazio"}), 400
     if not current_user.get_api_key():
@@ -1511,10 +1533,12 @@ def gerar_thumbnail_route():
         if prompt_custom:
             prompt = prompt_custom
         else:
-            prompt = gerar_prompt_thumbnail(roteiro, estilo_thumb, current_user.get_api_key())
+            prompt = gerar_prompt_thumbnail(roteiro, estilo_thumb, current_user.get_api_key(), texto_thumb)
+        # Shorts = vertical, resto = horizontal
+        size = "1024x1792" if estilo_thumb == "shorts" else "1792x1024"
         thumb_id = uuid.uuid4().hex[:12]
         thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
-        gerar_imagem_openai(prompt, current_user.get_api_key(), "1792x1024", "standard", thumb_path, modelo="gpt-image-1")
+        gerar_imagem_openai(prompt, current_user.get_api_key(), size, "standard", thumb_path, modelo="gpt-image-1")
         # Salvar no histórico
         _init_thumbnails_table()
         conn = sqlite3.connect('instance/veo3.db')
@@ -1544,9 +1568,10 @@ def regerar_thumbnail_route():
         return jsonify({"erro": f"Créditos insuficientes. Necessário: {CREDITOS_POR_IMAGEM}"}), 400
     db.session.commit()
     try:
+        size = "1024x1792" if estilo_thumb == "shorts" else "1792x1024"
         thumb_id = uuid.uuid4().hex[:12]
         thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
-        gerar_imagem_openai(prompt_editado, current_user.get_api_key(), "1792x1024", "standard", thumb_path, modelo="gpt-image-1")
+        gerar_imagem_openai(prompt_editado, current_user.get_api_key(), size, "standard", thumb_path, modelo="gpt-image-1")
         _init_thumbnails_table()
         conn = sqlite3.connect('instance/veo3.db')
         conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?, ?, ?, ?, ?, ?)",
