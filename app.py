@@ -1731,6 +1731,163 @@ def ver_thumbnail(thumb_id):
     if not os.path.exists(thumb_path): return jsonify({"erro": "Não encontrada"}), 404
     return send_file(thumb_path)
 
+# ── Thumbnail Editor (IA) ─────────────────────────────────
+THUMB_EDIT_FOLDER = "thumb_edits"
+os.makedirs(THUMB_EDIT_FOLDER, exist_ok=True)
+
+def _init_thumb_edits_table():
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("""CREATE TABLE IF NOT EXISTS thumb_edits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            edit_id TEXT NOT NULL,
+            original_path TEXT,
+            rosto_path TEXT DEFAULT '',
+            instrucao TEXT,
+            resultado_path TEXT,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
+        conn.commit(); conn.close()
+    except: pass
+
+def editar_imagem_openai(prompt, api_key, imagem_paths, output_path, size="1792x1024"):
+    """Edita imagem usando gpt-image-1 com imagens de referência"""
+    import base64, sys
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    # Preparar imagens como input
+    images_input = []
+    for img_path in imagem_paths:
+        with open(img_path, "rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+        ext = img_path.rsplit(".", 1)[-1].lower()
+        mime = "image/png" if ext == "png" else "image/jpeg"
+        images_input.append({"type": "input_image", "input_image": {"url": f"data:{mime};base64,{img_b64}"}})
+
+    # Adicionar prompt como texto
+    images_input.append({"type": "text", "text": prompt})
+
+    size_map = {"1792x1024": "1536x1024", "1024x1792": "1024x1536", "1024x1024": "1024x1024"}
+    gpt_size = size_map.get(size, "1536x1024")
+
+    body = {
+        "model": "gpt-image-1",
+        "input": images_input,
+        "size": gpt_size,
+        "quality": "medium",
+        "n": 1
+    }
+
+    sys.stderr.write(f"[THUMB-EDIT] Editando com {len(imagem_paths)} imagem(ns)...\n"); sys.stderr.flush()
+    r = requests.post("https://api.openai.com/v1/images/generations", headers=headers, json=body, timeout=120)
+    if r.ok:
+        data = r.json()
+        img_bytes = base64.b64decode(data["data"][0]["b64_json"])
+        with open(output_path, "wb") as f:
+            f.write(img_bytes)
+        # Pós-processamento
+        try:
+            from PIL import ImageEnhance, ImageFilter
+            img = Image.open(output_path); img = img.filter(ImageFilter.SHARPEN)
+            img = ImageEnhance.Contrast(img).enhance(1.1); img = ImageEnhance.Brightness(img).enhance(1.05)
+            img.save(output_path, quality=95); img.close()
+        except: pass
+        sys.stderr.write(f"[THUMB-EDIT] OK\n"); sys.stderr.flush()
+        return True
+    else:
+        erro = r.json().get("error", {}).get("message", "Erro desconhecido")
+        sys.stderr.write(f"[THUMB-EDIT] Erro: {erro}\n"); sys.stderr.flush()
+        raise Exception(f"Erro na edição: {erro}")
+
+@app.route("/thumb_editor/editar", methods=["POST"])
+@login_required
+def thumb_editor_editar():
+    """Edita thumbnail existente com instrução de texto + opcionalmente rosto"""
+    instrucao = request.form.get("instrucao", "").strip()
+    if not instrucao:
+        return jsonify({"erro": "Escreva uma instrução de edição"}), 400
+    if "imagem" not in request.files or not request.files["imagem"].filename:
+        return jsonify({"erro": "Envie a imagem de referência"}), 400
+    if not current_user.get_api_key():
+        return jsonify({"erro": "Assine um plano para usar."}), 400
+    if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM):
+        return jsonify({"erro": "Créditos insuficientes."}), 400
+    db.session.commit()
+
+    edit_id = uuid.uuid4().hex[:12]
+    # Salvar imagem original
+    original_path = os.path.join(THUMB_EDIT_FOLDER, f"{current_user.id}_{edit_id}_orig.png")
+    request.files["imagem"].save(original_path)
+
+    # Salvar rosto se enviado
+    rosto_path = ""
+    imagem_paths = [original_path]
+    if "rosto" in request.files and request.files["rosto"].filename:
+        rosto_path = os.path.join(THUMB_EDIT_FOLDER, f"{current_user.id}_{edit_id}_rosto.png")
+        request.files["rosto"].save(rosto_path)
+        imagem_paths.append(rosto_path)
+
+    # Construir prompt de edição
+    prompt = f"""Edit this thumbnail image following these instructions: {instrucao}
+
+CRITICAL RULES:
+- PRESERVE the original composition, framing, and 16:9 aspect ratio
+- PRESERVE the position of main elements
+- PRESERVE the overall visual structure
+- Apply ONLY the changes requested
+- Keep the image looking like a professional YouTube thumbnail
+- High contrast, sharp focus, vibrant colors
+- Output must be a complete, polished thumbnail"""
+
+    if rosto_path:
+        prompt += "\n- The second image is a face/person reference. Replace the person in the thumbnail with this face/person while keeping the same pose, position, and composition."
+
+    resultado_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{edit_id}.png")
+
+    try:
+        editar_imagem_openai(prompt, current_user.get_api_key(), imagem_paths, resultado_path)
+        # Salvar no banco
+        _init_thumb_edits_table()
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("INSERT INTO thumb_edits (user_id, edit_id, original_path, rosto_path, instrucao, resultado_path) VALUES (?,?,?,?,?,?)",
+                     (current_user.id, edit_id, original_path, rosto_path, instrucao, resultado_path))
+        conn.commit(); conn.close()
+        # Também salvar no histórico de thumbnails
+        _init_thumbnails_table()
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?,?,?,?,?,?)",
+                     (current_user.id, edit_id, instrucao[:500], prompt[:500], "editado", resultado_path))
+        conn.commit(); conn.close()
+        return jsonify({"ok": True, "edit_id": edit_id})
+    except Exception as e:
+        current_user.creditos += CREDITOS_POR_IMAGEM; db.session.commit()
+        return jsonify({"erro": str(e)}), 500
+
+@app.route("/thumb_editor/ver/<edit_id>")
+@login_required
+def thumb_editor_ver(edit_id):
+    path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{edit_id}.png")
+    if not os.path.exists(path): return jsonify({"erro": "Não encontrada"}), 404
+    return send_file(path)
+
+@app.route("/thumb_editor/download/<edit_id>")
+@login_required
+def thumb_editor_download(edit_id):
+    path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{edit_id}.png")
+    if not os.path.exists(path): return jsonify({"erro": "Não encontrada"}), 404
+    return send_file(path, as_attachment=True, download_name=f"thumb_editada_{edit_id}.png")
+
+@app.route("/thumb_editor/historico")
+@login_required
+def thumb_editor_historico():
+    _init_thumb_edits_table()
+    conn = sqlite3.connect('instance/veo3.db')
+    rows = conn.execute("SELECT edit_id, instrucao, criado_em FROM thumb_edits WHERE user_id=? ORDER BY id DESC LIMIT 30", (current_user.id,)).fetchall()
+    conn.close()
+    edits = [{"edit_id": r[0], "instrucao": r[1] or "", "criado_em": r[2] or ""} for r in rows if os.path.exists(os.path.join(THUMB_FOLDER, f"{current_user.id}_{r[0]}.png"))]
+    return jsonify({"edits": edits})
+
 # ── Suporte ──────────────────────────────────────────────
 @app.route("/suporte", methods=["POST"])
 @login_required

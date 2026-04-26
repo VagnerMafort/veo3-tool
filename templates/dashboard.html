@@ -396,6 +396,55 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       </div>
     </div>
 
+    <!-- Editor de Thumbnail por IA -->
+    <div class="card">
+      <h2>✏️ Editar Thumbnail com IA</h2>
+      <p class="tip" style="margin-bottom:14px">Envie uma thumbnail existente e peça edições por texto. A IA preserva a composição original.</p>
+
+      <label>Imagem de referência (thumbnail pra editar)</label>
+      <div class="drop-area" id="dropAreaThumbEdit">
+        <input type="file" id="fileThumbEdit" accept="image/*"/>
+        <div class="drop-icon">🖼️</div>
+        <p>Selecionar imagem</p>
+        <p class="fmt">PNG · JPG · WEBP</p>
+      </div>
+      <div id="previewThumbEdit" style="display:none;margin-top:10px;text-align:center">
+        <img id="previewThumbEditImg" style="max-width:100%;border-radius:8px;max-height:200px"/>
+      </div>
+
+      <label>Foto de rosto/personagem <span style="color:var(--text3);font-weight:400">(opcional — pra substituir pessoa)</span></label>
+      <div class="drop-area" id="dropAreaRosto" style="padding:14px">
+        <input type="file" id="fileRosto" accept="image/*"/>
+        <div class="drop-icon" style="font-size:1.2rem">👤</div>
+        <p style="font-size:.8rem">Enviar foto de rosto</p>
+      </div>
+      <div id="previewRosto" style="display:none;margin-top:8px;text-align:center">
+        <img id="previewRostoImg" style="max-width:80px;border-radius:50%;border:2px solid var(--accent)"/>
+      </div>
+
+      <label>Instrução de edição</label>
+      <textarea id="thumbEditInstrucao" placeholder="Ex: trocar o texto por 'REVELADO!', deixar mais cinematográfico, remover o objeto da direita, trocar a pessoa pela minha foto..." style="min-height:70px"></textarea>
+      <p class="tip">Exemplos: "trocar fundo por algo mais dramático", "deixar estilo cartoon", "melhorar iluminação", "colocar seta vermelha", "trocar texto por ELE VOLTOU"</p>
+
+      <button class="btn" id="btnEditarThumb" style="margin-top:12px">✏️ Editar com IA</button>
+      <div class="status-box" id="statusThumbEdit" style="display:none">
+        <div class="spinner"></div>
+        <div class="status-text">Editando thumbnail com IA...</div>
+      </div>
+      <div class="erro-box" id="erroThumbEdit"></div>
+
+      <div id="thumbEditResultado" style="display:none;margin-top:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div style="text-align:center"><p style="font-size:.75rem;color:var(--text3);margin-bottom:4px">Antes</p><img id="thumbEditAntes" style="width:100%;border-radius:8px"/></div>
+          <div style="text-align:center"><p style="font-size:.75rem;color:var(--text3);margin-bottom:4px">Depois</p><img id="thumbEditDepois" style="width:100%;border-radius:8px"/></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <a href="#" id="btnDownloadEdit" class="btn-download" style="flex:1;text-align:center;font-size:.82rem">⬇ Baixar</a>
+          <button class="btn-sm" style="background:var(--accent);flex:1;font-size:.82rem" onclick="document.getElementById('thumbEditResultado').style.display='none'">✏️ Editar de novo</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Histórico -->
     <div class="card">
       <h2>📂 Minhas Thumbnails</h2>
@@ -1216,6 +1265,37 @@ async function carregarThumbnails(){
   }catch(e){lista.innerHTML='<div class="vazio">Erro ao carregar.</div>';}
 }
 async function deletarThumb(thumbId){if(!confirm('Deletar?'))return;await fetch('/deletar_thumbnail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({thumb_id:thumbId})});carregarThumbnails();}
+// Thumb Editor
+const fileThumbEdit=document.getElementById('fileThumbEdit'),fileRosto=document.getElementById('fileRosto');
+let _thumbEditFile=null,_rostoFile=null;
+if(fileThumbEdit)fileThumbEdit.addEventListener('change',()=>{_thumbEditFile=fileThumbEdit.files[0];if(_thumbEditFile){const r=new FileReader();r.onload=e=>{document.getElementById('previewThumbEditImg').src=e.target.result;document.getElementById('previewThumbEdit').style.display='block';};r.readAsDataURL(_thumbEditFile);}});
+if(fileRosto)fileRosto.addEventListener('change',()=>{_rostoFile=fileRosto.files[0];if(_rostoFile){const r=new FileReader();r.onload=e=>{document.getElementById('previewRostoImg').src=e.target.result;document.getElementById('previewRosto').style.display='block';};r.readAsDataURL(_rostoFile);}});
+document.getElementById('btnEditarThumb').addEventListener('click',async()=>{
+  const instrucao=document.getElementById('thumbEditInstrucao').value.trim();
+  if(!instrucao){document.getElementById('erroThumbEdit').textContent='❌ Escreva a instrução de edição';document.getElementById('erroThumbEdit').style.display='block';return;}
+  if(!_thumbEditFile){document.getElementById('erroThumbEdit').textContent='❌ Envie a imagem de referência';document.getElementById('erroThumbEdit').style.display='block';return;}
+  document.getElementById('erroThumbEdit').style.display='none';
+  document.getElementById('btnEditarThumb').disabled=true;
+  document.getElementById('statusThumbEdit').style.display='block';
+  document.getElementById('thumbEditResultado').style.display='none';
+  const fd=new FormData();
+  fd.append('imagem',_thumbEditFile);
+  fd.append('instrucao',instrucao);
+  if(_rostoFile)fd.append('rosto',_rostoFile);
+  try{
+    const res=await fetch('/thumb_editor/editar',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.erro)throw new Error(d.erro);
+    document.getElementById('thumbEditAntes').src=document.getElementById('previewThumbEditImg').src;
+    document.getElementById('thumbEditDepois').src=`/thumb_editor/ver/${d.edit_id}?t=${Date.now()}`;
+    document.getElementById('btnDownloadEdit').href=`/thumb_editor/download/${d.edit_id}`;
+    document.getElementById('thumbEditResultado').style.display='block';
+    atualizarCreditos();carregarThumbnails();
+  }catch(e){document.getElementById('erroThumbEdit').textContent='❌ '+e.message;document.getElementById('erroThumbEdit').style.display='block';}
+  document.getElementById('statusThumbEdit').style.display='none';
+  document.getElementById('btnEditarThumb').disabled=false;
+});
+
 // Suporte
 document.getElementById('btnSuporte').addEventListener('click',async()=>{
   const assunto=document.getElementById('suporteAssunto').value.trim();const msg=document.getElementById('suporteMensagem').value.trim();
