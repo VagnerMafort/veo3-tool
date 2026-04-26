@@ -2325,8 +2325,10 @@ def usar_banco_cena():
 @app.route("/clonar_voz", methods=["POST"])
 @login_required
 def clonar_voz():
-    if not current_user.minimax_key:
-        return jsonify({"erro": "Configure a chave MiniMax no perfil"}), 400
+    minimax_key = current_user.get_minimax_key()
+    minimax_group = current_user.get_minimax_group_id()
+    if not minimax_key:
+        return jsonify({"erro": "Narração não disponível. Assine um plano para usar esta funcionalidade."}), 400
     if "audio" not in request.files or not request.files["audio"].filename:
         return jsonify({"erro": "Envie um arquivo de audio"}), 400
     nome_voz = request.form.get("nome_voz", "").strip()
@@ -2337,7 +2339,7 @@ def clonar_voz():
     caminho = os.path.join(UPLOAD_FOLDER, f"{voice_id}.mp3")
     audio.save(caminho)
     try:
-        clonar_voz_minimax(current_user.minimax_key, current_user.minimax_group_id, caminho, voice_id)
+        clonar_voz_minimax(minimax_key, minimax_group, caminho, voice_id)
         current_user.add_voz_clonada(nome_voz, voice_id)
         db.session.commit()
         os.remove(caminho)

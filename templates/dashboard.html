@@ -260,7 +260,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <option value="5">A cada 5 segundos</option>
           <option value="8">A cada 8 segundos</option>
         </select>
-        {% if user.minimax_key %}
+        {% if user.minimax_key or (user.plano and user.plano != 'api_propria') or user.is_admin %}
         <label>Voz para narração</label>
         <select id="voiceId">
           <option value="">— Sem narração —</option>
