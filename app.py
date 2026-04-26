@@ -1527,166 +1527,173 @@ def esqueci_senha():
     </div>""")
     return jsonify({"ok": True, "msg": "Nova senha enviada para seu email"})
 
-# ── Thumbnail ────────────────────────────────────────────
-THUMB_ESTILOS = {
-    "youtube": "Bold YouTube thumbnail style, extremely eye-catching, dramatic facial expression close-up, bright saturated colors, high contrast, thick bold text overlay area on the side, professional YouTube creator aesthetic, 4K, horizontal 16:9",
-    "shorts": "Vertical mobile-first thumbnail, vibrant neon accents, bold single subject centered, clean background with gradient, TikTok/Shorts viral aesthetic, punchy colors, 4K",
-    "biblico": "Epic biblical cinematic scene, golden divine light rays from heaven, ancient Middle Eastern setting, dramatic clouds, oil painting style with photorealistic details, awe-inspiring composition, 4K, horizontal 16:9",
-    "horror": "Dark horror movie poster style, eerie atmosphere, deep shadows, desaturated colors with red accents, fog and mist, unsettling composition, cinematic horror lighting, 4K, horizontal 16:9",
-    "infantil": "Colorful children's cartoon style, cute rounded characters, bright pastel colors, friendly and fun atmosphere, clean illustration, Pixar-inspired aesthetic, 4K, horizontal 16:9",
-    "motivacional": "Inspirational cinematic scene, golden hour lighting, silhouette against dramatic sky, warm tones, epic landscape, motivational poster aesthetic, lens flare, 4K, horizontal 16:9",
-    "educativo": "Clean modern educational thumbnail, professional look, subtle gradient background, clear visual hierarchy, infographic style elements, trustworthy and informative aesthetic, 4K, horizontal 16:9",
-    "gaming": "Dynamic gaming thumbnail, neon glow effects, action pose, dark background with vibrant color splashes, esports aesthetic, energetic composition, 4K, horizontal 16:9",
-    "curiosidades": "Intriguing mystery style, magnifying glass effect, question mark visual elements, split composition showing before/after or comparison, clickbait-worthy but tasteful, bright colors, 4K, horizontal 16:9",
+# ── Thumbnail Engine ──────────────────────────────────────
+THUMB_ESTILOS_ENGINE = {
+    "cinematic": {"nome": "Cinematic", "prompt": "Cinematic film still, 35mm lens, shallow depth of field, dramatic rim lighting, cinematic color grading, anamorphic lens flare, movie poster composition, 4K, 16:9"},
+    "hyper_realistic": {"nome": "Hyper Realistic", "prompt": "Hyper-realistic photograph, ultra-detailed skin textures, studio lighting, DSLR quality, sharp focus, photojournalistic style, natural colors, 4K, 16:9"},
+    "mystery": {"nome": "Mystery", "prompt": "Dark mysterious atmosphere, fog and shadows, silhouette lighting, desaturated tones with single color accent, noir aesthetic, suspenseful mood, 4K, 16:9"},
+    "documentary": {"nome": "Documentary", "prompt": "Documentary photography style, natural lighting, candid moment captured, editorial composition, muted earth tones, authentic and raw, 4K, 16:9"},
+    "cartoon": {"nome": "Cartoon", "prompt": "Vibrant cartoon illustration, bold outlines, flat bright colors, exaggerated expressions, clean vector style, fun and energetic, 4K, 16:9"},
+    "kids": {"nome": "Kids", "prompt": "Colorful children illustration, cute rounded characters, pastel rainbow colors, friendly and magical atmosphere, Pixar-inspired, 4K, 16:9"},
+    "dark_drama": {"nome": "Dark Drama", "prompt": "Dark dramatic scene, chiaroscuro lighting, deep blacks and golden highlights, intense emotion, Renaissance painting meets cinema, 4K, 16:9"},
+    "scifi": {"nome": "Sci-Fi", "prompt": "Futuristic sci-fi scene, neon holographic elements, cyberpunk lighting, chrome and glass surfaces, volumetric fog, advanced technology, 4K, 16:9"},
+    "bright_viral": {"nome": "Bright Viral", "prompt": "Ultra-bright saturated colors, clean white or gradient background, bold pop-art influence, maximum visual impact, YouTube viral aesthetic, 4K, 16:9"},
+    "minimal": {"nome": "Minimal", "prompt": "Minimalist composition, single subject centered, vast negative space, limited color palette, clean and elegant, modern design aesthetic, 4K, 16:9"},
 }
 
 THUMB_FOLDER = "thumbnails"
 os.makedirs(THUMB_FOLDER, exist_ok=True)
 
-def gerar_prompt_thumbnail(roteiro, estilo_thumb, api_key, texto_thumb="", sem_texto=False):
-    """Usa IA pra criar o prompt ideal de thumbnail baseado no roteiro"""
-    estilo_desc = THUMB_ESTILOS.get(estilo_thumb, THUMB_ESTILOS["youtube"])
+CREDITOS_POR_THUMB_PACK = 24
+
+def analisar_cena_thumbnail(roteiro, api_key):
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        system = """You are a YouTube thumbnail strategist. Analyze this video script and identify the SINGLE MOST CLICKABLE moment for a thumbnail.
 
-        if sem_texto:
-            texto_instrucao = """
-TEXT RULES:
-- ABSOLUTELY NO text, letters, words, writing, watermarks, or inscriptions in the image.
-- The image must be purely visual with zero typography."""
-        elif texto_thumb:
-            texto_instrucao = f"""
-TEXT ON THE THUMBNAIL:
-- The thumbnail MUST contain this exact text: "{texto_thumb}"
-- Use a MODERN, bold sans-serif font style (like Montserrat Black, Bebas Neue, or Impact).
-- The text must be HUGE, BOLD, and highly readable with clean sharp edges.
-- Use thick white or bright colored letters with a strong dark drop shadow or black outline for maximum contrast.
-- Text should occupy 30-40% of the image area.
-- Place text strategically: top or bottom third, never covering the main subject's face.
-- The typography must look like a modern YouTube thumbnail — clean, punchy, professional."""
-        else:
-            texto_instrucao = """
-TEXT ON THE THUMBNAIL:
-- You MUST add a short, punchy text (2-5 words max) that creates curiosity or shock.
-- The text should be in the SAME LANGUAGE as the script.
-- Use a MODERN, bold sans-serif font style (like Montserrat Black, Bebas Neue, or Impact).
-- The text must be HUGE, BOLD, and highly readable with clean sharp edges.
-- Use thick white or bright colored letters with a strong dark drop shadow or black outline for maximum contrast.
-- Text should occupy 30-40% of the image area.
-- The typography must look like a modern YouTube thumbnail — clean, punchy, professional.
-- Examples of good thumbnail text: "ELE VOLTOU!", "IMPOSSÍVEL!", "NINGUÉM ESPERAVA", "O SEGREDO", "REVELADO!"
-- The text must relate to the most dramatic moment of the script."""
+Return a JSON object with:
+{"cena":"scene description","objeto_central":"main object","personagem":"character description or null","emocao":"dominant emotion","tensao_visual":"visual tension","cenario":"setting","acao_visual":"action","estilo_recomendado":"cinematic","textos_sugeridos":["TEXT1","TEXT2","TEXT3","TEXT4","TEXT5"]}
 
-        system = f"""You are a thumbnail designer for viral content. Given a video script, create ONE powerful image prompt for the thumbnail.
-
-STYLE: {estilo_desc}
-
-{texto_instrucao}
-
-RULES:
-1. Identify the MOST dramatic, emotional, or curiosity-inducing moment from the script.
-2. The thumbnail must make someone STOP scrolling and CLICK.
-3. Focus on ONE strong visual element — not a busy scene.
-4. Include dramatic lighting, strong emotions on faces, or a striking visual contrast.
-5. The image must work as a standalone thumbnail without context.
-6. Output ONLY the image prompt. Max 500 characters."""
-        body = {"model": "gpt-4o-mini", "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": roteiro}
-        ], "max_tokens": 350}
+RULES for textos_sugeridos: 2-4 words MAX each, same language as script, high impact, provocative or mysterious. Output ONLY valid JSON."""
+        body = {"model": "gpt-4o-mini", "messages": [{"role": "system", "content": system}, {"role": "user", "content": roteiro}], "max_tokens": 500}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
         if r.ok:
-            return r.json()["choices"][0]["message"]["content"].strip()
-    except:
-        pass
-    return f"{estilo_desc}, dramatic scene inspired by: {roteiro[:100]}"
+            texto = r.json()["choices"][0]["message"]["content"].strip().replace("```json", "").replace("```", "").strip()
+            return json.loads(texto)
+    except: pass
+    return None
+
+def gerar_prompt_thumb_engine(analise, estilo, variacao=0, texto_thumb="", sem_texto=False):
+    estilo_info = THUMB_ESTILOS_ENGINE.get(estilo, THUMB_ESTILOS_ENGINE["cinematic"])
+    cena = analise.get("cena", "dramatic scene")
+    personagem = analise.get("personagem", "")
+    objeto = analise.get("objeto_central", "")
+    emocao = analise.get("emocao", "intense")
+    cenario = analise.get("cenario", "")
+    acao = analise.get("acao_visual", "")
+    composicoes = [
+        "extreme close-up on the main subject, shallow depth of field, blurred background",
+        "medium shot, rule of thirds composition, subject slightly off-center",
+        "dramatic low angle looking up at the subject, imposing perspective",
+        "wide establishing shot showing scale, subject small but highlighted",
+    ]
+    comp = composicoes[variacao % len(composicoes)]
+    if sem_texto:
+        texto_instrucao = "ABSOLUTELY NO text, letters, words, or writing in the image."
+    elif texto_thumb:
+        texto_instrucao = f'Bold modern sans-serif text "{texto_thumb}" in huge thick white letters with strong black drop shadow, occupying 30% of image area.'
+    else:
+        textos = analise.get("textos_sugeridos", [])
+        if textos and variacao < len(textos):
+            texto_instrucao = f'Bold modern sans-serif text "{textos[variacao]}" in huge thick white letters with strong black drop shadow, occupying 30% of image area.'
+        else:
+            texto_instrucao = "ABSOLUTELY NO text in the image."
+    subject = personagem if personagem else objeto
+    return f"{estilo_info['prompt']}. {comp}. Scene: {cena}. Main subject: {subject} showing {emocao} emotion. {acao}. Setting: {cenario}. {texto_instrucao}. High contrast, sharp focus, clean background, ultra-detailed, professional YouTube thumbnail, maximum visual impact."[:800]
 
 def _init_thumbnails_table():
     try:
         conn = sqlite3.connect('instance/veo3.db')
-        conn.execute("""CREATE TABLE IF NOT EXISTS thumbnails (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            thumb_id TEXT NOT NULL,
-            roteiro TEXT,
-            prompt TEXT,
-            estilo TEXT,
-            path TEXT,
-            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )""")
-        conn.commit()
-        conn.close()
-    except:
-        pass
+        conn.execute("""CREATE TABLE IF NOT EXISTS thumbnails (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, thumb_id TEXT NOT NULL, session_id TEXT DEFAULT '', roteiro TEXT, prompt TEXT, estilo TEXT, analise TEXT DEFAULT '', texto_aplicado TEXT DEFAULT '', path TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        try: conn.execute("ALTER TABLE thumbnails ADD COLUMN session_id TEXT DEFAULT ''")
+        except: pass
+        try: conn.execute("ALTER TABLE thumbnails ADD COLUMN analise TEXT DEFAULT ''")
+        except: pass
+        try: conn.execute("ALTER TABLE thumbnails ADD COLUMN texto_aplicado TEXT DEFAULT ''")
+        except: pass
+        conn.commit(); conn.close()
+    except: pass
 
-@app.route("/gerar_thumbnail", methods=["POST"])
+@app.route("/thumb_engine/analisar", methods=["POST"])
 @login_required
-def gerar_thumbnail_route():
+def thumb_engine_analisar():
+    roteiro = request.json.get("roteiro", "").strip()
+    if not roteiro: return jsonify({"erro": "Roteiro vazio"}), 400
+    if not current_user.get_api_key(): return jsonify({"erro": "Assine um plano para usar."}), 400
+    analise = analisar_cena_thumbnail(roteiro, current_user.get_api_key())
+    if not analise: return jsonify({"erro": "Erro ao analisar roteiro"}), 500
+    return jsonify({"ok": True, "analise": analise})
+
+@app.route("/thumb_engine/gerar", methods=["POST"])
+@login_required
+def thumb_engine_gerar():
     roteiro = request.form.get("roteiro", "").strip()
-    estilo_thumb = request.form.get("estilo_thumb", "youtube").strip()
-    prompt_custom = request.form.get("prompt_custom", "").strip()
+    estilo = request.form.get("estilo", "cinematic").strip()
+    analise_json = request.form.get("analise", "{}").strip()
     texto_thumb = request.form.get("texto_thumb", "").strip()
     sem_texto = request.form.get("sem_texto", "false") == "true"
-    if not roteiro and not prompt_custom:
-        return jsonify({"erro": "Roteiro vazio"}), 400
-    if not current_user.get_api_key():
-        return jsonify({"erro": "Nenhuma chave de API disponível"}), 400
-    if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM):
-        return jsonify({"erro": f"Créditos insuficientes. Necessário: {CREDITOS_POR_IMAGEM}"}), 400
+    if not current_user.get_api_key(): return jsonify({"erro": "Assine um plano."}), 400
+    if not current_user.gastar_creditos(CREDITOS_POR_THUMB_PACK):
+        return jsonify({"erro": f"Créditos insuficientes. Necessário: {CREDITOS_POR_THUMB_PACK}"}), 400
     db.session.commit()
-    try:
-        if prompt_custom:
-            prompt = prompt_custom
-        else:
-            prompt = gerar_prompt_thumbnail(roteiro, estilo_thumb, current_user.get_api_key(), texto_thumb, sem_texto)
-        # Shorts = vertical, resto = horizontal
-        size = "1024x1792" if estilo_thumb == "shorts" else "1792x1024"
-        thumb_id = uuid.uuid4().hex[:12]
-        thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
-        gerar_imagem_openai(prompt, current_user.get_api_key(), size, "standard", thumb_path, modelo="gpt-image-1")
-        # Salvar no histórico
-        _init_thumbnails_table()
-        conn = sqlite3.connect('instance/veo3.db')
-        conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?, ?, ?, ?, ?, ?)",
-                     (current_user.id, thumb_id, roteiro[:500], prompt, estilo_thumb, thumb_path))
-        conn.commit()
-        conn.close()
-        return jsonify({"ok": True, "thumb_id": thumb_id, "prompt_usado": prompt})
-    except Exception as e:
-        current_user.creditos += CREDITOS_POR_IMAGEM
-        db.session.commit()
-        return jsonify({"erro": str(e)}), 500
+    try: analise = json.loads(analise_json)
+    except: analise = {"cena": roteiro[:200], "textos_sugeridos": []}
+    session_id = uuid.uuid4().hex[:12]
+    api_key = current_user.get_api_key()
+    _init_thumbnails_table()
+    import sys
+    def gerar_variacao(i):
+        try:
+            prompt = gerar_prompt_thumb_engine(analise, estilo, i, texto_thumb, sem_texto)
+            thumb_id = uuid.uuid4().hex[:12]
+            thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
+            gerar_imagem_openai(prompt, api_key, "1792x1024", "standard", thumb_path, modelo="gpt-image-1")
+            try:
+                from PIL import ImageEnhance, ImageFilter
+                img = Image.open(thumb_path); img = img.filter(ImageFilter.SHARPEN)
+                img = ImageEnhance.Contrast(img).enhance(1.1); img = ImageEnhance.Brightness(img).enhance(1.05)
+                img.save(thumb_path, quality=95); img.close()
+            except: pass
+            conn = sqlite3.connect('instance/veo3.db')
+            conn.execute("INSERT INTO thumbnails (user_id, thumb_id, session_id, roteiro, prompt, estilo, analise, texto_aplicado, path) VALUES (?,?,?,?,?,?,?,?,?)",
+                         (current_user.id, thumb_id, session_id, roteiro[:500], prompt, estilo, analise_json[:1000], texto_thumb, thumb_path))
+            conn.commit(); conn.close()
+            texto_na = texto_thumb if texto_thumb else (analise.get("textos_sugeridos", [])[i] if i < len(analise.get("textos_sugeridos", [])) else "")
+            return {"thumb_id": thumb_id, "prompt": prompt, "variacao": i + 1, "texto": texto_na}
+        except Exception as e:
+            sys.stderr.write(f"[THUMB] Var {i+1} erro: {e}\n"); sys.stderr.flush(); return None
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        resultados = list(executor.map(gerar_variacao, range(4)))
+    thumbs_geradas = [r for r in resultados if r]
+    if not thumbs_geradas:
+        current_user.creditos += CREDITOS_POR_THUMB_PACK; db.session.commit()
+        return jsonify({"erro": "Erro ao gerar thumbnails."}), 500
+    falhas = 4 - len(thumbs_geradas)
+    if falhas > 0: current_user.creditos += falhas * 6; db.session.commit()
+    return jsonify({"ok": True, "session_id": session_id, "thumbs": thumbs_geradas, "analise": analise, "textos_sugeridos": analise.get("textos_sugeridos", [])})
 
-@app.route("/regerar_thumbnail", methods=["POST"])
+@app.route("/thumb_engine/regerar_uma", methods=["POST"])
 @login_required
-def regerar_thumbnail_route():
-    """Regera thumbnail com prompt editado"""
-    thumb_id_antigo = request.form.get("thumb_id", "").strip()
-    prompt_editado = request.form.get("prompt", "").strip()
-    estilo_thumb = request.form.get("estilo_thumb", "youtube").strip()
+def thumb_engine_regerar_uma():
     roteiro = request.form.get("roteiro", "").strip()
-    if not prompt_editado:
-        return jsonify({"erro": "Prompt vazio"}), 400
-    if not current_user.get_api_key():
-        return jsonify({"erro": "Nenhuma chave de API disponível"}), 400
-    if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM):
-        return jsonify({"erro": f"Créditos insuficientes. Necessário: {CREDITOS_POR_IMAGEM}"}), 400
+    estilo = request.form.get("estilo", "cinematic").strip()
+    analise_json = request.form.get("analise", "{}").strip()
+    texto_thumb = request.form.get("texto_thumb", "").strip()
+    sem_texto = request.form.get("sem_texto", "false") == "true"
+    if not current_user.get_api_key(): return jsonify({"erro": "Sem API"}), 400
+    if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM): return jsonify({"erro": "Créditos insuficientes."}), 400
     db.session.commit()
+    try: analise = json.loads(analise_json)
+    except: analise = {"cena": roteiro[:200]}
+    import random
+    prompt = gerar_prompt_thumb_engine(analise, estilo, random.randint(0, 3), texto_thumb, sem_texto)
+    thumb_id = uuid.uuid4().hex[:12]
+    thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
     try:
-        size = "1024x1792" if estilo_thumb == "shorts" else "1792x1024"
-        thumb_id = uuid.uuid4().hex[:12]
-        thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
-        gerar_imagem_openai(prompt_editado, current_user.get_api_key(), size, "standard", thumb_path, modelo="gpt-image-1")
+        gerar_imagem_openai(prompt, current_user.get_api_key(), "1792x1024", "standard", thumb_path, modelo="gpt-image-1")
+        try:
+            from PIL import ImageEnhance, ImageFilter
+            img = Image.open(thumb_path); img = img.filter(ImageFilter.SHARPEN)
+            img = ImageEnhance.Contrast(img).enhance(1.1); img.save(thumb_path, quality=95); img.close()
+        except: pass
         _init_thumbnails_table()
         conn = sqlite3.connect('instance/veo3.db')
-        conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?, ?, ?, ?, ?, ?)",
-                     (current_user.id, thumb_id, roteiro[:500], prompt_editado, estilo_thumb, thumb_path))
-        conn.commit()
-        conn.close()
-        return jsonify({"ok": True, "thumb_id": thumb_id, "prompt_usado": prompt_editado})
+        conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, analise, texto_aplicado, path) VALUES (?,?,?,?,?,?,?,?)",
+                     (current_user.id, thumb_id, roteiro[:500], prompt, estilo, analise_json[:1000], texto_thumb, thumb_path))
+        conn.commit(); conn.close()
+        return jsonify({"ok": True, "thumb_id": thumb_id, "prompt": prompt})
     except Exception as e:
-        current_user.creditos += CREDITOS_POR_IMAGEM
-        db.session.commit()
+        current_user.creditos += CREDITOS_POR_IMAGEM; db.session.commit()
         return jsonify({"erro": str(e)}), 500
 
 @app.route("/minhas_thumbnails")
@@ -1694,14 +1701,9 @@ def regerar_thumbnail_route():
 def minhas_thumbnails():
     _init_thumbnails_table()
     conn = sqlite3.connect('instance/veo3.db')
-    rows = conn.execute("SELECT thumb_id, roteiro, prompt, estilo, criado_em FROM thumbnails WHERE user_id=? ORDER BY id DESC LIMIT 50",
-                        (current_user.id,)).fetchall()
+    rows = conn.execute("SELECT thumb_id, roteiro, prompt, estilo, criado_em FROM thumbnails WHERE user_id=? ORDER BY id DESC LIMIT 50", (current_user.id,)).fetchall()
     conn.close()
-    thumbs = []
-    for r in rows:
-        path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{r[0]}.png")
-        if os.path.exists(path):
-            thumbs.append({"thumb_id": r[0], "roteiro": r[1] or "", "prompt": r[2] or "", "estilo": r[3] or "youtube", "criado_em": r[4] or ""})
+    thumbs = [{"thumb_id": r[0], "roteiro": r[1] or "", "prompt": r[2] or "", "estilo": r[3] or "cinematic", "criado_em": r[4] or ""} for r in rows if os.path.exists(os.path.join(THUMB_FOLDER, f"{current_user.id}_{r[0]}.png"))]
     return jsonify({"thumbnails": thumbs})
 
 @app.route("/deletar_thumbnail", methods=["POST"])
@@ -1709,29 +1711,41 @@ def minhas_thumbnails():
 def deletar_thumbnail():
     thumb_id = request.json.get("thumb_id", "")
     path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
-    if os.path.exists(path):
-        os.remove(path)
+    if os.path.exists(path): os.remove(path)
     conn = sqlite3.connect('instance/veo3.db')
     conn.execute("DELETE FROM thumbnails WHERE user_id=? AND thumb_id=?", (current_user.id, thumb_id))
-    conn.commit()
-    conn.close()
+    conn.commit(); conn.close()
     return jsonify({"ok": True})
 
 @app.route("/download_thumbnail/<thumb_id>")
 @login_required
 def download_thumbnail(thumb_id):
     thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
-    if not os.path.exists(thumb_path):
-        return jsonify({"erro": "Thumbnail não encontrada"}), 404
+    if not os.path.exists(thumb_path): return jsonify({"erro": "Não encontrada"}), 404
     return send_file(thumb_path, as_attachment=True, download_name=f"thumbnail_{thumb_id}.png")
 
 @app.route("/ver_thumbnail/<thumb_id>")
 @login_required
 def ver_thumbnail(thumb_id):
     thumb_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{thumb_id}.png")
-    if not os.path.exists(thumb_path):
-        return jsonify({"erro": "Thumbnail não encontrada"}), 404
+    if not os.path.exists(thumb_path): return jsonify({"erro": "Não encontrada"}), 404
     return send_file(thumb_path)
+
+# ── Suporte ──────────────────────────────────────────────
+@app.route("/suporte", methods=["POST"])
+@login_required
+def contatar_suporte():
+    assunto = request.json.get("assunto", "").strip()
+    mensagem = request.json.get("mensagem", "").strip()
+    if not assunto or not mensagem: return jsonify({"erro": "Preencha assunto e mensagem"}), 400
+    corpo = f"""<div style="font-family:Arial;max-width:600px;margin:0 auto;padding:20px">
+        <h2 style="color:#4a9eff">Suporte — Klyonclaw Studio</h2>
+        <p><b>De:</b> {current_user.nome} ({current_user.email})</p>
+        <p><b>Plano:</b> {current_user.plano or 'Sem plano'} | <b>Créditos:</b> {current_user.creditos}</p>
+        <p><b>Assunto:</b> {assunto}</p><hr/>
+        <p style="white-space:pre-wrap">{mensagem}</p></div>"""
+    enviar_email("support@klyonclaw.com", f"[Suporte] {assunto} — {current_user.nome}", corpo)
+    return jsonify({"ok": True, "msg": "Mensagem enviada! Responderemos em breve."})
 
 @app.route("/logout")
 @login_required

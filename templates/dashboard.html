@@ -317,42 +317,12 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <a href="#" id="btnDownload" class="btn-download">⬇ ZIP</a>
           <a href="#" id="btnVideo" class="btn-video">🎬 Vídeo</a>
         </div>
-        <!-- Thumbnail -->
-        <div class="card" style="margin-top:18px;text-align:left">
-          <h2>🖼️ Gerar Thumbnail</h2>
-          <p class="tip" style="margin-bottom:12px">Cria uma thumbnail otimizada baseada no roteiro do vídeo.</p>
-          <label>Estilo / Nicho</label>
-          <select id="thumbEstilo">
-            <option value="youtube">🎬 YouTube (chamativo)</option>
-            <option value="shorts">📱 Shorts / TikTok (vertical)</option>
-            <option value="biblico">✝️ Bíblico / Religioso</option>
-            <option value="horror">👻 Horror / Terror</option>
-            <option value="infantil">🧸 Infantil / Kids</option>
-            <option value="motivacional">💪 Motivacional</option>
-            <option value="educativo">📚 Educativo</option>
-            <option value="gaming">🎮 Gaming</option>
-            <option value="curiosidades">🔍 Curiosidades</option>
-          </select>
-          <label>Texto na thumbnail <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
-          <input type="text" id="thumbTextoResult" placeholder="Ex: ELE VOLTOU!, O SEGREDO..." style="margin-bottom:4px"/>
-          <div class="toggle-row" style="margin-top:6px">
-            <label>Sem texto na thumbnail</label>
-            <label class="toggle"><input type="checkbox" id="thumbSemTextoResult"><span class="slider"></span></label>
-          </div>
-          <p class="tip">Ative pra gerar só a imagem, sem nenhum texto.</p>
-          <button class="btn" id="btnGerarThumb" style="margin-top:12px">🖼️ Gerar Thumbnail</button>
-          <div class="status-box" id="statusThumb" style="display:none">
-            <div class="spinner"></div>
-            <div class="status-text">Gerando thumbnail...</div>
-          </div>
-          <div class="erro-box" id="erroThumb"></div>
-          <div id="thumbResultado" style="display:none;margin-top:14px">
-            <img id="thumbImg" style="width:100%;border-radius:10px;margin-bottom:10px"/>
-            <div style="display:flex;gap:8px">
-              <a href="#" id="btnDownloadThumb" class="btn-download" style="flex:1;text-align:center;font-size:.82rem">⬇ Baixar Thumbnail</a>
-              <button class="btn-sm" style="background:var(--accent);flex:1;font-size:.82rem" onclick="document.getElementById('thumbResultado').style.display='none';document.getElementById('btnGerarThumb').style.display='block'">🔄 Gerar outra</button>
-            </div>
-          </div>
+        <!-- Thumbnail Engine link -->
+        <div class="card" style="margin-top:18px;text-align:center">
+          <div style="font-size:2rem;margin-bottom:8px">🖼️</div>
+          <h2 style="margin-bottom:8px">Gerar Thumbnail Profissional</h2>
+          <p class="tip" style="margin-bottom:14px">Use o Thumbnail Engine pra criar 4 variações otimizadas com análise inteligente do roteiro.</p>
+          <button class="btn" onclick="trocarAba('thumbs')" style="max-width:300px;margin:0 auto">🖼️ Abrir Thumbnail Engine</button>
         </div>
         <button class="btn-outline" id="btnNovo">Criar novo</button>
       </div>
@@ -373,46 +343,76 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
   <!-- THUMBNAILS -->
   <div class="pane" id="paneThumbs">
     <div class="card">
-      <h2>🖼️ Gerar Thumbnail</h2>
-      <p class="tip" style="margin-bottom:14px">Cria thumbnails otimizadas com IA baseadas no seu roteiro.</p>
+      <h2>🖼️ Thumbnail Engine</h2>
+      <p class="tip" style="margin-bottom:14px">Pipeline profissional: a IA analisa seu roteiro, identifica a cena mais clicável e gera 4 variações otimizadas.</p>
+
       <label>Roteiro / Descrição do vídeo</label>
-      <textarea id="thumbRoteiro" placeholder="Cole o roteiro do vídeo ou descreva o conteúdo..." style="min-height:80px"></textarea>
-      <label>Estilo / Nicho</label>
+      <textarea id="thumbRoteiro" placeholder="Cole o roteiro completo do vídeo..." style="min-height:100px"></textarea>
+
+      <label>Estilo visual</label>
       <select id="thumbEstiloTab">
-        <option value="youtube">🎬 YouTube (chamativo)</option>
-        <option value="shorts">📱 Shorts / TikTok (vertical)</option>
-        <option value="biblico">✝️ Bíblico / Religioso</option>
-        <option value="horror">👻 Horror / Terror</option>
-        <option value="infantil">🧸 Infantil / Kids</option>
-        <option value="motivacional">💪 Motivacional</option>
-        <option value="educativo">📚 Educativo</option>
-        <option value="gaming">🎮 Gaming</option>
-        <option value="curiosidades">🔍 Curiosidades</option>
+        <option value="cinematic">🎬 Cinematic</option>
+        <option value="hyper_realistic">📸 Hyper Realistic</option>
+        <option value="mystery">🔮 Mystery</option>
+        <option value="documentary">📹 Documentary</option>
+        <option value="cartoon">🎨 Cartoon</option>
+        <option value="kids">🧸 Kids</option>
+        <option value="dark_drama">🌑 Dark Drama</option>
+        <option value="scifi">🚀 Sci-Fi</option>
+        <option value="bright_viral">⚡ Bright Viral</option>
+        <option value="minimal">⬜ Minimal</option>
       </select>
-      <label>Texto na thumbnail <span style="color:var(--text3);font-weight:400">(opcional — se vazio, a IA sugere)</span></label>
-      <input type="text" id="thumbTexto" placeholder="Ex: ELE VOLTOU!, O SEGREDO, IMPOSSÍVEL..." style="margin-bottom:4px"/>
+
+      <label>Texto na thumbnail <span style="color:var(--text3);font-weight:400">(opcional — a IA sugere 5 opções)</span></label>
+      <input type="text" id="thumbTexto" placeholder="Ex: ELE VOLTOU!, O SEGREDO..." style="margin-bottom:4px"/>
       <div class="toggle-row" style="margin-top:6px">
         <label>Sem texto na thumbnail</label>
         <label class="toggle"><input type="checkbox" id="thumbSemTexto"><span class="slider"></span></label>
       </div>
-      <p class="tip">Ative pra gerar só a imagem, sem nenhum texto.</p>
-      <button class="btn" id="btnGerarThumbTab">🖼️ Gerar Thumbnail</button>
+
+      <button class="btn" id="btnAnalisarThumb" style="margin-top:16px">🔍 Analisar Roteiro e Gerar 4 Thumbnails</button>
+
       <div class="status-box" id="statusThumbTab" style="display:none">
         <div class="spinner"></div>
-        <div class="status-text">Gerando thumbnail com IA...</div>
+        <div class="status-text" id="statusThumbText">Analisando roteiro...</div>
       </div>
       <div class="erro-box" id="erroThumbTab"></div>
-      <div id="thumbResultadoTab" style="display:none;margin-top:14px">
-        <img id="thumbImgTab" style="width:100%;border-radius:10px;margin-bottom:10px"/>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <a href="#" id="btnDownloadThumbTab" class="btn-download" style="flex:1;text-align:center;font-size:.82rem">⬇ Baixar</a>
-          <button class="btn-sm" style="background:var(--accent);flex:1;font-size:.82rem" id="btnRegerarThumbTab">🔄 Regerar</button>
-        </div>
+    </div>
+
+    <!-- Análise da cena -->
+    <div class="card" id="thumbAnaliseCard" style="display:none">
+      <h2>🎯 Cena mais clicável</h2>
+      <div id="thumbAnaliseInfo" style="font-size:.88rem;color:var(--text2);line-height:1.6"></div>
+      <div id="thumbTextosSugeridos" style="margin-top:14px"></div>
+    </div>
+
+    <!-- Galeria de variações -->
+    <div id="thumbGaleria" style="display:none">
+      <div class="card">
+        <h2>🖼️ Variações geradas</h2>
+        <p class="tip" style="margin-bottom:14px">Escolha a melhor, baixe ou regere individualmente.</p>
+        <div id="thumbGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+        <button class="btn" id="btnRegerarTodas" style="margin-top:14px;background:var(--accent)">🔄 Gerar 4 novas variações</button>
       </div>
     </div>
+
+    <!-- Histórico -->
     <div class="card">
       <h2>📂 Minhas Thumbnails</h2>
       <div id="listaThumbsHist"><div class="vazio">Carregando...</div></div>
+    </div>
+
+    <!-- Suporte -->
+    <div class="card" style="border-color:var(--accent)">
+      <h2>💬 Precisa de ajuda?</h2>
+      <p class="tip" style="margin-bottom:12px">Entre em contato com nosso suporte.</p>
+      <label>Assunto</label>
+      <input type="text" id="suporteAssunto" placeholder="Ex: Problema com geração de vídeo"/>
+      <label>Mensagem</label>
+      <textarea id="suporteMensagem" placeholder="Descreva seu problema ou dúvida..." style="min-height:80px"></textarea>
+      <button class="btn" id="btnSuporte" style="background:var(--green)">📧 Enviar para suporte</button>
+      <div class="erro-box" id="erroSuporte"></div>
+      <div style="display:none;margin-top:10px;background:#064e3b;border:1px solid #059669;border-radius:8px;padding:10px;color:#6ee7b7;font-size:.83rem;text-align:center" id="okSuporte"></div>
     </div>
   </div>
 
@@ -1162,121 +1162,67 @@ function mostrarErroSB(msg){
   }
 }
 
-document.getElementById('btnNovo').addEventListener('click',()=>{document.getElementById('resultado').style.display='none';document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';document.getElementById('textoRoteiro').value='';document.getElementById('thumbResultado').style.display='none';document.getElementById('btnGerarThumb').style.display='block';});
+document.getElementById('btnNovo').addEventListener('click',()=>{document.getElementById('resultado').style.display='none';document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';document.getElementById('textoRoteiro').value='';});
 
-// Thumbnail - na tela de resultado
-document.getElementById('btnGerarThumb').addEventListener('click',async()=>{
-  const roteiro=document.getElementById('textoRoteiro').value.trim();
-  if(!roteiro){document.getElementById('erroThumb').textContent='❌ Roteiro vazio';document.getElementById('erroThumb').style.display='block';return;}
-  document.getElementById('erroThumb').style.display='none';
-  document.getElementById('btnGerarThumb').disabled=true;
-  document.getElementById('statusThumb').style.display='block';
-  document.getElementById('thumbResultado').style.display='none';
-  const fd=new FormData();
-  fd.append('roteiro',roteiro);
-  fd.append('estilo_thumb',document.getElementById('thumbEstilo').value);
-  fd.append('texto_thumb',document.getElementById('thumbSemTextoResult').checked?'':document.getElementById('thumbTextoResult').value.trim());
-  fd.append('sem_texto',document.getElementById('thumbSemTextoResult').checked?'true':'false');
-  try{
-    const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
-    const d=await res.json();
-    if(d.erro)throw new Error(d.erro);
-    document.getElementById('thumbImg').src=`/ver_thumbnail/${d.thumb_id}?t=${Date.now()}`;
-    document.getElementById('btnDownloadThumb').href=`/download_thumbnail/${d.thumb_id}`;
-    document.getElementById('thumbResultado').style.display='block';
-    document.getElementById('btnGerarThumb').style.display='none';
-    atualizarCreditos();
-  }catch(e){
-    document.getElementById('erroThumb').textContent='❌ '+e.message;
-    document.getElementById('erroThumb').style.display='block';
-  }
-  document.getElementById('statusThumb').style.display='none';
-  document.getElementById('btnGerarThumb').disabled=false;
-});
+// Thumbnail Engine
+let _thumbAnalise=null, _thumbAnaliseJson='';
 
-// Thumbnail - aba dedicada
-let _thumbIdAtual='';
-document.getElementById('btnGerarThumbTab').addEventListener('click',async()=>{
+document.getElementById('btnAnalisarThumb').addEventListener('click',async()=>{
   const roteiro=document.getElementById('thumbRoteiro').value.trim();
-  if(!roteiro){document.getElementById('erroThumbTab').textContent='❌ Escreva o roteiro ou descrição';document.getElementById('erroThumbTab').style.display='block';return;}
+  if(!roteiro){document.getElementById('erroThumbTab').textContent='❌ Escreva o roteiro';document.getElementById('erroThumbTab').style.display='block';return;}
   document.getElementById('erroThumbTab').style.display='none';
-  document.getElementById('btnGerarThumbTab').disabled=true;
+  document.getElementById('btnAnalisarThumb').disabled=true;
   document.getElementById('statusThumbTab').style.display='block';
-  document.getElementById('thumbResultadoTab').style.display='none';
-  const fd=new FormData();
-  fd.append('roteiro',roteiro);
-  fd.append('estilo_thumb',document.getElementById('thumbEstiloTab').value);
-  fd.append('texto_thumb',document.getElementById('thumbSemTexto').checked?'':document.getElementById('thumbTexto').value.trim());
-  fd.append('sem_texto',document.getElementById('thumbSemTexto').checked?'true':'false');
+  document.getElementById('statusThumbText').textContent='Analisando roteiro...';
+  document.getElementById('thumbAnaliseCard').style.display='none';
+  document.getElementById('thumbGaleria').style.display='none';
   try{
-    const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
-    const d=await res.json();
-    if(d.erro)throw new Error(d.erro);
-    _thumbIdAtual=d.thumb_id;
-    document.getElementById('thumbImgTab').src=`/ver_thumbnail/${d.thumb_id}?t=${Date.now()}`;
-    document.getElementById('btnDownloadThumbTab').href=`/download_thumbnail/${d.thumb_id}`;
-    document.getElementById('thumbPromptEdit').value=d.prompt_usado||'';
-    document.getElementById('thumbResultadoTab').style.display='block';
-    atualizarCreditos();
-    carregarThumbnails();
-  }catch(e){
-    document.getElementById('erroThumbTab').textContent='❌ '+e.message;
-    document.getElementById('erroThumbTab').style.display='block';
-  }
-  document.getElementById('statusThumbTab').style.display='none';
-  document.getElementById('btnGerarThumbTab').disabled=false;
+    const res1=await fetch('/thumb_engine/analisar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roteiro})});
+    const d1=await res1.json();
+    if(d1.erro)throw new Error(d1.erro);
+    _thumbAnalise=d1.analise;_thumbAnaliseJson=JSON.stringify(d1.analise);
+    const a=d1.analise;
+    document.getElementById('thumbAnaliseInfo').innerHTML=`<div style="margin-bottom:8px">🎬 <b>Cena:</b> ${a.cena||''}</div><div style="margin-bottom:8px">👤 <b>Personagem:</b> ${a.personagem||'Nenhum'}</div><div style="margin-bottom:8px">😮 <b>Emoção:</b> ${a.emocao||''}</div><div style="margin-bottom:8px">🎯 <b>Objeto central:</b> ${a.objeto_central||''}</div><div>🎨 <b>Estilo recomendado:</b> ${a.estilo_recomendado||''}</div>`;
+    const textos=a.textos_sugeridos||[];
+    if(textos.length>0){let html='<label>Textos sugeridos (clique pra usar)</label><div style="display:flex;gap:6px;flex-wrap:wrap">';textos.forEach(t=>{html+=`<button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:.82rem" onclick="document.getElementById(\'thumbTexto\').value=\'${t.replace(/'/g,"\\'")}\'">${t}</button>`;});html+='</div>';document.getElementById('thumbTextosSugeridos').innerHTML=html;}
+    document.getElementById('thumbAnaliseCard').style.display='block';
+    document.getElementById('statusThumbText').textContent='Gerando 4 variações...';
+    await gerarThumbVariacoes(roteiro);
+  }catch(e){document.getElementById('erroThumbTab').textContent='❌ '+e.message;document.getElementById('erroThumbTab').style.display='block';}
+  document.getElementById('statusThumbTab').style.display='none';document.getElementById('btnAnalisarThumb').disabled=false;
 });
-
-document.getElementById('btnRegerarThumbTab').addEventListener('click',async()=>{
-  const roteiro=document.getElementById('thumbRoteiro').value.trim();
-  if(!roteiro){alert('Escreva o roteiro');return;}
-  document.getElementById('btnRegerarThumbTab').disabled=true;
-  document.getElementById('statusThumbTab').style.display='block';
-  const fd=new FormData();
-  fd.append('roteiro',roteiro);
-  fd.append('estilo_thumb',document.getElementById('thumbEstiloTab').value);
-  fd.append('texto_thumb',document.getElementById('thumbSemTexto').checked?'':document.getElementById('thumbTexto').value.trim());
-  fd.append('sem_texto',document.getElementById('thumbSemTexto').checked?'true':'false');
-  try{
-    const res=await fetch('/gerar_thumbnail',{method:'POST',body:fd});
-    const d=await res.json();
-    if(d.erro)throw new Error(d.erro);
-    _thumbIdAtual=d.thumb_id;
-    document.getElementById('thumbImgTab').src=`/ver_thumbnail/${d.thumb_id}?t=${Date.now()}`;
-    document.getElementById('btnDownloadThumbTab').href=`/download_thumbnail/${d.thumb_id}`;
-    atualizarCreditos();
-    carregarThumbnails();
-  }catch(e){alert('❌ '+e.message);}
-  document.getElementById('statusThumbTab').style.display='none';
-  document.getElementById('btnRegerarThumbTab').disabled=false;
+async function gerarThumbVariacoes(roteiro){
+  const fd=new FormData();fd.append('roteiro',roteiro);fd.append('estilo',document.getElementById('thumbEstiloTab').value);fd.append('analise',_thumbAnaliseJson);fd.append('texto_thumb',document.getElementById('thumbSemTexto').checked?'':document.getElementById('thumbTexto').value.trim());fd.append('sem_texto',document.getElementById('thumbSemTexto').checked?'true':'false');
+  const res=await fetch('/thumb_engine/gerar',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);
+  const grid=document.getElementById('thumbGrid');grid.innerHTML='';
+  d.thumbs.forEach(t=>{grid.innerHTML+=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden"><img src="/ver_thumbnail/${t.thumb_id}?t=${Date.now()}" style="width:100%;display:block"/><div style="padding:10px"><div style="font-size:.75rem;color:var(--text3);margin-bottom:6px">Variação ${t.variacao}${t.texto?' · "'+t.texto+'"':''}</div><div style="display:flex;gap:6px"><a href="/download_thumbnail/${t.thumb_id}" class="btn-sm" style="background:var(--green);flex:1;text-align:center;font-size:.75rem">⬇ Baixar</a><button class="btn-sm" style="background:var(--accent);flex:1;font-size:.75rem" onclick="regerarUmaThumb()">🔄</button><button class="btn-sm" style="background:#7f1d1d;color:#fca5a5;font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑</button></div></div></div>`;});
+  document.getElementById('thumbGaleria').style.display='block';atualizarCreditos();carregarThumbnails();
+}
+document.getElementById('btnRegerarTodas').addEventListener('click',async()=>{
+  const roteiro=document.getElementById('thumbRoteiro').value.trim();if(!roteiro||!_thumbAnaliseJson)return;
+  document.getElementById('btnRegerarTodas').disabled=true;document.getElementById('statusThumbTab').style.display='block';document.getElementById('statusThumbText').textContent='Gerando 4 novas variações...';
+  try{await gerarThumbVariacoes(roteiro);}catch(e){alert('❌ '+e.message);}
+  document.getElementById('statusThumbTab').style.display='none';document.getElementById('btnRegerarTodas').disabled=false;
 });
-
+async function regerarUmaThumb(){
+  const roteiro=document.getElementById('thumbRoteiro').value.trim();const fd=new FormData();fd.append('roteiro',roteiro);fd.append('estilo',document.getElementById('thumbEstiloTab').value);fd.append('analise',_thumbAnaliseJson);fd.append('texto_thumb',document.getElementById('thumbSemTexto').checked?'':document.getElementById('thumbTexto').value.trim());fd.append('sem_texto',document.getElementById('thumbSemTexto').checked?'true':'false');
+  try{const res=await fetch('/thumb_engine/regerar_uma',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);atualizarCreditos();carregarThumbnails();alert('✅ Nova variação gerada! Veja no histórico.');}catch(e){alert('❌ '+e.message);}
+}
 async function carregarThumbnails(){
   const lista=document.getElementById('listaThumbsHist');
-  try{
-    const res=await fetch('/minhas_thumbnails');
-    const d=await res.json();
-    if(!d.thumbnails||d.thumbnails.length===0){lista.innerHTML='<div class="vazio">Nenhuma thumbnail gerada ainda.</div>';return;}
-    lista.innerHTML='';
-    d.thumbnails.forEach(t=>{
-      lista.innerHTML+=`<div class="historico-item" style="padding:12px">
-        <img src="/ver_thumbnail/${t.thumb_id}?t=1" style="width:100%;border-radius:8px;margin-bottom:8px" onerror="this.parentElement.remove()"/>
-        <div style="font-size:.75rem;color:var(--text3);margin-bottom:6px">${t.criado_em} · ${t.estilo}</div>
-        <div style="font-size:.8rem;color:var(--text2);margin-bottom:8px;max-height:40px;overflow:hidden">${(t.prompt||'').substring(0,120)}...</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <a href="/download_thumbnail/${t.thumb_id}" class="btn-dl-hist btn-dl-zip" style="font-size:.75rem">⬇ Baixar</a>
-          <button class="btn-danger" style="font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑️</button>
-        </div>
-      </div>`;
-    });
+  try{const res=await fetch('/minhas_thumbnails');const d=await res.json();
+  if(!d.thumbnails||d.thumbnails.length===0){lista.innerHTML='<div class="vazio">Nenhuma thumbnail ainda.</div>';return;}
+  lista.innerHTML='';d.thumbnails.forEach(t=>{lista.innerHTML+=`<div class="historico-item" style="padding:12px"><img src="/ver_thumbnail/${t.thumb_id}?t=1" style="width:100%;border-radius:8px;margin-bottom:8px" onerror="this.parentElement.remove()"/><div style="font-size:.75rem;color:var(--text3);margin-bottom:6px">${t.criado_em} · ${t.estilo}</div><div style="display:flex;gap:6px"><a href="/download_thumbnail/${t.thumb_id}" class="btn-dl-hist btn-dl-zip" style="font-size:.75rem">⬇ Baixar</a><button class="btn-danger" style="font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑️</button></div></div>`;});
   }catch(e){lista.innerHTML='<div class="vazio">Erro ao carregar.</div>';}
 }
-
-async function deletarThumb(thumbId){
-  if(!confirm('Deletar esta thumbnail?'))return;
-  await fetch('/deletar_thumbnail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({thumb_id:thumbId})});
-  carregarThumbnails();
-}
+async function deletarThumb(thumbId){if(!confirm('Deletar?'))return;await fetch('/deletar_thumbnail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({thumb_id:thumbId})});carregarThumbnails();}
+// Suporte
+document.getElementById('btnSuporte').addEventListener('click',async()=>{
+  const assunto=document.getElementById('suporteAssunto').value.trim();const msg=document.getElementById('suporteMensagem').value.trim();
+  if(!assunto||!msg){document.getElementById('erroSuporte').textContent='❌ Preencha assunto e mensagem';document.getElementById('erroSuporte').style.display='block';return;}
+  document.getElementById('erroSuporte').style.display='none';
+  try{const res=await fetch('/suporte',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assunto,mensagem:msg})});const d=await res.json();if(d.erro)throw new Error(d.erro);document.getElementById('okSuporte').textContent='✅ '+d.msg;document.getElementById('okSuporte').style.display='block';document.getElementById('suporteAssunto').value='';document.getElementById('suporteMensagem').value='';}catch(e){document.getElementById('erroSuporte').textContent='❌ '+e.message;document.getElementById('erroSuporte').style.display='block';}
+});
 
 document.getElementById('btnMudarSenha').addEventListener('click',async()=>{
   const atual=document.getElementById('senhaAtual').value;const nova=document.getElementById('novaSenha').value;
