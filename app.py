@@ -90,9 +90,9 @@ BANCO_ADDON_VALOR = "R$14,97/mês"
 PLANOS_STRIPE = {
     "api_propria": {
         "nome": "API Própria",
-        "price_id": "price_1TMz6zLW3ZSF3MIl9ZDwFH5y",
+        "price_id": "price_1TQXMiLW3ZSF3MIlNx3gwlRh",
         "creditos": 0,
-        "valor": "R$29,90/mês",
+        "valor": "R$87,90/mês",
         "tipo": "assinatura",
         "descricao": "Use suas próprias chaves de API - geração ilimitada"
     },
