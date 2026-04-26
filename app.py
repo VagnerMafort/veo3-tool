@@ -10,6 +10,7 @@ from PIL import Image, ExifTags
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import time as _time_module
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "veo3-secret-key-mude-isso")
@@ -20,6 +21,21 @@ app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
+
+# ── Rate Limiting simples ────────────────────────────────
+_rate_limits = {}
+
+def rate_limit_check(key, max_requests=5, window=60):
+    """Retorna True se passou do limite. key = IP ou user_id"""
+    now = _time_module.time()
+    if key not in _rate_limits:
+        _rate_limits[key] = []
+    # Limpar requests antigos
+    _rate_limits[key] = [t for t in _rate_limits[key] if now - t < window]
+    if len(_rate_limits[key]) >= max_requests:
+        return True
+    _rate_limits[key].append(now)
+    return False
 
 # ── Stripe Config ────────────────────────────────────────
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
@@ -1433,6 +1449,10 @@ def privacidade():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
+        # Rate limit: max 5 tentativas por IP por minuto
+        ip = request.remote_addr
+        if rate_limit_check(f"login_{ip}", max_requests=5, window=60):
+            return jsonify({"erro": "Muitas tentativas. Aguarde 1 minuto."}), 429
         data = request.json
         user = User.query.filter_by(email=data["email"]).first()
         if user and check_password_hash(user.senha, data["senha"]):
@@ -1444,10 +1464,24 @@ def login():
 @app.route("/cadastro", methods=["GET", "POST"])
 def cadastro():
     if request.method == "POST":
+        # Rate limit: max 3 cadastros por IP por minuto
+        ip = request.remote_addr
+        if rate_limit_check(f"cadastro_{ip}", max_requests=3, window=60):
+            return jsonify({"erro": "Muitas tentativas. Aguarde 1 minuto."}), 429
         data = request.json
-        if User.query.filter_by(email=data["email"]).first():
+        email = data.get("email", "").strip().lower()
+        nome = data.get("nome", "").strip()
+        senha = data.get("senha", "")
+        # Validação básica de email
+        if not email or "@" not in email or "." not in email.split("@")[-1]:
+            return jsonify({"erro": "Email inválido"}), 400
+        if not nome or len(nome) < 2:
+            return jsonify({"erro": "Nome inválido"}), 400
+        if not senha or len(senha) < 6:
+            return jsonify({"erro": "Senha deve ter pelo menos 6 caracteres"}), 400
+        if User.query.filter_by(email=email).first():
             return jsonify({"erro": "Email ja cadastrado"}), 400
-        user = User(email=data["email"], nome=data["nome"], senha=generate_password_hash(data["senha"]))
+        user = User(email=email, nome=nome, senha=generate_password_hash(senha))
         db.session.add(user)
         db.session.commit()
         # Email de boas-vindas
@@ -1468,13 +1502,30 @@ def cadastro():
 def esqueci_senha():
     data = request.json
     email = data.get("email", "").strip()
+    # Rate limit: max 2 por IP a cada 5 minutos
+    ip = request.remote_addr
+    if rate_limit_check(f"senha_{ip}", max_requests=2, window=300):
+        return jsonify({"erro": "Muitas tentativas. Aguarde 5 minutos."}), 429
     user = User.query.filter_by(email=email).first()
     if not user:
         return jsonify({"erro": "Email nao encontrado"}), 404
     nova_senha = uuid.uuid4().hex[:8]
     user.senha = generate_password_hash(nova_senha)
     db.session.commit()
-    return jsonify({"ok": True, "nova_senha": nova_senha})
+    # Enviar nova senha por email
+    enviar_email(email, "Sua nova senha — Klyonclaw Studio", f"""
+    <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
+        <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        <p>Olá <b>{user.nome}</b>,</p>
+        <p>Sua senha foi redefinida. Use a nova senha abaixo para acessar sua conta:</p>
+        <div style="background:#1a2332;border-radius:8px;padding:16px;text-align:center;margin:16px 0">
+            <span style="font-size:1.4rem;font-weight:700;color:#4a9eff;letter-spacing:2px">{nova_senha}</span>
+        </div>
+        <p style="font-size:.85rem;color:#666">Recomendamos alterar sua senha após o login.</p>
+        <a href="https://studio.klyonclaw.com/login" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Acessar minha conta</a>
+        <p style="color:#888;font-size:12px;margin-top:20px">Se você não solicitou essa alteração, entre em contato conosco.</p>
+    </div>""")
+    return jsonify({"ok": True, "msg": "Nova senha enviada para seu email"})
 
 # ── Thumbnail ────────────────────────────────────────────
 THUMB_ESTILOS = {
@@ -2403,6 +2454,9 @@ def dividir_roteiro_route():
 @app.route("/gerar_storyboard", methods=["POST"])
 @login_required
 def gerar_storyboard_route():
+    # Rate limit: max 3 gerações por minuto por usuário
+    if rate_limit_check(f"gerar_{current_user.id}", max_requests=3, window=60):
+        return jsonify({"erro": "Aguarde um momento antes de gerar novamente."}), 429
     # Plano api_propria exige chave do usuário
     if current_user.plano == "api_propria" and not current_user.api_key:
         return jsonify({"erro": "No plano API Própria, configure sua chave de API no perfil"}), 400
