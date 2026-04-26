@@ -987,13 +987,15 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                     list(executor.map(gerar_bloco, cenas_a_gerar))
 
             # Gastar créditos apenas pelas cenas geradas
+            creditos_gastos_sb = 0
             if cenas_a_gerar:
                 creditos_por_cena = calcular_creditos_cena(melhorar_prompt=melhorar_prompts, narracao=False, animar=False)
-                user.gastar_creditos(len(cenas_a_gerar) * creditos_por_cena)
+                creditos_gastos_sb = len(cenas_a_gerar) * creditos_por_cena
+                user.gastar_creditos(creditos_gastos_sb)
                 db.session.commit()
 
             blocos.sort(key=lambda x: x["index"])
-            sb_data = {"blocos": blocos, "estilo": estilo, "dir": sb_dir}
+            sb_data = {"blocos": blocos, "estilo": estilo, "dir": sb_dir, "creditos_gastos": creditos_gastos_sb}
             with open(os.path.join(sb_dir, "storyboard.json"), "w") as f:
                 json.dump(sb_data, f)
             jobs[job_id] = {"status": "storyboard_pronto", "progresso": "Storyboard pronto", "total": total, "atual": total, "blocos": blocos, "sb_id": job_id}
@@ -1012,6 +1014,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             job_dir = os.path.join(OUTPUT_FOLDER, job_id)
             os.makedirs(job_dir, exist_ok=True)
             audio_final_path = None
+            # Rastrear créditos gastos (inclui geração de imagens/divisão do storyboard)
+            creditos_gastos_video = sb_data.get("creditos_gastos", 0)
 
             if user.get_minimax_key() and voice_id:
                 # Cobrar créditos de narração
@@ -1019,6 +1023,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 if not user.gastar_creditos(creditos_narracao):
                     jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes para narração. Necessário: {creditos_narracao}", "total": 0, "atual": 0}
                     return
+                creditos_gastos_video += creditos_narracao
                 db.session.commit()
                 jobs[job_id]["progresso"] = "Gerando narração completa..."
                 audios = []
@@ -1235,6 +1240,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 cenas_animadas = sum(1 for c in clipes_video if c is not None)
                 if cenas_animadas > 0:
                     user.gastar_creditos(cenas_animadas * CREDITOS_ANIMACAO)
+                    creditos_gastos_video += cenas_animadas * CREDITOS_ANIMACAO
                     db.session.commit()
 
                 # Se pelo menos 1 clipe foi gerado, trimma e concatena os vídeos
@@ -1365,6 +1371,16 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 except Exception as e:
                     import sys
                     sys.stderr.write(f"[MUSICA] Erro ao mixar: {e}\n"); sys.stderr.flush()
+
+            # Cobrar renderização/legenda se não gastou nada com outros serviços
+            if creditos_gastos_video == 0:
+                custo_render = 1
+                custo_legenda = 1 if (legenda_cfg and legenda_cfg.get("ativo")) else 0
+                custo_total = custo_render + custo_legenda
+                if not user.gastar_creditos(custo_total):
+                    jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes. Necessário: {custo_total}", "total": 0, "atual": 0}
+                    return
+                db.session.commit()
 
             jobs[job_id]["progresso"] = "Compactando..."
             zip_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.zip")
@@ -2352,6 +2368,12 @@ def dividir_roteiro_route():
     texto = request.form.get("texto", "").strip()
     if not texto:
         return jsonify({"erro": "Escreva o roteiro"}), 400
+
+    # Cobrar 1 crédito pra dividir
+    if not current_user.gastar_creditos(1):
+        return jsonify({"erro": "Créditos insuficientes. Necessário: 1 crédito."}), 400
+    db.session.commit()
+
     estilo = request.form.get("estilo", "").strip()
     melhorar = request.form.get("melhorar_prompts", "false") == "true"
 
