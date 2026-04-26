@@ -423,6 +423,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <p class="tip" style="margin-bottom:18px;font-size:.85rem">Cada imagem gerada consome {{ creditos_por_imagem }} créditos. Escolha o plano ideal pra você.</p>
 
       {% for key, plano in planos.items() %}
+      {% if plano.get('tipo') != 'interno' %}
       <div class="plano-card {% if user.plano == key %}ativo{% endif %}">
         {% if user.plano == key %}<div class="plano-badge-ativo">✓ Ativo</div>{% endif %}
         <div class="plano-nome">{{ plano.nome }}</div>
@@ -435,6 +436,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <button class="plano-btn plano-btn-comprar" onclick="comprarPlano('{{ plano.price_id }}')">Assinar</button>
         {% endif %}
       </div>
+      {% endif %}
       {% endfor %}
 
       {% if user.plano %}

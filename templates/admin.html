@@ -142,7 +142,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
             <div class="meta">Criado: {{ u.criado_em.strftime('%d/%m/%Y') }} · {{ u.criacoes|length }} criações</div>
           </div>
           <div class="user-btns">
-            <button class="btn-sm btn-blue" onclick="toggleAdmin({{ u.id }})">{% if u.is_admin %}⬇ Admin{% else %}⬆ Admin{% endif %}</button>
+            {% if is_master %}<button class="btn-sm btn-blue" onclick="toggleAdmin({{ u.id }})">{% if u.is_admin %}⬇ Admin{% else %}⬆ Admin{% endif %}</button>{% endif %}
             <button class="btn-outline-sm" onclick="mostrarCreditos({{ u.id }})">💰 Créditos</button>
             <button class="btn-outline-sm" onclick="toggleBanco({{ u.id }})">🗃️ {% if u.banco_ativo %}Banco ✓{% else %}Banco{% endif %}</button>
             <button class="btn-outline-sm" onclick="mostrarSenha({{ u.id }})">🔑 Senha</button>

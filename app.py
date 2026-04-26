@@ -38,6 +38,9 @@ SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
 EMAIL_FROM = os.environ.get("EMAIL_FROM", SMTP_USER)
 
+# Admin Master — único que pode conceder/remover admin de outros
+ADMIN_MASTER_EMAIL = "ministerioprvagner@gmail.com"
+
 def enviar_email(destinatario, assunto, corpo_html):
     """Envia email em background"""
     if not SMTP_USER or not SMTP_PASS:
@@ -100,6 +103,14 @@ PLANOS_STRIPE = {
         "valor": "R$149,90/mês",
         "tipo": "assinatura",
         "descricao": "4.000 créditos por mês"
+    },
+    "tester": {
+        "nome": "Tester",
+        "price_id": "",
+        "creditos": 200,
+        "valor": "Grátis",
+        "tipo": "interno",
+        "descricao": "Plano de teste — concedido pelo admin"
     },
 }
 
@@ -1939,13 +1950,17 @@ def admin_panel():
     return render_template("admin.html", users=users, prompts=prompts, total_imgs=total_imgs,
                            total_criacoes=total_criacoes, total_videos=total_videos,
                            total_creditos=total_creditos, users_com_plano=users_com_plano,
-                           users_recentes=users_recentes, planos=PLANOS_STRIPE)
+                           users_recentes=users_recentes, planos=PLANOS_STRIPE,
+                           is_master=current_user.email == ADMIN_MASTER_EMAIL)
 
 @app.route("/admin/toggle_admin", methods=["POST"])
 @login_required
 def admin_toggle():
     if not current_user.is_admin:
         return jsonify({"erro": "Sem permissao"}), 403
+    # Só o admin master pode conceder/remover admin
+    if current_user.email != ADMIN_MASTER_EMAIL:
+        return jsonify({"erro": "Apenas o admin master pode alterar permissões de admin"}), 403
     user_id = request.json.get("user_id")
     user = User.query.get(user_id)
     if user:
