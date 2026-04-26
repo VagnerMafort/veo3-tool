@@ -3,137 +3,346 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Klyonclaw Studio — AI Video Automation</title>
+<meta name="description" content="Klyonclaw Studio — Transforme roteiros em vídeos profissionais com IA. Imagens, narração, animação e legendas automatizadas."/>
+<title>Klyonclaw Studio — Crie Vídeos com IA em Minutos</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh}
-.hero{text-align:center;padding:60px 20px 40px;max-width:700px;margin:0 auto}
-.hero h1{font-size:2.2rem;font-weight:800;margin-bottom:8px}
-.hero h1 span{color:#4a9eff}
-.hero .sub{font-size:1rem;color:#94a3b8;margin-bottom:6px;letter-spacing:2px;text-transform:uppercase;font-size:.8rem}
-.hero p{font-size:1.05rem;color:#94a3b8;margin-bottom:30px;line-height:1.6}
-.hero .cta{display:inline-block;padding:15px 40px;background:#2563eb;color:#fff;border-radius:12px;font-size:1.1rem;font-weight:700;text-decoration:none;transition:.2s}
-.hero .cta:hover{background:#4a9eff}
-.hero .cta-sec{display:inline-block;padding:15px 40px;border:1px solid #1e3a5f;color:#94a3b8;border-radius:12px;font-size:1rem;text-decoration:none;margin-left:10px;transition:.2s}
-.hero .cta-sec:hover{border-color:#4a9eff;color:#e2e8f0}
-.features{max-width:800px;margin:0 auto;padding:40px 20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
-.feat{background:#111827;border:1px solid #1e3a5f;border-radius:14px;padding:24px;text-align:center}
-.feat .icon{font-size:2rem;margin-bottom:12px}
-.feat h3{font-size:.95rem;margin-bottom:8px;color:#e2e8f0}
-.feat p{font-size:.82rem;color:#94a3b8;line-height:1.5}
-.how{max-width:700px;margin:0 auto;padding:40px 20px}
-.how h2{text-align:center;font-size:1.4rem;margin-bottom:30px}
-.how h2 span{color:#4a9eff}
-.step{display:flex;gap:16px;margin-bottom:24px;align-items:flex-start}
-.step-num{background:#2563eb;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
-.step-text h3{font-size:.95rem;margin-bottom:4px}
-.step-text p{font-size:.85rem;color:#94a3b8}
-.pricing{max-width:800px;margin:0 auto;padding:40px 20px}
-.pricing h2{text-align:center;font-size:1.4rem;margin-bottom:30px}
-.pricing h2 span{color:#4a9eff}
-.plans{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.plan{background:#111827;border:2px solid #1e3a5f;border-radius:14px;padding:24px;text-align:center;transition:.2s}
-.plan:hover{border-color:#4a9eff}
-.plan.pop{border-color:#2563eb;position:relative}
-.plan.pop::before{content:"Popular";position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#2563eb;color:#fff;font-size:.7rem;padding:3px 12px;border-radius:20px;font-weight:600}
-.plan h3{font-size:1rem;margin-bottom:4px}
-.plan .price{font-size:1.6rem;font-weight:800;color:#4a9eff;margin-bottom:4px}
-.plan .price small{font-size:.8rem;color:#94a3b8;font-weight:400}
-.plan .desc{font-size:.82rem;color:#94a3b8;margin-bottom:16px}
-.plan .btn{display:block;padding:12px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:.9rem;transition:.2s}
-.plan .btn:hover{background:#4a9eff}
-.footer{text-align:center;padding:40px 20px;border-top:1px solid #1e3a5f;margin-top:40px}
+body{font-family:'Segoe UI',-apple-system,sans-serif;background:#0a0e1a;color:#e2e8f0;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+
+/* Nav */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,14,26,0.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(30,58,95,0.3)}
+.nav-logo{font-size:1.1rem;font-weight:800;color:#fff}
+.nav-logo span{color:#4a9eff}
+.nav-links{display:flex;gap:24px;align-items:center}
+.nav-links a{font-size:.88rem;color:#94a3b8;transition:.2s}
+.nav-links a:hover{color:#fff}
+.nav-btn{padding:8px 20px;background:#2563eb;color:#fff;border-radius:8px;font-weight:600;font-size:.85rem;transition:.2s}
+.nav-btn:hover{background:#4a9eff}
+
+/* Hero */
+.hero{padding:140px 24px 80px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at center,rgba(37,99,235,0.08) 0%,transparent 60%);pointer-events:none}
+.hero-badge{display:inline-block;padding:6px 16px;background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.3);border-radius:20px;font-size:.78rem;color:#4a9eff;font-weight:600;margin-bottom:20px;letter-spacing:.5px}
+.hero h1{font-size:clamp(2rem,5vw,3.4rem);font-weight:800;line-height:1.15;margin-bottom:20px;max-width:800px;margin-left:auto;margin-right:auto}
+.hero h1 .gradient{background:linear-gradient(135deg,#4a9eff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{font-size:1.15rem;color:#94a3b8;max-width:600px;margin:0 auto 36px;line-height:1.7}
+.hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn-primary{padding:16px 36px;background:linear-gradient(135deg,#2563eb,#4a9eff);color:#fff;border-radius:12px;font-size:1.05rem;font-weight:700;transition:.3s;box-shadow:0 4px 20px rgba(37,99,235,0.3)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(37,99,235,0.4)}
+.btn-secondary{padding:16px 36px;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:12px;font-size:1.05rem;font-weight:600;transition:.3s}
+.btn-secondary:hover{border-color:#4a9eff;background:rgba(74,158,255,0.05)}
+.hero-stats{display:flex;gap:40px;justify-content:center;margin-top:50px;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-num{font-size:1.8rem;font-weight:800;color:#fff}
+.stat-label{font-size:.8rem;color:#64748b;margin-top:4px}
+
+/* Section base */
+section{padding:80px 24px}
+.section-title{text-align:center;margin-bottom:50px}
+.section-title h2{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;margin-bottom:12px}
+.section-title h2 span{color:#4a9eff}
+.section-title p{font-size:1rem;color:#94a3b8;max-width:550px;margin:0 auto}
+
+/* Features grid */
+.features-grid{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.feat-card{background:linear-gradient(145deg,#111827,#0f172a);border:1px solid #1e3a5f;border-radius:16px;padding:28px;transition:.3s}
+.feat-card:hover{border-color:#4a9eff;transform:translateY(-4px)}
+.feat-icon{width:48px;height:48px;background:rgba(74,158,255,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:16px}
+.feat-card h3{font-size:1rem;font-weight:700;margin-bottom:8px}
+.feat-card p{font-size:.88rem;color:#94a3b8;line-height:1.6}
+
+/* How it works */
+.how-section{background:linear-gradient(180deg,rgba(17,24,39,0.5),transparent)}
+.steps{max-width:700px;margin:0 auto;position:relative}
+.steps::before{content:'';position:absolute;left:24px;top:40px;bottom:40px;width:2px;background:linear-gradient(180deg,#2563eb,#a855f7);border-radius:2px}
+.step{display:flex;gap:20px;margin-bottom:36px;position:relative}
+.step-num{width:50px;height:50px;background:linear-gradient(135deg,#2563eb,#4a9eff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;color:#fff;flex-shrink:0;z-index:1}
+.step-content{padding-top:10px}
+.step-content h3{font-size:1.05rem;font-weight:700;margin-bottom:6px}
+.step-content p{font-size:.9rem;color:#94a3b8;line-height:1.6}
+
+/* Use cases */
+.usecases{max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.usecase{background:#111827;border:1px solid #1e3a5f;border-radius:12px;padding:20px;display:flex;gap:14px;align-items:center;transition:.2s}
+.usecase:hover{border-color:#4a9eff}
+.usecase-icon{font-size:1.8rem;flex-shrink:0}
+.usecase h4{font-size:.92rem;font-weight:600;margin-bottom:4px}
+.usecase p{font-size:.8rem;color:#94a3b8}
+
+/* Pricing */
+.pricing-section{background:linear-gradient(180deg,transparent,rgba(17,24,39,0.5))}
+.plans-grid{max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.plan-card{background:#111827;border:2px solid #1e3a5f;border-radius:16px;padding:28px 20px;text-align:center;transition:.3s;position:relative}
+.plan-card:hover{border-color:#4a9eff;transform:translateY(-4px)}
+.plan-card.popular{border-color:#2563eb;background:linear-gradient(145deg,#111827,#0c1a3a)}
+.plan-card.popular::before{content:"Mais vendido";position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#2563eb,#4a9eff);color:#fff;font-size:.7rem;padding:4px 14px;border-radius:20px;font-weight:700}
+.plan-name{font-size:.95rem;font-weight:700;margin-bottom:8px;color:#94a3b8}
+.plan-price{font-size:1.8rem;font-weight:800;color:#fff;margin-bottom:4px}
+.plan-price small{font-size:.8rem;color:#64748b;font-weight:400}
+.plan-desc{font-size:.82rem;color:#64748b;margin-bottom:20px;min-height:36px}
+.plan-btn{display:block;padding:12px;background:#2563eb;color:#fff;border-radius:10px;font-weight:600;font-size:.88rem;transition:.2s}
+.plan-btn:hover{background:#4a9eff}
+
+/* FAQ */
+.faq{max-width:700px;margin:0 auto}
+.faq-item{border-bottom:1px solid #1e3a5f;padding:20px 0}
+.faq-q{font-size:.95rem;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.faq-q::after{content:'+';font-size:1.2rem;color:#4a9eff;transition:.3s}
+.faq-item.open .faq-q::after{transform:rotate(45deg)}
+.faq-a{font-size:.88rem;color:#94a3b8;line-height:1.7;max-height:0;overflow:hidden;transition:.3s}
+.faq-item.open .faq-a{max-height:200px;padding-top:12px}
+
+/* CTA final */
+.cta-section{text-align:center;padding:100px 24px;position:relative}
+.cta-section::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(37,99,235,0.1) 0%,transparent 70%);pointer-events:none}
+.cta-section h2{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:800;margin-bottom:16px}
+.cta-section p{font-size:1.05rem;color:#94a3b8;margin-bottom:30px;max-width:500px;margin-left:auto;margin-right:auto}
+
+/* Footer */
+.footer{border-top:1px solid #1e3a5f;padding:30px 24px;text-align:center}
 .footer p{font-size:.8rem;color:#475569}
-.footer a{color:#4a9eff;text-decoration:none}
-@media(max-width:600px){.features{grid-template-columns:1fr}.plans{grid-template-columns:1fr}.hero h1{font-size:1.6rem}.hero .cta-sec{margin-left:0;margin-top:10px;display:block}}
+.footer a{color:#4a9eff}
+.footer-links{margin-bottom:12px}
+.footer-links a{margin:0 12px;font-size:.82rem;color:#64748b}
+.footer-links a:hover{color:#4a9eff}
+
+@media(max-width:768px){
+  .features-grid{grid-template-columns:1fr}
+  .plans-grid{grid-template-columns:1fr 1fr}
+  .usecases{grid-template-columns:1fr}
+  .nav-links a:not(.nav-btn){display:none}
+  .hero-stats{gap:24px}
+}
+@media(max-width:500px){
+  .plans-grid{grid-template-columns:1fr}
+  .hero-ctas{flex-direction:column;align-items:center}
+}
 </style>
 </head>
 <body>
 
+<nav class="nav">
+  <div class="nav-logo">Klyonclaw <span>Studio</span></div>
+  <div class="nav-links">
+    <a href="#features">Recursos</a>
+    <a href="#como-funciona">Como funciona</a>
+    <a href="#planos">Planos</a>
+    <a href="/login">Login</a>
+    <a href="/cadastro" class="nav-btn">Criar conta grátis</a>
+  </div>
+</nav>
+
 <div class="hero">
-  <div class="sub">AI Video Automation</div>
-  <h1>Klyonclaw <span>Studio</span></h1>
-  <p>Transforme roteiros em vídeos profissionais com inteligência artificial. Imagens, narração, legendas e animação — tudo automatizado.</p>
-  <a href="/cadastro" class="cta">Criar minha conta</a>
-  <a href="/login" class="cta-sec">Já tenho conta</a>
-</div>
-
-<div class="features">
-  <div class="feat">
-    <div class="icon">🎬</div>
-    <h3>Roteiro → Vídeo</h3>
-    <p>Escreva um texto e o sistema cria cenas, imagens e vídeo automaticamente.</p>
+  <div class="hero-badge">✨ Plataforma de criação de vídeos com IA</div>
+  <h1>Transforme qualquer roteiro em <span class="gradient">vídeo profissional</span> em minutos</h1>
+  <p>Escreva seu texto e a IA gera imagens, narração, animação e legendas automaticamente. Sem câmera, sem edição manual, sem complicação.</p>
+  <div class="hero-ctas">
+    <a href="/cadastro" class="btn-primary">Começar agora — é grátis</a>
+    <a href="#como-funciona" class="btn-secondary">Ver como funciona</a>
   </div>
-  <div class="feat">
-    <div class="icon">🎙️</div>
-    <h3>Narração com IA</h3>
-    <p>Vozes naturais em português. Clone sua própria voz para narrar.</p>
-  </div>
-  <div class="feat">
-    <div class="icon">✨</div>
-    <h3>Animação com IA</h3>
-    <p>Transforme imagens estáticas em clipes animados com movimento real.</p>
-  </div>
-  <div class="feat">
-    <div class="icon">💬</div>
-    <h3>Legendas Sincronizadas</h3>
-    <p>Legendas palavra por palavra, sincronizadas com a narração.</p>
-  </div>
-  <div class="feat">
-    <div class="icon">🗃️</div>
-    <h3>Banco de Imagens</h3>
-    <p>Reutilize imagens e cenas já geradas. Economize créditos.</p>
-  </div>
-  <div class="feat">
-    <div class="icon">🎨</div>
-    <h3>10+ Estilos Visuais</h3>
-    <p>Cinematográfico, cartoon, anime, 3D, aquarela e muito mais.</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">10+</div><div class="stat-label">Estilos visuais</div></div>
+    <div class="stat"><div class="stat-num">16+</div><div class="stat-label">Vozes disponíveis</div></div>
+    <div class="stat"><div class="stat-num">6s</div><div class="stat-label">Animação por cena</div></div>
   </div>
 </div>
 
-<div class="how">
-  <h2>Como <span>funciona</span></h2>
-  <div class="step"><div class="step-num">1</div><div class="step-text"><h3>Escreva o roteiro</h3><p>Digite naturalmente. O sistema divide em cenas automaticamente.</p></div></div>
-  <div class="step"><div class="step-num">2</div><div class="step-text"><h3>Revise o storyboard</h3><p>Veja as imagens geradas, edite textos, regere ou troque cenas.</p></div></div>
-  <div class="step"><div class="step-num">3</div><div class="step-text"><h3>Configure o vídeo</h3><p>Escolha voz, legendas, animação e modo (longo ou shorts).</p></div></div>
-  <div class="step"><div class="step-num">4</div><div class="step-text"><h3>Baixe o vídeo</h3><p>Vídeo pronto com narração, legendas e animação. Pronto pra publicar.</p></div></div>
-</div>
-
-<div class="pricing">
-  <h2>Planos e <span>preços</span></h2>
-  <div class="plans">
-    <div class="plan">
-      <h3>API Própria</h3>
-      <div class="price">R$29,90<small>/mês</small></div>
-      <div class="desc">Use suas próprias chaves de API. Geração ilimitada.</div>
-      <a href="/cadastro" class="btn">Começar</a>
+<section id="features">
+  <div class="section-title">
+    <h2>Tudo que você precisa para <span>criar vídeos</span></h2>
+    <p>Uma plataforma completa que substitui equipes inteiras de produção de vídeo.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🎬</div>
+      <h3>Roteiro → Vídeo Completo</h3>
+      <p>Escreva naturalmente e a IA divide em cenas, gera imagens e monta o vídeo final.</p>
     </div>
-    <div class="plan pop">
-      <h3>Básico</h3>
-      <div class="price">R$39,90<small>/mês</small></div>
-      <div class="desc">500 créditos por mês. Ideal pra começar.</div>
-      <a href="/cadastro" class="btn">Começar</a>
+    <div class="feat-card">
+      <div class="feat-icon">🎙️</div>
+      <h3>Narração Realista</h3>
+      <p>16+ vozes naturais em português. Clone sua própria voz com apenas 30 segundos de áudio.</p>
     </div>
-    <div class="plan">
-      <h3>Pro</h3>
-      <div class="price">R$79,90<small>/mês</small></div>
-      <div class="desc">1.500 créditos + animação com IA.</div>
-      <a href="/cadastro" class="btn">Começar</a>
+    <div class="feat-card">
+      <div class="feat-icon">✨</div>
+      <h3>Animação com IA</h3>
+      <p>Cada cena vira um clipe animado de 6 segundos com movimento cinematográfico.</p>
     </div>
-    <div class="plan">
-      <h3>Business</h3>
-      <div class="price">R$149,90<small>/mês</small></div>
-      <div class="desc">4.000 créditos + animação com IA. Produção em escala.</div>
-      <a href="/cadastro" class="btn">Começar</a>
+    <div class="feat-card">
+      <div class="feat-icon">💬</div>
+      <h3>Legendas Sincronizadas</h3>
+      <p>Legendas palavra por palavra, perfeitamente sincronizadas com a narração.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🖼️</div>
+      <h3>Thumbnails com IA</h3>
+      <p>Gere thumbnails chamativas otimizadas pro YouTube, Shorts e redes sociais.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🗃️</div>
+      <h3>Banco de Imagens</h3>
+      <p>Reutilize cenas e imagens já geradas em novos vídeos. Economize créditos e tempo.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🎨</div>
+      <h3>10+ Estilos Visuais</h3>
+      <p>Cinematográfico, cartoon, anime, 3D, aquarela, dark fantasy, cyberpunk e mais.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🎵</div>
+      <h3>Música de Fundo</h3>
+      <p>Adicione trilhas sonoras aos seus vídeos. Upload de músicas próprias.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📱</div>
+      <h3>Vertical, Horizontal ou Quadrado</h3>
+      <p>Formatos otimizados pra YouTube, Shorts, TikTok, Instagram e mais.</p>
     </div>
   </div>
+</section>
+
+<section id="como-funciona" class="how-section">
+  <div class="section-title">
+    <h2>Como <span>funciona</span></h2>
+    <p>Do roteiro ao vídeo pronto em 4 passos simples.</p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h3>Escreva seu roteiro</h3>
+        <p>Digite o texto do vídeo naturalmente. A IA divide automaticamente em cenas com os melhores cortes narrativos.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h3>Revise o storyboard</h3>
+        <p>Veja as imagens geradas pra cada cena. Edite textos, regere imagens, faça upload ou busque no banco.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h3>Configure narração e animação</h3>
+        <p>Escolha a voz, ative animação com IA, adicione legendas e música de fundo.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h3>Baixe seu vídeo</h3>
+        <p>Vídeo profissional pronto pra publicar. Com narração, legendas sincronizadas e animação cinematográfica.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-title">
+    <h2>Ideal para <span>qualquer nicho</span></h2>
+    <p>Criadores de conteúdo de todos os segmentos usam o Klyonclaw Studio.</p>
+  </div>
+  <div class="usecases">
+    <div class="usecase"><div class="usecase-icon">✝️</div><div><h4>Conteúdo Religioso</h4><p>Histórias bíblicas animadas com narração épica</p></div></div>
+    <div class="usecase"><div class="usecase-icon">📚</div><div><h4>Educação</h4><p>Aulas e explicações visuais automatizadas</p></div></div>
+    <div class="usecase"><div class="usecase-icon">💰</div><div><h4>Marketing</h4><p>Vídeos promocionais e anúncios em minutos</p></div></div>
+    <div class="usecase"><div class="usecase-icon">📖</div><div><h4>Storytelling</h4><p>Contos, fábulas e narrativas visuais</p></div></div>
+    <div class="usecase"><div class="usecase-icon">🎮</div><div><h4>Gaming & Curiosidades</h4><p>Vídeos de curiosidades e lore de jogos</p></div></div>
+    <div class="usecase"><div class="usecase-icon">💪</div><div><h4>Motivacional</h4><p>Vídeos inspiracionais com visual cinematográfico</p></div></div>
+  </div>
+</section>
+
+<section id="planos" class="pricing-section">
+  <div class="section-title">
+    <h2>Planos para <span>todo criador</span></h2>
+    <p>Comece grátis. Escale conforme sua produção cresce.</p>
+  </div>
+  <div class="plans-grid">
+    <div class="plan-card">
+      <div class="plan-name">API Própria</div>
+      <div class="plan-price">R$87,90<small>/mês</small></div>
+      <div class="plan-desc">Suas chaves de API. Geração ilimitada.</div>
+      <a href="/cadastro" class="plan-btn">Começar</a>
+    </div>
+    <div class="plan-card popular">
+      <div class="plan-name">Básico</div>
+      <div class="plan-price">R$39,90<small>/mês</small></div>
+      <div class="plan-desc">500 créditos/mês. Ideal pra começar.</div>
+      <a href="/cadastro" class="plan-btn">Começar</a>
+    </div>
+    <div class="plan-card">
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">R$79,90<small>/mês</small></div>
+      <div class="plan-desc">1.500 créditos/mês. Produção regular.</div>
+      <a href="/cadastro" class="plan-btn">Começar</a>
+    </div>
+    <div class="plan-card">
+      <div class="plan-name">Business</div>
+      <div class="plan-price">R$149,90<small>/mês</small></div>
+      <div class="plan-desc">4.000 créditos/mês. Escala profissional.</div>
+      <a href="/cadastro" class="plan-btn">Começar</a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-title">
+    <h2>Perguntas <span>frequentes</span></h2>
+  </div>
+  <div class="faq">
+    <div class="faq-item">
+      <div class="faq-q">O que são créditos?</div>
+      <div class="faq-a">Créditos são a moeda interna da plataforma. Cada ação (gerar imagem, narrar, animar) consome uma quantidade de créditos. Você pode ver a tabela completa na aba Ajuda do dashboard.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Preciso saber editar vídeo?</div>
+      <div class="faq-a">Não! O Klyonclaw Studio faz tudo automaticamente. Você só escreve o roteiro e configura as opções. O vídeo sai pronto pra publicar.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Posso usar minha própria voz?</div>
+      <div class="faq-a">Sim! Com apenas 30 segundos de áudio você clona sua voz e pode usá-la em todos os vídeos.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">O que é o plano API Própria?</div>
+      <div class="faq-a">Nesse plano você usa suas próprias chaves de API (OpenAI e MiniMax) e tem geração ilimitada. Ideal pra quem já tem conta nessas plataformas.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Posso cancelar a qualquer momento?</div>
+      <div class="faq-a">Sim, sem multa e sem burocracia. Cancele direto pelo dashboard quando quiser.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Os vídeos gerados são meus?</div>
+      <div class="faq-a">100%. Todo conteúdo gerado pertence a você. Use comercialmente, publique onde quiser.</div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-section">
+  <h2>Pronto pra criar seu primeiro vídeo?</h2>
+  <p>Junte-se a criadores que já estão produzindo conteúdo profissional com inteligência artificial.</p>
+  <a href="/cadastro" class="btn-primary">Criar minha conta grátis</a>
 </div>
 
-<div class="footer">
+<footer class="footer">
+  <div class="footer-links">
+    <a href="/termos">Termos de Uso</a>
+    <a href="/privacidade">Privacidade</a>
+    <a href="/login">Login</a>
+    <a href="/cadastro">Cadastro</a>
+  </div>
   <p>Klyonclaw Studio — AI Video Automation</p>
-  <p style="margin-top:8px"><a href="/termos">Termos de Uso</a> · <a href="/privacidade">Política de Privacidade</a></p>
-  <p style="margin-top:8px">© 2026 Grupo Mafort. Todos os direitos reservados.</p>
-</div>
+  <p style="margin-top:6px">© 2026 Klyonclaw. Todos os direitos reservados.</p>
+</footer>
 
+<script>
+document.querySelectorAll('.faq-q').forEach(q=>{
+  q.addEventListener('click',()=>{
+    const item=q.parentElement;
+    item.classList.toggle('open');
+  });
+});
+</script>
 </body>
 </html>
