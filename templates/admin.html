@@ -142,7 +142,11 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
             <div class="meta">Criado: {{ u.criado_em.strftime('%d/%m/%Y') }} · {{ u.criacoes|length }} criações</div>
           </div>
           <div class="user-btns">
-            {% if is_master %}<button class="btn-sm btn-blue" onclick="toggleAdmin({{ u.id }})">{% if u.is_admin %}⬇ Admin{% else %}⬆ Admin{% endif %}</button>{% endif %}
+            {% if is_master %}
+            <button class="btn-sm {% if u.is_admin %}btn-red{% else %}btn-green{% endif %}" style="font-size:.8rem;padding:8px 16px" onclick="toggleAdmin({{ u.id }},'{{ u.nome }}',{{ 'true' if u.is_admin else 'false' }})">
+              {% if u.is_admin %}🔒 Remover Admin{% else %}👑 Tornar Admin{% endif %}
+            </button>
+            {% endif %}
             <button class="btn-outline-sm" onclick="mostrarCreditos({{ u.id }})">💰 Créditos</button>
             <button class="btn-outline-sm" onclick="toggleBanco({{ u.id }})">🗃️ {% if u.banco_ativo %}Banco ✓{% else %}Banco{% endif %}</button>
             <button class="btn-outline-sm" onclick="mostrarSenha({{ u.id }})">🔑 Senha</button>
@@ -294,7 +298,14 @@ function filtrarUsers(){
   });
 }
 
-async function toggleAdmin(uid){const res=await fetch('/admin/toggle_admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});if((await res.json()).ok)location.reload();}
+async function toggleAdmin(uid,nome,isAdmin){
+  const acao=isAdmin?'REMOVER poderes de admin':'CONCEDER poderes de admin';
+  if(!confirm(`⚠️ ${acao} de "${nome}"?\n\nIsso dará acesso total ao painel administrativo.`))return;
+  const res=await fetch('/admin/toggle_admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});
+  const d=await res.json();
+  if(d.ok){alert(d.is_admin?`✅ ${nome} agora é ADMIN`:`✅ Admin removido de ${nome}`);location.reload();}
+  else{alert('❌ '+(d.erro||'Erro'));}
+}
 
 async function toggleBanco(uid){const res=await fetch('/admin/toggle_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});const d=await res.json();if(d.ok){alert(d.banco_ativo?'Banco ativado!':'Banco desativado!');location.reload();}}
 
