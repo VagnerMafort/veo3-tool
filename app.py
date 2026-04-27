@@ -689,13 +689,14 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
     task_id = data.get("task_id")
     if not task_id:
         resp_str = str(data)
+        sys.stderr.write(f"[VIDEO] Sem task_id. Resposta: {resp_str[:300]}\n"); sys.stderr.flush()
         if "1002" in resp_str or "1008" in resp_str or "rate" in resp_str.lower() or "insufficient" in resp_str.lower():
             raise Exception("RATE_LIMIT:Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde.")
         raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
     sys.stderr.write(f"[VIDEO] Task criada: {task_id}\n"); sys.stderr.flush()
 
-    # Poll status (a cada 5s, max 5 min)
-    for _ in range(60):  # max 5 min
+    # Poll status (a cada 5s, max 10 min)
+    for _ in range(120):  # max 10 min
         time.sleep(5)
         try:
             r2 = requests.get("https://api.minimax.io/v1/query/video_generation",
@@ -1253,13 +1254,16 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                             return
                     clipes_video[i] = None
 
-                # Animar sequencialmente (1 por vez com intervalo pra evitar rate limit)
+                # Animar em paralelo (3 por vez)
                 import time as _time
-                for i in range(n_cenas):
-                    animar_cena(i)
-                    jobs[job_id]["progresso"] = f"Animando cenas... {sum(1 for c in clipes_video if c is not None)}/{n_cenas} prontas"
-                    if i < n_cenas - 1:
-                        _time.sleep(5)  # Intervalo entre cenas
+                lote_size = 3
+                for lote_start in range(0, n_cenas, lote_size):
+                    lote_end = min(lote_start + lote_size, n_cenas)
+                    lote = list(range(lote_start, lote_end))
+                    with ThreadPoolExecutor(max_workers=lote_size) as executor:
+                        list(executor.map(animar_cena, lote))
+                    if lote_end < n_cenas:
+                        _time.sleep(3)
 
                 # Cobrar créditos só pelas animações que deram certo
                 cenas_animadas = sum(1 for c in clipes_video if c is not None)
