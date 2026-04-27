@@ -504,18 +504,6 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <div id="listaProjetosEditor"><div class="vazio">Carregando...</div></div>
     </div>
 
-    <!-- Suporte -->
-    <div class="card" style="border-color:var(--accent)">
-      <h2>💬 Precisa de ajuda?</h2>
-      <p class="tip" style="margin-bottom:12px">Entre em contato com nosso suporte.</p>
-      <label>Assunto</label>
-      <input type="text" id="suporteAssunto" placeholder="Ex: Problema com geração de vídeo"/>
-      <label>Mensagem</label>
-      <textarea id="suporteMensagem" placeholder="Descreva seu problema ou dúvida..." style="min-height:80px"></textarea>
-      <button class="btn" id="btnSuporte" style="background:var(--green)">📧 Enviar para suporte</button>
-      <div class="erro-box" id="erroSuporte"></div>
-      <div style="display:none;margin-top:10px;background:#064e3b;border:1px solid #059669;border-radius:8px;padding:10px;color:#6ee7b7;font-size:.83rem;text-align:center" id="okSuporte"></div>
-    </div>
   </div>
 
   <!-- PLANOS -->
@@ -774,6 +762,18 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       </div>
       <p class="tip" style="margin-top:10px">* Renderização e legenda são grátis se o vídeo usou qualquer serviço pago (geração de imagens, narração ou animação).</p>
       <p class="tip">* Cenas do banco de imagens não gastam créditos de geração.</p>
+    </div>
+
+    <div class="card" style="border-color:var(--accent)">
+      <h2>💬 Fale com o Suporte</h2>
+      <p class="tip" style="margin-bottom:12px">Tem alguma dúvida ou problema? Envie uma mensagem e responderemos em breve.</p>
+      <label>Assunto</label>
+      <input type="text" id="suporteAssunto" placeholder="Ex: Problema com geração de vídeo"/>
+      <label>Mensagem</label>
+      <textarea id="suporteMensagem" placeholder="Descreva seu problema ou dúvida..." style="min-height:80px"></textarea>
+      <button class="btn" id="btnSuporte" style="background:var(--green)">📧 Enviar para suporte</button>
+      <div class="erro-box" id="erroSuporte"></div>
+      <div style="display:none;margin-top:10px;background:#064e3b;border:1px solid #059669;border-radius:8px;padding:10px;color:#6ee7b7;font-size:.83rem;text-align:center" id="okSuporte"></div>
     </div>
   </div>
 
