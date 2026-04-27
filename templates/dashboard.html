@@ -164,7 +164,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
     <div class="tab" onclick="trocarAba('planos')"><div>💎</div><div>Planos</div></div>
     <div class="tab" onclick="trocarAba('historico')"><div>🗂️</div><div>Histórico</div></div>
     <div class="tab" onclick="trocarAba('clonar')"><div>🎙️</div><div>Áudio</div></div>
-    <div class="tab" onclick="trocarAba('ajuda')"><div>💬</div><div>Ajuda</div></div>
+    <div class="tab" onclick="trocarAba('ajuda')"><div>❓</div><div>Ajuda</div></div>
+    <div class="tab" onclick="trocarAba('suporte')"><div>💬</div><div>Suporte</div></div>
     <div class="tab" onclick="trocarAba('perfil')"><div>👤</div><div>Perfil</div></div>
   </div>
 
@@ -765,16 +766,80 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <p class="tip">* Cenas do banco de imagens não gastam créditos de geração.</p>
     </div>
 
+    <div class="card">
+      <h2>🖼️ Como usar o Thumbnail Engine</h2>
+      <div style="margin-top:14px">
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="font-size:1rem;margin-bottom:8px">🔍 Gerar thumbnails do zero</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Vá na aba <b>Thumbs</b></li>
+            <li>Cole o roteiro do vídeo</li>
+            <li>Escolha o estilo visual (Cinematic, Mystery, Cartoon, etc.)</li>
+            <li>Opcionalmente, escreva o texto que quer na thumb</li>
+            <li>Clique em <b>Analisar Roteiro e Gerar 4 Thumbnails</b></li>
+            <li>A IA identifica a cena mais clicável e gera 4 variações</li>
+            <li>Use o <b>🏆 Ranking</b> pra saber qual tem mais potencial de clique</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="font-size:1rem;margin-bottom:8px">✏️ Editar thumbnail com IA</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Na aba <b>Thumbs</b>, role até <b>Editar Thumbnail com IA</b></li>
+            <li>Envie a thumbnail que quer editar</li>
+            <li>Opcionalmente, envie uma foto de rosto pra substituir a pessoa</li>
+            <li>Escreva a instrução (ex: "trocar fundo", "deixar mais cinematográfico")</li>
+            <li>A IA edita preservando a composição original</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="font-size:1rem;margin-bottom:8px">⚡ Viral Tuning</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Na aba <b>Thumbs</b>, role até <b>Viral Tuning</b></li>
+            <li>Envie qualquer thumbnail</li>
+            <li>A IA melhora automaticamente: mais contraste, nitidez, cores fortes, fundo limpo</li>
+            <li>Compare o antes/depois e baixe a versão melhorada</li>
+          </ol>
+        </div>
+
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px">
+          <div style="font-size:1rem;margin-bottom:8px">✏️ Editor Visual (mini Canva)</div>
+          <ol style="font-size:.84rem;color:var(--text2);line-height:1.8;padding-left:18px">
+            <li>Na aba <b>Thumbs</b>, clique em <b>Abrir Editor Visual</b></li>
+            <li>Envie uma thumbnail ou abra uma já gerada</li>
+            <li>Adicione textos, setas, círculos, retângulos</li>
+            <li>Edite fonte, cor, contorno, sombra, tamanho</li>
+            <li>Mova, gire, duplique e organize as camadas</li>
+            <li>Use <b>Ctrl+Z</b> pra desfazer e <b>Ctrl+Y</b> pra refazer</li>
+            <li>Exporte em 1280×720 ou 2048×1152</li>
+            <li>Salve o projeto pra continuar depois</li>
+          </ol>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SUPORTE -->
+  <div class="pane" id="paneSuporte">
     <div class="card" style="border-color:var(--accent)">
       <h2>💬 Fale com o Suporte</h2>
-      <p class="tip" style="margin-bottom:12px">Tem alguma dúvida ou problema? Envie uma mensagem e responderemos em breve.</p>
+      <p class="tip" style="margin-bottom:14px">Tem alguma dúvida, problema ou sugestão? Envie uma mensagem e responderemos em breve.</p>
       <label>Assunto</label>
       <input type="text" id="suporteAssunto" placeholder="Ex: Problema com geração de vídeo"/>
       <label>Mensagem</label>
-      <textarea id="suporteMensagem" placeholder="Descreva seu problema ou dúvida..." style="min-height:80px"></textarea>
-      <button class="btn" id="btnSuporte" style="background:var(--green)">📧 Enviar para suporte</button>
+      <textarea id="suporteMensagem" placeholder="Descreva seu problema ou dúvida em detalhes..." style="min-height:120px"></textarea>
+      <button class="btn" id="btnSuporte" style="background:var(--green)">📧 Enviar mensagem</button>
       <div class="erro-box" id="erroSuporte"></div>
       <div style="display:none;margin-top:10px;background:#064e3b;border:1px solid #059669;border-radius:8px;padding:10px;color:#6ee7b7;font-size:.83rem;text-align:center" id="okSuporte"></div>
+    </div>
+    <div class="card">
+      <h2>📧 Outros canais</h2>
+      <p style="font-size:.88rem;color:var(--text2);line-height:1.8">
+        Email: <a href="mailto:support@klyonclaw.com" style="color:var(--accent)">support@klyonclaw.com</a>
+      </p>
     </div>
   </div>
 
@@ -949,7 +1014,7 @@ function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=docu
 applyTheme();
 
 function trocarAba(aba){
-  const abas=['gerar','rascunhos','thumbs','planos','historico','clonar','ajuda','perfil'];
+  const abas=['gerar','rascunhos','thumbs','planos','historico','clonar','ajuda','suporte','perfil'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
