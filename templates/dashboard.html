@@ -393,6 +393,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <p class="tip" style="margin-bottom:14px">Escolha a melhor, baixe ou regere individualmente.</p>
         <div id="thumbGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
         <button class="btn" id="btnRegerarTodas" style="margin-top:14px;background:var(--accent)">🔄 Gerar 4 novas variações</button>
+        <button class="btn" id="btnRanking" style="margin-top:8px;background:linear-gradient(135deg,#f59e0b,#ef4444)">🏆 Ranking — Qual é a melhor?</button>
+        <div id="rankingResultado" style="display:none;margin-top:14px"></div>
       </div>
     </div>
 
@@ -488,6 +490,13 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
     <div class="card">
       <h2>📂 Minhas Thumbnails</h2>
       <div id="listaThumbsHist"><div class="vazio">Carregando...</div></div>
+    </div>
+
+    <!-- Projetos Salvos -->
+    <div class="card">
+      <h2>📁 Projetos do Editor</h2>
+      <p class="tip" style="margin-bottom:10px">Projetos salvos no Editor Visual. Clique pra continuar editando.</p>
+      <div id="listaProjetosEditor"><div class="vazio">Carregando...</div></div>
     </div>
 
     <!-- Suporte -->
@@ -1285,6 +1294,8 @@ async function gerarThumbVariacoes(roteiro){
   const grid=document.getElementById('thumbGrid');grid.innerHTML='';
   d.thumbs.forEach(t=>{grid.innerHTML+=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden"><img src="/ver_thumbnail/${t.thumb_id}?t=${Date.now()}" style="width:100%;display:block"/><div style="padding:10px"><div style="font-size:.75rem;color:var(--text3);margin-bottom:6px">Variação ${t.variacao}${t.texto?' · "'+t.texto+'"':''}</div><div style="display:flex;gap:6px;flex-wrap:wrap"><a href="/download_thumbnail/${t.thumb_id}" class="btn-sm" style="background:var(--green);flex:1;text-align:center;font-size:.75rem">⬇ Baixar</a><a href="/thumb_editor/visual?thumb=${t.thumb_id}" class="btn-sm" style="background:#7c3aed;flex:1;text-align:center;font-size:.75rem;text-decoration:none">✏️ Editar</a><button class="btn-sm" style="background:var(--accent);font-size:.75rem" onclick="regerarUmaThumb()">🔄</button><button class="btn-sm" style="background:#7f1d1d;color:#fca5a5;font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑</button></div></div></div>`;});
   document.getElementById('thumbGaleria').style.display='block';atualizarCreditos();carregarThumbnails();
+  _lastThumbIds=d.thumbs.map(t=>t.thumb_id);
+  document.getElementById('rankingResultado').style.display='none';
 }
 document.getElementById('btnRegerarTodas').addEventListener('click',async()=>{
   const roteiro=document.getElementById('thumbRoteiro').value.trim();if(!roteiro||!_thumbAnaliseJson)return;
@@ -1300,10 +1311,53 @@ async function carregarThumbnails(){
   const lista=document.getElementById('listaThumbsHist');
   try{const res=await fetch('/minhas_thumbnails');const d=await res.json();
   if(!d.thumbnails||d.thumbnails.length===0){lista.innerHTML='<div class="vazio">Nenhuma thumbnail ainda.</div>';return;}
-  lista.innerHTML='';d.thumbnails.forEach(t=>{lista.innerHTML+=`<div class="historico-item" style="padding:12px"><img src="/ver_thumbnail/${t.thumb_id}?t=1" style="width:100%;border-radius:8px;margin-bottom:8px" onerror="this.parentElement.remove()"/><div style="font-size:.75rem;color:var(--text3);margin-bottom:6px">${t.criado_em} · ${t.estilo}</div><div style="display:flex;gap:6px"><a href="/download_thumbnail/${t.thumb_id}" class="btn-dl-hist btn-dl-zip" style="font-size:.75rem">⬇ Baixar</a><button class="btn-danger" style="font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑️</button></div></div>`;});
+  lista.innerHTML='';d.thumbnails.forEach(t=>{lista.innerHTML+=`<div class="historico-item" style="padding:12px"><img src="/ver_thumbnail/${t.thumb_id}?t=1" style="width:100%;border-radius:8px;margin-bottom:8px" onerror="this.parentElement.remove()"/><div style="font-size:.75rem;color:var(--text3);margin-bottom:6px">${t.criado_em} · ${t.estilo}</div><div style="display:flex;gap:6px"><a href="/download_thumbnail/${t.thumb_id}" class="btn-dl-hist btn-dl-zip" style="font-size:.75rem">⬇ Baixar</a><a href="/thumb_editor/visual?thumb=${t.thumb_id}" class="btn-dl-hist btn-dl-vid" style="font-size:.75rem;text-decoration:none">✏️ Editar</a><button class="btn-danger" style="font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑️</button></div></div>`;});
   }catch(e){lista.innerHTML='<div class="vazio">Erro ao carregar.</div>';}
+  // Carregar projetos do editor
+  try{
+    const res2=await fetch('/thumb_editor/meus_projetos');const d2=await res2.json();
+    const listP=document.getElementById('listaProjetosEditor');
+    if(!d2.projetos||d2.projetos.length===0){listP.innerHTML='<div class="vazio">Nenhum projeto salvo.</div>';return;}
+    listP.innerHTML='';d2.projetos.forEach(p=>{
+      listP.innerHTML+=`<div class="historico-item" style="padding:12px;cursor:pointer" onclick="window.location.href='/thumb_editor/visual?project=${p.project_id}'">
+        <div style="display:flex;gap:12px;align-items:center">
+          <img src="/ver_thumbnail/${p.project_id}?t=1" style="width:80px;border-radius:6px" onerror="this.style.display='none'"/>
+          <div><div style="font-size:.85rem;color:var(--text)">Projeto ${p.project_id.substring(0,8)}</div><div style="font-size:.72rem;color:var(--text3)">${p.criado_em}</div></div>
+        </div>
+      </div>`;
+    });
+  }catch(e){}
 }
 async function deletarThumb(thumbId){if(!confirm('Deletar?'))return;await fetch('/deletar_thumbnail',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({thumb_id:thumbId})});carregarThumbnails();}
+
+// Ranking
+let _lastThumbIds=[];
+document.getElementById('btnRanking').addEventListener('click',async()=>{
+  if(_lastThumbIds.length===0){alert('Gere thumbnails primeiro');return;}
+  document.getElementById('btnRanking').disabled=true;
+  document.getElementById('rankingResultado').innerHTML='<div style="text-align:center;padding:16px"><div class="spinner"></div><p style="font-size:.82rem;color:var(--text2);margin-top:8px">Analisando thumbnails com IA...</p></div>';
+  document.getElementById('rankingResultado').style.display='block';
+  try{
+    const res=await fetch('/thumb_editor/ranking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({thumb_ids:_lastThumbIds})});
+    const d=await res.json();
+    if(d.erro)throw new Error(d.erro);
+    let html='<div style="font-size:.9rem;font-weight:700;color:var(--accent);margin-bottom:12px">🏆 Ranking de Potencial de Clique</div>';
+    d.rankings.forEach((r,i)=>{
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      const barW=Math.max(10,r.score);
+      html+=`<div style="background:var(--bg3);border:1px solid ${i===0?'var(--accent)':'var(--border)'};border-radius:8px;padding:12px;margin-bottom:8px${i===0?';border-width:2px':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:.85rem;font-weight:600">${medal} Variação ${r.index!==undefined?r.index+1:i+1}</span>
+          <span style="font-size:1.1rem;font-weight:800;color:${r.score>=80?'var(--green)':r.score>=60?'var(--accent)':'var(--red2)'}">${r.score}/100</span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:6px"><div style="height:100%;width:${barW}%;background:${r.score>=80?'var(--green)':r.score>=60?'var(--accent)':'#ef4444'};border-radius:3px"></div></div>
+        <p style="font-size:.78rem;color:var(--text2)">${r.reason||''}</p>
+      </div>`;
+    });
+    document.getElementById('rankingResultado').innerHTML=html;
+  }catch(e){document.getElementById('rankingResultado').innerHTML=`<p style="color:var(--red2);font-size:.82rem">❌ ${e.message}</p>`;}
+  document.getElementById('btnRanking').disabled=false;
+});
 // Thumb Editor
 const fileThumbEdit=document.getElementById('fileThumbEdit'),fileRosto=document.getElementById('fileRosto');
 let _thumbEditFile=null,_rostoFile=null;

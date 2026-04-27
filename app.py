@@ -2024,6 +2024,23 @@ def thumb_editor_load_project(project_id):
         project = json.load(f)
     return jsonify({"ok": True, "project": project})
 
+@app.route("/thumb_editor/meus_projetos")
+@login_required
+def thumb_editor_meus_projetos():
+    """Lista projetos salvos do editor visual"""
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("""CREATE TABLE IF NOT EXISTS thumb_projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            project_id TEXT NOT NULL, project_path TEXT, preview_path TEXT,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP, atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        rows = conn.execute("SELECT project_id, criado_em FROM thumb_projects WHERE user_id=? ORDER BY id DESC LIMIT 20", (current_user.id,)).fetchall()
+        conn.close()
+        projetos = [{"project_id": r[0], "criado_em": r[1] or ""} for r in rows if os.path.exists(os.path.join(THUMB_FOLDER, f"{current_user.id}_{r[0]}.png"))]
+        return jsonify({"projetos": projetos})
+    except:
+        return jsonify({"projetos": []})
+
 @app.route("/thumb_editor/download/<edit_id>")
 @login_required
 def thumb_editor_download(edit_id):
