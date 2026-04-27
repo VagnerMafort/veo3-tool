@@ -274,13 +274,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <div class="modo-btn" id="btnModoShorts" onclick="setModo('shorts')">⚡ Shorts</div>
         </div>
         <input type="hidden" id="modoVideo" value="longo"/>
-        <label>Intervalo entre imagens</label>
-        <select id="intervalo">
-          <option value="2">A cada 2 segundos</option>
-          <option value="3">A cada 3 segundos</option>
-          <option value="5">A cada 5 segundos</option>
-          <option value="8">A cada 8 segundos</option>
-        </select>
+        <input type="hidden" id="intervalo" value="5"/>
+        <input type="hidden" id="animarIA" value="false"/>
         {% if user.minimax_key or (user.plano and user.plano != 'api_propria') or user.is_admin %}
         <label>Voz para narração</label>
         <select id="voiceId">
@@ -304,12 +299,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           <select id="musicaId" style="margin-bottom:10px">
             <option value="">— Sem música —</option>
           </select>
-          <p class="tip">Faça upload de músicas na aba 🎙️ Voz</p>
-          <div class="toggle-row" style="margin-top:14px">
-            <label>🎬 Animar cenas com IA</label>
-            <label class="toggle"><input type="checkbox" id="animarIA"><span class="slider"></span></label>
-          </div>
-          <p class="tip">Transforma cada imagem em um clipe de vídeo animado (~5s por cena). Requer chave MiniMax configurada.</p>
+          <p class="tip">Faça upload de músicas na aba 🎙️ Áudio</p>
           <div class="toggle-row">
             <label>💬 Legendas</label>
             <label class="toggle"><input type="checkbox" id="legendaAtivo"><span class="slider"></span></label>
@@ -1296,13 +1286,6 @@ function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/st
 },3000);}
 
 function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaPreview').style.display='none';document.getElementById('etapaStoryboard').style.display='block';
-  // Pré-configurar animação baseado na escolha inicial
-  const tipoVideo=document.getElementById('tipoVideo').value;
-  const animarEl=document.getElementById('animarIA');
-  if(animarEl){
-    if(tipoVideo==='animado'){animarEl.checked=true;animarEl.disabled=true;}
-    else{animarEl.checked=false;}
-  }
   const lista=document.getElementById('listaCenas');lista.innerHTML='';sbBlocos.forEach((b,i)=>{
   const hasVideo=b.video?true:false;
   const videoBadge=hasVideo?'<span style="background:var(--green);color:#fff;font-size:.65rem;padding:2px 8px;border-radius:10px;margin-left:6px">🎬 Vídeo do banco</span>':'';
@@ -1362,18 +1345,17 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   sbBlocos.forEach((b,i)=>{const el=document.getElementById('texto-'+(i+1));if(el)b.texto=el.textContent.trim();});
   for(let b of sbBlocos){await fetch('/editar_texto_cena',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sb_id:sbId,index:b.index,texto:b.texto})});}
   document.getElementById('erroFinal').style.display='none';document.getElementById('btnFinalizar').disabled=true;document.getElementById('statusFinal').style.display='block';document.getElementById('resultado').style.display='none';
-  const fd=new FormData();fd.append('sb_id',sbId);const voiceEl=document.getElementById('voiceId');fd.append('voice_id',voiceEl?voiceEl.value:'');fd.append('modo_video',document.getElementById('modoVideo').value);fd.append('intervalo',document.getElementById('intervalo').value);
-  fd.append('legenda_ativo',legendaAtivo&&legendaAtivo.checked?'true':'false');fd.append('legenda_fonte',document.getElementById('legendaFonte')?document.getElementById('legendaFonte').value:'Arial');fd.append('legenda_tamanho',document.getElementById('legendaTamanho')?document.getElementById('legendaTamanho').value:'18');fd.append('legenda_cor',document.getElementById('legendaCor')?document.getElementById('legendaCor').value:'&H00FFFFFF');fd.append('legenda_posicao',document.getElementById('legendaPosicao')?document.getElementById('legendaPosicao').value:'2');fd.append('legenda_sombra',document.getElementById('legendaSombra')&&document.getElementById('legendaSombra').checked?'true':'false');
-  const animarEl=document.getElementById('animarIA');
-  // Usar tipo de vídeo escolhido no início
+  const fd=new FormData();fd.append('sb_id',sbId);const voiceEl=document.getElementById('voiceId');fd.append('voice_id',voiceEl?voiceEl.value:'');fd.append('modo_video',document.getElementById('modoVideo').value);
+  // Usar tipo de vídeo e intervalo escolhidos no início
   const tipoVideo=document.getElementById('tipoVideo').value;
-  if(tipoVideo==='animado'){fd.append('animar_ia','true');}
-  else{fd.append('animar_ia',animarEl&&animarEl.checked?'true':'false');}
-  // Usar intervalo escolhido no início se for estático
   if(tipoVideo==='estatico'){
-    const intervaloInicio=document.getElementById('intervaloInicio');
-    if(intervaloInicio)fd.append('intervalo',intervaloInicio.value);
+    fd.append('intervalo',document.getElementById('intervaloInicio').value);
+    fd.append('animar_ia','false');
+  } else {
+    fd.append('intervalo','6');
+    fd.append('animar_ia','true');
   }
+  fd.append('legenda_ativo',legendaAtivo&&legendaAtivo.checked?'true':'false');fd.append('legenda_fonte',document.getElementById('legendaFonte')?document.getElementById('legendaFonte').value:'Arial');fd.append('legenda_tamanho',document.getElementById('legendaTamanho')?document.getElementById('legendaTamanho').value:'18');fd.append('legenda_cor',document.getElementById('legendaCor')?document.getElementById('legendaCor').value:'&H00FFFFFF');fd.append('legenda_posicao',document.getElementById('legendaPosicao')?document.getElementById('legendaPosicao').value:'2');fd.append('legenda_sombra',document.getElementById('legendaSombra')&&document.getElementById('legendaSombra').checked?'true':'false');
   fd.append('musica_id',document.getElementById('musicaId').value);
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}
 });
