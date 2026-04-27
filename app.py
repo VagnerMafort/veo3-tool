@@ -690,7 +690,9 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
     if not task_id:
         resp_str = str(data)
         sys.stderr.write(f"[VIDEO] Sem task_id. Resposta: {resp_str[:300]}\n"); sys.stderr.flush()
-        if "1002" in resp_str or "1008" in resp_str or "rate" in resp_str.lower() or "insufficient" in resp_str.lower():
+        if "1008" in resp_str or "insufficient" in resp_str.lower():
+            raise Exception("SALDO_MINIMAX:Saldo insuficiente na conta MiniMax. Recarregue em platform.minimaxi.com")
+        if "1002" in resp_str or "rate" in resp_str.lower():
             raise Exception("RATE_LIMIT:Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde.")
         raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
     sys.stderr.write(f"[VIDEO] Task criada: {task_id}\n"); sys.stderr.flush()
@@ -1250,6 +1252,11 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                                 if tentativa < 2:
                                     _t.sleep(30 + tentativa * 15)
                                     continue
+                            if "SALDO_MINIMAX" in erro_str or "insufficient" in erro_str.lower():
+                                # Saldo insuficiente — parar todas as animações
+                                sys.stderr.write(f"[ANIMAR] Saldo MiniMax insuficiente, parando animações\n"); sys.stderr.flush()
+                                clipes_video[i] = None
+                                return
                             clipes_video[i] = None
                             return
                     clipes_video[i] = None
