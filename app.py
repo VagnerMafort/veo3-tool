@@ -1606,8 +1606,12 @@ def thumb_engine_analisar():
     roteiro = request.json.get("roteiro", "").strip()
     if not roteiro: return jsonify({"erro": "Roteiro vazio"}), 400
     if not current_user.get_api_key(): return jsonify({"erro": "Assine um plano para usar."}), 400
+    if not current_user.gastar_creditos(1): return jsonify({"erro": "Créditos insuficientes."}), 400
+    db.session.commit()
     analise = analisar_cena_thumbnail(roteiro, current_user.get_api_key())
-    if not analise: return jsonify({"erro": "Erro ao analisar roteiro"}), 500
+    if not analise:
+        current_user.creditos += 1; db.session.commit()
+        return jsonify({"erro": "Erro ao analisar roteiro"}), 500
     return jsonify({"ok": True, "analise": analise})
 
 @app.route("/thumb_engine/gerar", methods=["POST"])
@@ -1912,6 +1916,9 @@ def thumb_editor_ranking():
         return jsonify({"erro": "Nenhuma thumbnail selecionada"}), 400
     if not current_user.get_api_key():
         return jsonify({"erro": "Assine um plano."}), 400
+    if not current_user.gastar_creditos(1):
+        return jsonify({"erro": "Créditos insuficientes."}), 400
+    db.session.commit()
 
     import base64
     images_data = []
