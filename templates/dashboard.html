@@ -445,6 +445,37 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       </div>
     </div>
 
+    <!-- Viral Tuning -->
+    <div class="card">
+      <h2>⚡ Viral Tuning</h2>
+      <p class="tip" style="margin-bottom:14px">Envie qualquer thumbnail e a IA melhora automaticamente pra máximo impacto viral.</p>
+      <div class="drop-area" id="dropAreaViral">
+        <input type="file" id="fileViral" accept="image/*"/>
+        <div class="drop-icon">⚡</div>
+        <p>Selecionar thumbnail</p>
+        <p class="fmt">PNG · JPG · WEBP</p>
+      </div>
+      <div id="previewViral" style="display:none;margin-top:10px;text-align:center">
+        <img id="previewViralImg" style="max-width:100%;border-radius:8px;max-height:200px"/>
+      </div>
+      <button class="btn" id="btnViralTuning" style="margin-top:12px;background:linear-gradient(135deg,#f59e0b,#ef4444)">⚡ Melhorar para Viral</button>
+      <div class="status-box" id="statusViral" style="display:none">
+        <div class="spinner"></div>
+        <div class="status-text">Aplicando Viral Tuning...</div>
+      </div>
+      <div class="erro-box" id="erroViral"></div>
+      <div id="viralResultado" style="display:none;margin-top:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div style="text-align:center"><p style="font-size:.75rem;color:var(--text3);margin-bottom:4px">Original</p><img id="viralAntes" style="width:100%;border-radius:8px"/></div>
+          <div style="text-align:center"><p style="font-size:.75rem;color:var(--text3);margin-bottom:4px">Viral</p><img id="viralDepois" style="width:100%;border-radius:8px"/></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <a href="#" id="btnDownloadViral" class="btn-download" style="flex:1;text-align:center;font-size:.82rem">⬇ Baixar</a>
+          <button class="btn-sm" style="background:var(--accent);flex:1;font-size:.82rem" onclick="document.getElementById('viralResultado').style.display='none'">⚡ Aplicar de novo</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Histórico -->
     <div class="card">
       <h2>📂 Minhas Thumbnails</h2>
@@ -1272,28 +1303,27 @@ if(fileThumbEdit)fileThumbEdit.addEventListener('change',()=>{_thumbEditFile=fil
 if(fileRosto)fileRosto.addEventListener('change',()=>{_rostoFile=fileRosto.files[0];if(_rostoFile){const r=new FileReader();r.onload=e=>{document.getElementById('previewRostoImg').src=e.target.result;document.getElementById('previewRosto').style.display='block';};r.readAsDataURL(_rostoFile);}});
 document.getElementById('btnEditarThumb').addEventListener('click',async()=>{
   const instrucao=document.getElementById('thumbEditInstrucao').value.trim();
-  if(!instrucao){document.getElementById('erroThumbEdit').textContent='❌ Escreva a instrução de edição';document.getElementById('erroThumbEdit').style.display='block';return;}
-  if(!_thumbEditFile){document.getElementById('erroThumbEdit').textContent='❌ Envie a imagem de referência';document.getElementById('erroThumbEdit').style.display='block';return;}
-  document.getElementById('erroThumbEdit').style.display='none';
-  document.getElementById('btnEditarThumb').disabled=true;
-  document.getElementById('statusThumbEdit').style.display='block';
-  document.getElementById('thumbEditResultado').style.display='none';
-  const fd=new FormData();
-  fd.append('imagem',_thumbEditFile);
-  fd.append('instrucao',instrucao);
-  if(_rostoFile)fd.append('rosto',_rostoFile);
-  try{
-    const res=await fetch('/thumb_editor/editar',{method:'POST',body:fd});
-    const d=await res.json();
-    if(d.erro)throw new Error(d.erro);
-    document.getElementById('thumbEditAntes').src=document.getElementById('previewThumbEditImg').src;
-    document.getElementById('thumbEditDepois').src=`/thumb_editor/ver/${d.edit_id}?t=${Date.now()}`;
-    document.getElementById('btnDownloadEdit').href=`/thumb_editor/download/${d.edit_id}`;
-    document.getElementById('thumbEditResultado').style.display='block';
-    atualizarCreditos();carregarThumbnails();
+  if(!instrucao){document.getElementById('erroThumbEdit').textContent='❌ Escreva a instrução';document.getElementById('erroThumbEdit').style.display='block';return;}
+  if(!_thumbEditFile){document.getElementById('erroThumbEdit').textContent='❌ Envie a imagem';document.getElementById('erroThumbEdit').style.display='block';return;}
+  document.getElementById('erroThumbEdit').style.display='none';document.getElementById('btnEditarThumb').disabled=true;document.getElementById('statusThumbEdit').style.display='block';document.getElementById('thumbEditResultado').style.display='none';
+  const fd=new FormData();fd.append('imagem',_thumbEditFile);fd.append('instrucao',instrucao);if(_rostoFile)fd.append('rosto',_rostoFile);
+  try{const res=await fetch('/thumb_editor/editar',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);
+    document.getElementById('thumbEditAntes').src=document.getElementById('previewThumbEditImg').src;document.getElementById('thumbEditDepois').src=`/thumb_editor/ver/${d.edit_id}?t=${Date.now()}`;document.getElementById('btnDownloadEdit').href=`/thumb_editor/download/${d.edit_id}`;document.getElementById('thumbEditResultado').style.display='block';atualizarCreditos();carregarThumbnails();
   }catch(e){document.getElementById('erroThumbEdit').textContent='❌ '+e.message;document.getElementById('erroThumbEdit').style.display='block';}
-  document.getElementById('statusThumbEdit').style.display='none';
-  document.getElementById('btnEditarThumb').disabled=false;
+  document.getElementById('statusThumbEdit').style.display='none';document.getElementById('btnEditarThumb').disabled=false;
+});
+
+// Viral Tuning
+const fileViral=document.getElementById('fileViral');let _viralFile=null;
+if(fileViral)fileViral.addEventListener('change',()=>{_viralFile=fileViral.files[0];if(_viralFile){const r=new FileReader();r.onload=e=>{document.getElementById('previewViralImg').src=e.target.result;document.getElementById('previewViral').style.display='block';};r.readAsDataURL(_viralFile);}});
+document.getElementById('btnViralTuning').addEventListener('click',async()=>{
+  if(!_viralFile){document.getElementById('erroViral').textContent='❌ Envie a thumbnail';document.getElementById('erroViral').style.display='block';return;}
+  document.getElementById('erroViral').style.display='none';document.getElementById('btnViralTuning').disabled=true;document.getElementById('statusViral').style.display='block';document.getElementById('viralResultado').style.display='none';
+  const fd=new FormData();fd.append('imagem',_viralFile);
+  try{const res=await fetch('/thumb_editor/viral_tuning',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);
+    document.getElementById('viralAntes').src=document.getElementById('previewViralImg').src;document.getElementById('viralDepois').src=`/thumb_editor/ver/${d.edit_id}?t=${Date.now()}`;document.getElementById('btnDownloadViral').href=`/thumb_editor/download/${d.edit_id}`;document.getElementById('viralResultado').style.display='block';atualizarCreditos();carregarThumbnails();
+  }catch(e){document.getElementById('erroViral').textContent='❌ '+e.message;document.getElementById('erroViral').style.display='block';}
+  document.getElementById('statusViral').style.display='none';document.getElementById('btnViralTuning').disabled=false;
 });
 
 // Suporte

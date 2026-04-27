@@ -1811,7 +1811,7 @@ def editar_imagem_openai(prompt, api_key, imagem_paths, output_path, size="1792x
 @app.route("/thumb_editor/editar", methods=["POST"])
 @login_required
 def thumb_editor_editar():
-    """Edita thumbnail existente com instrução de texto + opcionalmente rosto"""
+    """Edita thumbnail existente com instrução de texto + opcionalmente rosto — gera 4 variações"""
     instrucao = request.form.get("instrucao", "").strip()
     if not instrucao:
         return jsonify({"erro": "Escreva uma instrução de edição"}), 400
@@ -1824,11 +1824,9 @@ def thumb_editor_editar():
     db.session.commit()
 
     edit_id = uuid.uuid4().hex[:12]
-    # Salvar imagem original
     original_path = os.path.join(THUMB_EDIT_FOLDER, f"{current_user.id}_{edit_id}_orig.png")
     request.files["imagem"].save(original_path)
 
-    # Salvar rosto se enviado
     rosto_path = ""
     imagem_paths = [original_path]
     if "rosto" in request.files and request.files["rosto"].filename:
@@ -1836,32 +1834,26 @@ def thumb_editor_editar():
         request.files["rosto"].save(rosto_path)
         imagem_paths.append(rosto_path)
 
-    # Construir prompt de edição
     prompt = f"""Edit this thumbnail image following these instructions: {instrucao}
 
 CRITICAL RULES:
 - PRESERVE the original composition, framing, and 16:9 aspect ratio
 - PRESERVE the position of main elements
-- PRESERVE the overall visual structure
 - Apply ONLY the changes requested
 - Keep the image looking like a professional YouTube thumbnail
-- High contrast, sharp focus, vibrant colors
-- Output must be a complete, polished thumbnail"""
-
+- High contrast, sharp focus, vibrant colors"""
     if rosto_path:
-        prompt += "\n- The second image is a face/person reference. Replace the person in the thumbnail with this face/person while keeping the same pose, position, and composition."
+        prompt += "\n- The second image is a face/person reference. Replace the person in the thumbnail with this face/person while keeping the same pose and position."
 
     resultado_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{edit_id}.png")
 
     try:
         editar_imagem_openai(prompt, current_user.get_api_key(), imagem_paths, resultado_path)
-        # Salvar no banco
         _init_thumb_edits_table()
         conn = sqlite3.connect('instance/veo3.db')
         conn.execute("INSERT INTO thumb_edits (user_id, edit_id, original_path, rosto_path, instrucao, resultado_path) VALUES (?,?,?,?,?,?)",
                      (current_user.id, edit_id, original_path, rosto_path, instrucao, resultado_path))
         conn.commit(); conn.close()
-        # Também salvar no histórico de thumbnails
         _init_thumbnails_table()
         conn = sqlite3.connect('instance/veo3.db')
         conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?,?,?,?,?,?)",
@@ -1871,6 +1863,102 @@ CRITICAL RULES:
     except Exception as e:
         current_user.creditos += CREDITOS_POR_IMAGEM; db.session.commit()
         return jsonify({"erro": str(e)}), 500
+
+@app.route("/thumb_editor/viral_tuning", methods=["POST"])
+@login_required
+def thumb_editor_viral_tuning():
+    """Aplica Viral Tuning automático numa thumbnail"""
+    if "imagem" not in request.files or not request.files["imagem"].filename:
+        return jsonify({"erro": "Envie a imagem"}), 400
+    if not current_user.get_api_key():
+        return jsonify({"erro": "Assine um plano."}), 400
+    if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM):
+        return jsonify({"erro": "Créditos insuficientes."}), 400
+    db.session.commit()
+
+    edit_id = uuid.uuid4().hex[:12]
+    original_path = os.path.join(THUMB_EDIT_FOLDER, f"{current_user.id}_{edit_id}_viral_orig.png")
+    request.files["imagem"].save(original_path)
+
+    prompt = """Enhance this thumbnail for MAXIMUM viral potential and click-through rate. Apply ALL of these improvements:
+- INCREASE contrast dramatically
+- SHARPEN all details, especially faces and text
+- Make the background LESS cluttered and more blurred
+- Make the main subject POP with brighter lighting and stronger colors
+- Add subtle rim lighting or glow around the main subject
+- Make any text BOLDER and more readable with stronger shadow/outline
+- Increase color saturation for more visual impact
+- Slightly zoom into the main subject for more intimacy
+- Clean up any visual noise or distracting elements
+- Make it look like a TOP-PERFORMING YouTube thumbnail
+- PRESERVE the original composition and layout
+- Output must be a polished, professional, viral-ready thumbnail"""
+
+    resultado_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{edit_id}.png")
+
+    try:
+        editar_imagem_openai(prompt, current_user.get_api_key(), [original_path], resultado_path)
+        _init_thumbnails_table()
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?,?,?,?,?,?)",
+                     (current_user.id, edit_id, "Viral Tuning", prompt[:500], "viral", resultado_path))
+        conn.commit(); conn.close()
+        return jsonify({"ok": True, "edit_id": edit_id})
+    except Exception as e:
+        current_user.creditos += CREDITOS_POR_IMAGEM; db.session.commit()
+        return jsonify({"erro": str(e)}), 500
+
+@app.route("/thumb_editor/ranking", methods=["POST"])
+@login_required
+def thumb_editor_ranking():
+    """Analisa thumbnails e dá score de potencial de clique"""
+    thumb_ids = request.json.get("thumb_ids", [])
+    if not thumb_ids:
+        return jsonify({"erro": "Nenhuma thumbnail selecionada"}), 400
+    if not current_user.get_api_key():
+        return jsonify({"erro": "Assine um plano."}), 400
+
+    import base64
+    images_data = []
+    for tid in thumb_ids[:8]:
+        path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{tid}.png")
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode()
+            images_data.append({"id": tid, "b64": b64})
+
+    if not images_data:
+        return jsonify({"erro": "Nenhuma thumbnail encontrada"}), 404
+
+    try:
+        headers = {"Authorization": f"Bearer {current_user.get_api_key()}", "Content-Type": "application/json"}
+        messages = [{"role": "system", "content": """You are a YouTube thumbnail CTR expert. Analyze each thumbnail and score it from 0-100 based on click potential.
+
+Evaluate: contrast, visual clarity, subject focus, face/character size, visible emotion, text readability, background separation, element clutter.
+
+Return ONLY valid JSON array:
+[{"index":0,"score":85,"reason":"Strong contrast, clear subject, readable text"},{"index":1,"score":72,"reason":"Good composition but text too small"}]"""}]
+
+        content = []
+        for i, img in enumerate(images_data):
+            content.append({"type": "text", "text": f"Thumbnail {i+1}:"})
+            content.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img['b64']}"}})
+        messages.append({"role": "user", "content": content})
+
+        body = {"model": "gpt-4o-mini", "messages": messages, "max_tokens": 500}
+        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
+        if r.ok:
+            texto = r.json()["choices"][0]["message"]["content"].strip().replace("```json", "").replace("```", "").strip()
+            rankings = json.loads(texto)
+            for rank in rankings:
+                idx = rank.get("index", 0)
+                if idx < len(images_data):
+                    rank["thumb_id"] = images_data[idx]["id"]
+            rankings.sort(key=lambda x: x.get("score", 0), reverse=True)
+            return jsonify({"ok": True, "rankings": rankings})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+    return jsonify({"erro": "Erro ao analisar"}), 500
 
 @app.route("/thumb_editor/ver/<edit_id>")
 @login_required
