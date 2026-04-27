@@ -3094,6 +3094,64 @@ def ver_video(job_id):
         return jsonify({"erro": "Video nao disponivel"}), 404
     return send_file(video_path, mimetype="video/mp4")
 
+# ── Error Handlers ────────────────────────────────────────
+@app.route("/favicon.ico")
+def favicon():
+    fav_path = os.path.join("static", "favicon.png")
+    if os.path.exists(fav_path):
+        return send_file(fav_path)
+    # Gerar favicon dinamicamente
+    try:
+        from PIL import ImageDraw, ImageFont
+        img = Image.new('RGBA', (64, 64), (11, 17, 32, 255))
+        draw = ImageDraw.Draw(img)
+        draw.rounded_rectangle([4, 4, 60, 60], radius=12, fill=(37, 99, 235, 255))
+        try: font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
+        except: font = ImageFont.load_default()
+        draw.text((18, 10), "K", fill=(255, 255, 255, 255), font=font)
+        os.makedirs("static", exist_ok=True)
+        img.save(fav_path)
+        img.close()
+        return send_file(fav_path)
+    except:
+        return "", 204
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return '''<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>404 — Klyonclaw Studio</title>
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}
+    .c{max-width:400px}.n{font-size:5rem;font-weight:800;color:#4a9eff;margin-bottom:12px}.t{font-size:1.2rem;margin-bottom:8px}.s{color:#94a3b8;font-size:.9rem;margin-bottom:24px}
+    a{display:inline-block;padding:12px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:600}a:hover{background:#4a9eff}</style></head>
+    <body><div class="c"><div class="n">404</div><div class="t">Página não encontrada</div><p class="s">A página que você procura não existe ou foi movida.</p><a href="/">Voltar ao início</a></div></body></html>''', 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    return '''<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>500 — Klyonclaw Studio</title>
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}
+    .c{max-width:400px}.n{font-size:5rem;font-weight:800;color:#ef4444;margin-bottom:12px}.t{font-size:1.2rem;margin-bottom:8px}.s{color:#94a3b8;font-size:.9rem;margin-bottom:24px}
+    a{display:inline-block;padding:12px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:600}a:hover{background:#4a9eff}</style></head>
+    <body><div class="c"><div class="n">500</div><div class="t">Erro interno</div><p class="s">Algo deu errado. Tente novamente em alguns instantes.</p><a href="/">Voltar ao início</a></div></body></html>''', 500
+
+# ── Cleanup automático ────────────────────────────────────
+def limpar_arquivos_antigos():
+    """Remove arquivos temporários com mais de 7 dias"""
+    import time
+    agora = time.time()
+    limite = 7 * 24 * 3600  # 7 dias
+    for pasta in [OUTPUT_FOLDER, STORYBOARD_FOLDER]:
+        try:
+            for item in os.listdir(pasta):
+                caminho = os.path.join(pasta, item)
+                if os.path.isfile(caminho) and (agora - os.path.getmtime(caminho)) > limite:
+                    os.remove(caminho)
+                elif os.path.isdir(caminho) and (agora - os.path.getmtime(caminho)) > limite:
+                    shutil.rmtree(caminho, ignore_errors=True)
+        except: pass
+
+# Rodar cleanup na inicialização
+try: limpar_arquivos_antigos()
+except: pass
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
