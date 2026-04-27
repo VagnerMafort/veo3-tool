@@ -694,8 +694,8 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
         raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
     sys.stderr.write(f"[VIDEO] Task criada: {task_id}\n"); sys.stderr.flush()
 
-    # Poll status (a cada 5s em vez de 10s)
-    for _ in range(180):  # max 15 min
+    # Poll status (a cada 5s, max 5 min)
+    for _ in range(60):  # max 5 min
         time.sleep(5)
         try:
             r2 = requests.get("https://api.minimax.io/v1/query/video_generation",
@@ -1244,17 +1244,18 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         except Exception as e:
                             erro_str = str(e)
                             import traceback
-                            sys.stderr.write(f"[ANIMAR] Cena {i+1} tentativa {tentativa+1}: {erro_str}\n{traceback.format_exc()}\n"); sys.stderr.flush()
-                            if "1002" in erro_str or "rate" in erro_str.lower():
-                                _t.sleep(30)
-                                continue
+                            sys.stderr.write(f"[ANIMAR] Cena {i+1} tentativa {tentativa+1}: {erro_str}\n"); sys.stderr.flush()
+                            if "RATE_LIMIT" in erro_str or "1002" in erro_str or "rate" in erro_str.lower():
+                                if tentativa < 2:
+                                    _t.sleep(15)
+                                    continue
                             clipes_video[i] = None
                             return
                     clipes_video[i] = None
 
-                # Animar em paralelo (3 por vez) com retry
+                # Animar em paralelo (2 por vez pra evitar rate limit)
                 import time as _time
-                lote_size = 3
+                lote_size = 2
                 for lote_start in range(0, n_cenas, lote_size):
                     lote_end = min(lote_start + lote_size, n_cenas)
                     lote = list(range(lote_start, lote_end))
@@ -1752,38 +1753,37 @@ def _init_thumb_edits_table():
     except: pass
 
 def editar_imagem_openai(prompt, api_key, imagem_paths, output_path, size="1792x1024"):
-    """Edita imagem usando gpt-image-1 com imagens de referência"""
+    """Edita imagem usando gpt-image-1 com imagens de referência via /v1/images/edits"""
     import base64, sys
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-
-    # Preparar imagens como input
-    images_input = []
-    for img_path in imagem_paths:
-        with open(img_path, "rb") as f:
-            img_b64 = base64.b64encode(f.read()).decode()
-        ext = img_path.rsplit(".", 1)[-1].lower()
-        mime = "image/png" if ext == "png" else "image/jpeg"
-        images_input.append({"type": "input_image", "input_image": {"url": f"data:{mime};base64,{img_b64}"}})
-
-    # Adicionar prompt como texto
-    images_input.append({"type": "text", "text": prompt})
+    headers = {"Authorization": f"Bearer {api_key}"}
 
     size_map = {"1792x1024": "1536x1024", "1024x1792": "1024x1536", "1024x1024": "1024x1024"}
     gpt_size = size_map.get(size, "1536x1024")
 
-    body = {
+    # Usar multipart form pra enviar imagens
+    files = []
+    for i, img_path in enumerate(imagem_paths):
+        fname = os.path.basename(img_path)
+        files.append(("image[]", (fname, open(img_path, "rb"), "image/png")))
+
+    data = {
         "model": "gpt-image-1",
-        "input": images_input,
+        "prompt": prompt,
         "size": gpt_size,
         "quality": "medium",
-        "n": 1
+        "n": "1"
     }
 
     sys.stderr.write(f"[THUMB-EDIT] Editando com {len(imagem_paths)} imagem(ns)...\n"); sys.stderr.flush()
-    r = requests.post("https://api.openai.com/v1/images/generations", headers=headers, json=body, timeout=120)
+    r = requests.post("https://api.openai.com/v1/images/edits", headers=headers, data=data, files=files, timeout=120)
+
+    # Fechar arquivos
+    for _, f in files:
+        f[1].close()
+
     if r.ok:
-        data = r.json()
-        img_bytes = base64.b64decode(data["data"][0]["b64_json"])
+        resp_data = r.json()
+        img_bytes = base64.b64decode(resp_data["data"][0]["b64_json"])
         with open(output_path, "wb") as f:
             f.write(img_bytes)
         # Pós-processamento
@@ -1796,7 +1796,7 @@ def editar_imagem_openai(prompt, api_key, imagem_paths, output_path, size="1792x
         sys.stderr.write(f"[THUMB-EDIT] OK\n"); sys.stderr.flush()
         return True
     else:
-        erro = r.json().get("error", {}).get("message", "Erro desconhecido")
+        erro = r.json().get("error", {}).get("message", r.text[:200])
         sys.stderr.write(f"[THUMB-EDIT] Erro: {erro}\n"); sys.stderr.flush()
         raise Exception(f"Erro na edição: {erro}")
 
