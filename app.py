@@ -1967,6 +1967,11 @@ def thumb_editor_ver(edit_id):
     if not os.path.exists(path): return jsonify({"erro": "Não encontrada"}), 404
     return send_file(path)
 
+@app.route("/thumb_editor/visual")
+@login_required
+def thumb_editor_visual():
+    return render_template("thumb_editor.html")
+
 @app.route("/thumb_editor/download/<edit_id>")
 @login_required
 def thumb_editor_download(edit_id):

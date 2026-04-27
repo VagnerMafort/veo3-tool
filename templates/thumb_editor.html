@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Editor Visual — Klyonclaw Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#111827;border-bottom:1px solid #1e3a5f;flex-wrap:wrap;gap:8px}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar h1{font-size:.95rem;font-weight:700;white-space:nowrap}.topbar h1 span{color:#4a9eff}
+.topbar-actions{display:flex;gap:6px;flex-wrap:wrap}
+.tb{padding:7px 14px;border:none;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
+.tb-ghost{background:none;border:1px solid #1e3a5f;color:#94a3b8}.tb-ghost:hover{border-color:#4a9eff;color:#fff}
+.tb-blue{background:#2563eb;color:#fff}.tb-blue:hover{background:#4a9eff}
+.tb-green{background:#059669;color:#fff}.tb-green:hover{background:#047857}
+.tb-red{background:#7f1d1d;color:#fca5a5}.tb-red:hover{background:#991b1b}
+.tb-purple{background:#7c3aed;color:#fff}.tb-purple:hover{background:#6d28d9}
+.editor-wrap{display:flex;height:calc(100vh - 50px)}
+.sidebar{width:260px;background:#111827;border-right:1px solid #1e3a5f;overflow-y:auto;flex-shrink:0;padding:12px}
+.sb-section{margin-bottom:16px}
+.sb-title{font-size:.78rem;color:#4a9eff;font-weight:700;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1e3a5f;display:flex;align-items:center;gap:6px}
+.sb-row{margin-bottom:8px}
+.sb-label{font-size:.72rem;color:#64748b;margin-bottom:3px;display:block}
+.sb-input{width:100%;padding:6px 8px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;color:#e2e8f0;font-size:.8rem}
+.sb-input:focus{border-color:#4a9eff;outline:none}
+.sb-select{width:100%;padding:6px 8px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;color:#e2e8f0;font-size:.8rem;-webkit-appearance:none}
+.sb-range{width:100%;accent-color:#4a9eff}
+.sb-color{display:flex;gap:6px;align-items:center}
+.sb-color input[type="color"]{width:32px;height:28px;padding:1px;border:1px solid #1e3a5f;border-radius:4px;background:none;cursor:pointer}
+.sb-btns{display:flex;gap:4px;flex-wrap:wrap}
+.sb-btn{padding:6px 10px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;color:#94a3b8;font-size:.72rem;cursor:pointer;transition:.2s;text-align:center;flex:1;min-width:40px}
+.sb-btn:hover{border-color:#4a9eff;color:#fff}
+.sb-btn.active{background:#2563eb;border-color:#2563eb;color:#fff}
+.canvas-area{flex:1;display:flex;align-items:center;justify-content:center;background:#0a0e1a;position:relative;overflow:hidden}
+.canvas-container{border:1px solid #1e3a5f !important}
+.upload-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:10}
+.upload-box{text-align:center;color:#475569}
+.upload-box .icon{font-size:3rem;margin-bottom:12px}
+.upload-box p{font-size:.9rem;margin-bottom:16px}
+.upload-box label{display:inline-block;padding:12px 28px;background:#2563eb;color:#fff;border-radius:10px;font-weight:600;cursor:pointer}
+.upload-box label:hover{background:#4a9eff}
+.upload-box input{display:none}
+.layers-list{max-height:200px;overflow-y:auto}
+.layer-item{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;margin-bottom:4px;font-size:.72rem;color:#94a3b8;cursor:pointer}
+.layer-item:hover,.layer-item.sel{border-color:#4a9eff;color:#fff}
+.layer-del{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;padding:0 4px}
+@media(max-width:768px){.editor-wrap{flex-direction:column}.sidebar{width:100%;max-height:45vh;border-right:none;border-bottom:1px solid #1e3a5f}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>✏️ Editor <span>Visual</span></h1>
+  </div>
+  <div class="topbar-actions">
+    <button class="tb tb-ghost" onclick="history.back()">← Voltar</button>
+    <button class="tb tb-ghost" onclick="editorUndo()">↩ Desfazer</button>
+    <button class="tb tb-ghost" onclick="editorRedo()">↪ Refazer</button>
+    <button class="tb tb-purple" onclick="saveProject()">💾 Salvar</button>
+    <button class="tb tb-blue" onclick="exportPNG(1280,720)">⬇ 1280×720</button>
+    <button class="tb tb-green" onclick="exportPNG(2048,1152)">⬇ 2048×1152</button>
+  </div>
+</div>
+<div class="editor-wrap">
+  <div class="sidebar">
+    <!-- Adicionar elementos -->
+    <div class="sb-section">
+      <div class="sb-title">➕ Adicionar</div>
+      <div class="sb-btns">
+        <div class="sb-btn" onclick="addText()">T Texto</div>
+        <div class="sb-btn" onclick="addArrow()">➡️ Seta</div>
+        <div class="sb-btn" onclick="addCircle()">⭕ Círculo</div>
+        <div class="sb-btn" onclick="addRect()">⬜ Retângulo</div>
+        <div class="sb-btn" onclick="addLine()">— Linha</div>
+      </div>
+      <div style="margin-top:8px">
+        <label class="sb-btn" style="display:block;text-align:center;cursor:pointer">📷 Imagem extra<input type="file" accept="image/*" style="display:none" onchange="addImage(this)"/></label>
+      </div>
+    </div>
+
+    <!-- Texto -->
+    <div class="sb-section" id="secTexto">
+      <div class="sb-title">📝 Texto</div>
+      <div class="sb-row"><span class="sb-label">Conteúdo</span><input class="sb-input" id="propText" value="" oninput="updateProp('text',this.value)"/></div>
+      <div class="sb-row"><span class="sb-label">Fonte</span>
+        <select class="sb-select" id="propFont" onchange="updateProp('fontFamily',this.value)">
+          <option value="Impact">Impact</option>
+          <option value="Arial Black">Arial Black</option>
+          <option value="Bebas Neue">Bebas Neue</option>
+          <option value="Montserrat">Montserrat</option>
+          <option value="Verdana">Verdana</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Comic Sans MS">Comic Sans</option>
+        </select>
+      </div>
+      <div class="sb-row"><span class="sb-label">Tamanho: <b id="sizeVal">60</b></span><input type="range" class="sb-range" id="propSize" min="16" max="150" value="60" oninput="updateProp('fontSize',+this.value);document.getElementById('sizeVal').textContent=this.value"/></div>
+      <div class="sb-row"><span class="sb-label">Cor</span><div class="sb-color"><input type="color" id="propColor" value="#ffffff" oninput="updateProp('fill',this.value)"/><input class="sb-input" style="flex:1" id="propColorHex" value="#ffffff" oninput="document.getElementById('propColor').value=this.value;updateProp('fill',this.value)"/></div></div>
+      <div class="sb-row"><span class="sb-label">Contorno cor</span><div class="sb-color"><input type="color" id="propStroke" value="#000000" oninput="updateProp('stroke',this.value)"/><span class="sb-label" style="margin:0">Espessura: <b id="strokeVal">3</b></span><input type="range" class="sb-range" id="propStrokeW" min="0" max="10" value="3" oninput="updateProp('strokeWidth',+this.value);document.getElementById('strokeVal').textContent=this.value"/></div></div>
+      <div class="sb-row"><span class="sb-label">Sombra</span><div class="sb-color"><input type="color" id="propShadowC" value="#000000" oninput="updateShadow()"/><span class="sb-label" style="margin:0">Blur: <b id="shadowVal">4</b></span><input type="range" class="sb-range" id="propShadowB" min="0" max="20" value="4" oninput="document.getElementById('shadowVal').textContent=this.value;updateShadow()"/></div></div>
+      <div class="sb-row sb-btns">
+        <div class="sb-btn" onclick="updateProp('fontWeight','bold')">B</div>
+        <div class="sb-btn" onclick="updateProp('fontStyle','italic')">I</div>
+        <div class="sb-btn" onclick="updateProp('underline',true)">U</div>
+      </div>
+    </div>
+
+    <!-- Forma -->
+    <div class="sb-section" id="secForma">
+      <div class="sb-title">🔷 Forma</div>
+      <div class="sb-row"><span class="sb-label">Cor preenchimento</span><input type="color" id="propShapeFill" value="#ef4444" oninput="updateProp('fill',this.value)"/></div>
+      <div class="sb-row"><span class="sb-label">Cor borda</span><input type="color" id="propShapeStroke" value="#ef4444" oninput="updateProp('stroke',this.value)"/></div>
+      <div class="sb-row"><span class="sb-label">Espessura borda</span><input type="range" class="sb-range" id="propShapeStrokeW" min="1" max="12" value="4" oninput="updateProp('strokeWidth',+this.value)"/></div>
+      <div class="sb-row"><span class="sb-label">Opacidade</span><input type="range" class="sb-range" min="0.1" max="1" step="0.1" value="1" oninput="updateProp('opacity',+this.value)"/></div>
+    </div>
+
+    <!-- Imagem/Fundo -->
+    <div class="sb-section" id="secImagem">
+      <div class="sb-title">🖼️ Imagem</div>
+      <div class="sb-row"><span class="sb-label">Opacidade</span><input type="range" class="sb-range" min="0.1" max="1" step="0.1" value="1" oninput="updateProp('opacity',+this.value)"/></div>
+    </div>
+
+    <!-- Organizar -->
+    <div class="sb-section">
+      <div class="sb-title">📐 Organizar</div>
+      <div class="sb-btns">
+        <div class="sb-btn" onclick="bringFront()">⬆ Frente</div>
+        <div class="sb-btn" onclick="sendBack()">⬇ Trás</div>
+        <div class="sb-btn" onclick="centerH()">↔ Centro H</div>
+        <div class="sb-btn" onclick="centerV()">↕ Centro V</div>
+        <div class="sb-btn" onclick="duplicateObj()">📋 Duplicar</div>
+        <div class="sb-btn" onclick="deleteObj()">🗑 Apagar</div>
+      </div>
+    </div>
+
+    <!-- Camadas -->
+    <div class="sb-section">
+      <div class="sb-title">📚 Camadas</div>
+      <div class="layers-list" id="layersList"></div>
+    </div>
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div class="upload-overlay" id="uploadOverlay">
+      <div class="upload-box">
+        <div class="icon">🖼️</div>
+        <p>Envie uma thumbnail pra editar</p>
+        <label>Selecionar imagem<input type="file" id="fileUpload" accept="image/*"/></label>
+      </div>
+    </div>
+    <canvas id="c"></canvas>
+  </div>
+</div>
+
+<script>
+// ── Fabric.js Canvas ──
+const W=1280,H=720;
+const fCanvas=new fabric.Canvas('c',{width:W,height:H,backgroundColor:'#1a1a2e',preserveObjectStacking:true});
+let history=[],historyIdx=-1,maxHistory=30;
+
+// ── Responsive scaling ──
+function resizeCanvas(){
+  const area=document.getElementById('canvasArea');
+  const aw=area.clientWidth-20,ah=area.clientHeight-20;
+  const scale=Math.min(aw/W,ah/H,1);
+  const wrapper=document.querySelector('.canvas-container');
+  if(wrapper){wrapper.style.transform=`scale(${scale})`;wrapper.style.transformOrigin='center center';}
+}
+window.addEventListener('resize',resizeCanvas);
+setTimeout(resizeCanvas,100);
+
+// ── History (undo/redo) ──
+function saveState(){
+  const json=JSON.stringify(fCanvas.toJSON(['name']));
+  history=history.slice(0,historyIdx+1);
+  history.push(json);
+  if(history.length>maxHistory)history.shift();
+  historyIdx=history.length-1;
+}
+function editorUndo(){
+  if(historyIdx<=0)return;
+  historyIdx--;
+  fCanvas.loadFromJSON(history[historyIdx],()=>{fCanvas.renderAll();updateLayers();});
+}
+function editorRedo(){
+  if(historyIdx>=history.length-1)return;
+  historyIdx++;
+  fCanvas.loadFromJSON(history[historyIdx],()=>{fCanvas.renderAll();updateLayers();});
+}
+fCanvas.on('object:modified',saveState);
+fCanvas.on('object:added',saveState);
+fCanvas.on('object:removed',saveState);
+
+// ── Upload background ──
+document.getElementById('fileUpload').addEventListener('change',e=>{
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{loadBgImage(ev.target.result);};
+  reader.readAsDataURL(file);
+});
+
+function loadBgImage(src){
+  fabric.Image.fromURL(src,img=>{
+    const scale=Math.max(W/img.width,H/img.height);
+    img.set({scaleX:scale,scaleY:scale,left:W/2,top:H/2,originX:'center',originY:'center',selectable:false,evented:false,name:'fundo'});
+    fCanvas.clear();fCanvas.setBackgroundColor('#1a1a2e');
+    fCanvas.add(img);fCanvas.sendToBack(img);
+    fCanvas.renderAll();
+    document.getElementById('uploadOverlay').style.display='none';
+    resizeCanvas();updateLayers();saveState();
+  },{crossOrigin:'anonymous'});
+}
+
+// Load from URL param
+const urlParams=new URLSearchParams(window.location.search);
+const thumbId=urlParams.get('thumb');
+if(thumbId){loadBgImage(`/ver_thumbnail/${thumbId}?t=${Date.now()}`);}
+
+// ── Add elements ──
+function addText(){
+  const t=new fabric.IText('TEXTO',{left:W/2,top:H/2,originX:'center',originY:'center',fontFamily:'Impact',fontSize:60,fill:'#ffffff',stroke:'#000000',strokeWidth:3,shadow:new fabric.Shadow({color:'#000000',blur:4,offsetX:3,offsetY:3}),fontWeight:'bold',textAlign:'center',name:'texto'});
+  fCanvas.add(t);fCanvas.setActiveObject(t);updateLayers();
+}
+
+function addArrow(){
+  const line=new fabric.Line([W/2-80,H/2,W/2+80,H/2],{stroke:'#ef4444',strokeWidth:5,strokeLineCap:'round',name:'seta'});
+  const head=new fabric.Triangle({left:W/2+80,top:H/2,width:20,height:30,fill:'#ef4444',angle:90,originX:'center',originY:'center'});
+  const group=new fabric.Group([line,head],{left:W/2,top:H/2,originX:'center',originY:'center',name:'seta'});
+  fCanvas.add(group);fCanvas.setActiveObject(group);updateLayers();
+}
+
+function addCircle(){
+  const c=new fabric.Ellipse({left:W/2,top:H/2,rx:60,ry:60,fill:'transparent',stroke:'#ef4444',strokeWidth:4,originX:'center',originY:'center',name:'circulo'});
+  fCanvas.add(c);fCanvas.setActiveObject(c);updateLayers();
+}
+
+function addRect(){
+  const r=new fabric.Rect({left:W/2,top:H/2,width:120,height:80,fill:'transparent',stroke:'#4a9eff',strokeWidth:3,originX:'center',originY:'center',rx:8,ry:8,name:'retangulo'});
+  fCanvas.add(r);fCanvas.setActiveObject(r);updateLayers();
+}
+
+function addLine(){
+  const l=new fabric.Line([W/2-80,H/2,W/2+80,H/2],{stroke:'#ffffff',strokeWidth:3,strokeLineCap:'round',name:'linha'});
+  fCanvas.add(l);fCanvas.setActiveObject(l);updateLayers();
+}
+
+function addImage(input){
+  if(!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    fabric.Image.fromURL(ev.target.result,img=>{
+      img.scaleToWidth(200);img.set({left:W/2,top:H/2,originX:'center',originY:'center',name:'imagem'});
+      fCanvas.add(img);fCanvas.setActiveObject(img);updateLayers();
+    });
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+// ── Update properties ──
+function updateProp(prop,val){
+  const obj=fCanvas.getActiveObject();if(!obj)return;
+  obj.set(prop,val);
+  if(prop==='text'&&obj.type==='i-text')obj.set('text',val);
+  fCanvas.renderAll();updateLayers();
+}
+
+function updateShadow(){
+  const obj=fCanvas.getActiveObject();if(!obj)return;
+  const color=document.getElementById('propShadowC').value;
+  const blur=parseInt(document.getElementById('propShadowB').value);
+  obj.set('shadow',new fabric.Shadow({color:color,blur:blur,offsetX:3,offsetY:3}));
+  fCanvas.renderAll();
+}
+
+// ── Organize ──
+function bringFront(){const o=fCanvas.getActiveObject();if(o){fCanvas.bringToFront(o);updateLayers();}}
+function sendBack(){const o=fCanvas.getActiveObject();if(o){fCanvas.sendToBack(o);updateLayers();}}
+function centerH(){const o=fCanvas.getActiveObject();if(o){o.set('left',W/2);o.setCoords();fCanvas.renderAll();}}
+function centerV(){const o=fCanvas.getActiveObject();if(o){o.set('top',H/2);o.setCoords();fCanvas.renderAll();}}
+function duplicateObj(){const o=fCanvas.getActiveObject();if(!o)return;o.clone(c=>{c.set({left:o.left+20,top:o.top+20,name:o.name});fCanvas.add(c);fCanvas.setActiveObject(c);updateLayers();});}
+function deleteObj(){const o=fCanvas.getActiveObject();if(o){fCanvas.remove(o);updateLayers();}}
+
+// ── Layers panel ──
+function updateLayers(){
+  const list=document.getElementById('layersList');list.innerHTML='';
+  const objs=fCanvas.getObjects();const active=fCanvas.getActiveObject();
+  for(let i=objs.length-1;i>=0;i--){
+    const o=objs[i];const sel=o===active;
+    const icon=o.name==='fundo'?'🖼️':o.name==='texto'?'T':o.name==='seta'?'➡️':o.name==='circulo'?'⭕':o.name==='retangulo'?'⬜':o.name==='linha'?'—':o.name==='imagem'?'📷':'?';
+    const label=o.type==='i-text'?o.text.substring(0,12):(o.name||o.type);
+    const div=document.createElement('div');div.className='layer-item'+(sel?' sel':'');
+    div.innerHTML=`<span>${icon} ${label}</span>${o.name!=='fundo'?'<button class="layer-del" data-idx="'+i+'">✕</button>':''}`;
+    div.addEventListener('click',()=>{fCanvas.setActiveObject(objs[i]);fCanvas.renderAll();syncProps(objs[i]);updateLayers();});
+    list.appendChild(div);
+  }
+  list.querySelectorAll('.layer-del').forEach(btn=>{btn.addEventListener('click',e=>{e.stopPropagation();const idx=+btn.dataset.idx;fCanvas.remove(objs[idx]);updateLayers();});});
+}
+
+// ── Sync sidebar with selected object ──
+function syncProps(obj){
+  if(!obj)return;
+  if(obj.type==='i-text'){
+    document.getElementById('propText').value=obj.text||'';
+    document.getElementById('propFont').value=obj.fontFamily||'Impact';
+    document.getElementById('propSize').value=obj.fontSize||60;document.getElementById('sizeVal').textContent=obj.fontSize||60;
+    document.getElementById('propColor').value=obj.fill||'#ffffff';document.getElementById('propColorHex').value=obj.fill||'#ffffff';
+    document.getElementById('propStroke').value=obj.stroke||'#000000';
+    document.getElementById('propStrokeW').value=obj.strokeWidth||0;document.getElementById('strokeVal').textContent=obj.strokeWidth||0;
+    if(obj.shadow){document.getElementById('propShadowC').value=obj.shadow.color||'#000000';document.getElementById('propShadowB').value=obj.shadow.blur||0;document.getElementById('shadowVal').textContent=obj.shadow.blur||0;}
+  }
+}
+fCanvas.on('selection:created',e=>{syncProps(e.selected[0]);updateLayers();});
+fCanvas.on('selection:updated',e=>{syncProps(e.selected[0]);updateLayers();});
+fCanvas.on('selection:cleared',()=>{updateLayers();});
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
+  if(e.key==='Delete'||e.key==='Backspace'){const o=fCanvas.getActiveObject();if(o&&o.name!=='fundo'){fCanvas.remove(o);updateLayers();}}
+  if(e.ctrlKey&&e.key==='z'){e.preventDefault();editorUndo();}
+  if(e.ctrlKey&&e.key==='y'){e.preventDefault();editorRedo();}
+  if(e.ctrlKey&&e.key==='d'){e.preventDefault();duplicateObj();}
+});
+
+// ── Export PNG ──
+function exportPNG(w,h){
+  const multiplier=w/W;
+  const dataURL=fCanvas.toDataURL({format:'png',multiplier:multiplier,quality:1});
+  const link=document.createElement('a');link.download=`thumbnail_${w}x${h}.png`;link.href=dataURL;link.click();
+}
+
+// ── Save/Load project ──
+function saveProject(){
+  const json=JSON.stringify(fCanvas.toJSON(['name']));
+  const blob=new Blob([json],{type:'application/json'});
+  const link=document.createElement('a');link.download='thumb_project.json';link.href=URL.createObjectURL(blob);link.click();
+}
+
+// Initial state
+saveState();
+</script>
+</body>
+</html>

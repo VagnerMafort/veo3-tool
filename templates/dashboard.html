@@ -446,6 +446,14 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
     </div>
 
     <!-- Viral Tuning -->
+    <div class="card" style="text-align:center;border-color:var(--accent);background:linear-gradient(135deg,var(--bg3),var(--bg2))">
+      <div style="font-size:2rem;margin-bottom:8px">✏️</div>
+      <h2 style="margin-bottom:8px">Editor Visual</h2>
+      <p class="tip" style="margin-bottom:14px">Adicione texto, setas, círculos. Mova elementos, mude fontes e cores. Exporte em 1280×720 ou 2048×1152.</p>
+      <a href="/thumb_editor/visual" class="btn" style="display:inline-block;max-width:300px;text-decoration:none">✏️ Abrir Editor Visual</a>
+    </div>
+
+    <!-- Viral Tuning -->
     <div class="card">
       <h2>⚡ Viral Tuning</h2>
       <p class="tip" style="margin-bottom:14px">Envie qualquer thumbnail e a IA melhora automaticamente pra máximo impacto viral.</p>
@@ -1275,7 +1283,7 @@ async function gerarThumbVariacoes(roteiro){
   const fd=new FormData();fd.append('roteiro',roteiro);fd.append('estilo',document.getElementById('thumbEstiloTab').value);fd.append('analise',_thumbAnaliseJson);fd.append('texto_thumb',document.getElementById('thumbSemTexto').checked?'':document.getElementById('thumbTexto').value.trim());fd.append('sem_texto',document.getElementById('thumbSemTexto').checked?'true':'false');
   const res=await fetch('/thumb_engine/gerar',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);
   const grid=document.getElementById('thumbGrid');grid.innerHTML='';
-  d.thumbs.forEach(t=>{grid.innerHTML+=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden"><img src="/ver_thumbnail/${t.thumb_id}?t=${Date.now()}" style="width:100%;display:block"/><div style="padding:10px"><div style="font-size:.75rem;color:var(--text3);margin-bottom:6px">Variação ${t.variacao}${t.texto?' · "'+t.texto+'"':''}</div><div style="display:flex;gap:6px"><a href="/download_thumbnail/${t.thumb_id}" class="btn-sm" style="background:var(--green);flex:1;text-align:center;font-size:.75rem">⬇ Baixar</a><button class="btn-sm" style="background:var(--accent);flex:1;font-size:.75rem" onclick="regerarUmaThumb()">🔄</button><button class="btn-sm" style="background:#7f1d1d;color:#fca5a5;font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑</button></div></div></div>`;});
+  d.thumbs.forEach(t=>{grid.innerHTML+=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden"><img src="/ver_thumbnail/${t.thumb_id}?t=${Date.now()}" style="width:100%;display:block"/><div style="padding:10px"><div style="font-size:.75rem;color:var(--text3);margin-bottom:6px">Variação ${t.variacao}${t.texto?' · "'+t.texto+'"':''}</div><div style="display:flex;gap:6px;flex-wrap:wrap"><a href="/download_thumbnail/${t.thumb_id}" class="btn-sm" style="background:var(--green);flex:1;text-align:center;font-size:.75rem">⬇ Baixar</a><a href="/thumb_editor/visual?thumb=${t.thumb_id}" class="btn-sm" style="background:#7c3aed;flex:1;text-align:center;font-size:.75rem;text-decoration:none">✏️ Editar</a><button class="btn-sm" style="background:var(--accent);font-size:.75rem" onclick="regerarUmaThumb()">🔄</button><button class="btn-sm" style="background:#7f1d1d;color:#fca5a5;font-size:.75rem" onclick="deletarThumb('${t.thumb_id}')">🗑</button></div></div></div>`;});
   document.getElementById('thumbGaleria').style.display='block';atualizarCreditos();carregarThumbnails();
 }
 document.getElementById('btnRegerarTodas').addEventListener('click',async()=>{
