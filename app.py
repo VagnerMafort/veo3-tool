@@ -1281,34 +1281,17 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
 
                 # Se pelo menos 1 clipe foi gerado, trimma e concatena os vídeos
                 if any(clipes_video):
-                    jobs[job_id]["progresso"] = "Ajustando duração das cenas..."
-
-                    # Trimmar cada clipe de 6s pra durar o tempo da narração da cena
-                    clipes_trimmados = []
-                    for i, cp in enumerate(clipes_video):
-                        if not cp or not os.path.exists(cp):
-                            continue
-                        dur_cena = imagens[i]["duracao"] if i < len(imagens) else 6
-                        # Duração mínima de 2s, máxima de 6s (duração original do clipe)
-                        dur_trim = max(2.0, min(6.0, dur_cena))
-                        trimmed_path = os.path.join(job_dir, f"trim_{i+1:04d}.mp4")
-                        cmd_trim = ["ffmpeg", "-y", "-i", cp, "-t", str(dur_trim),
-                                    "-c:v", "copy", "-an", trimmed_path]
-                        res = subprocess.run(cmd_trim, capture_output=True, text=True)
-                        if res.returncode == 0 and os.path.exists(trimmed_path):
-                            clipes_trimmados.append(trimmed_path)
-                            sys.stderr.write(f"[TRIM] Cena {i+1}: {dur_cena:.1f}s narração -> {dur_trim:.1f}s clipe\n"); sys.stderr.flush()
-                        else:
-                            clipes_trimmados.append(cp)
-
                     jobs[job_id]["progresso"] = "Juntando clipes animados..."
+
+                    # Concatenar clipes originais (sem trim — manter 6s cada)
                     concat_path = os.path.join(job_dir, "concat_list.txt")
                     with open(concat_path, "w") as f:
-                        for cp in clipes_trimmados:
-                            f.write(f"file '{os.path.abspath(cp)}'\n")
+                        for cp in clipes_video:
+                            if cp and os.path.exists(cp):
+                                f.write(f"file '{os.path.abspath(cp)}'\n")
                     video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
 
-                    # Concatenar clipes trimmados + áudio (sem -shortest, durações já batem)
+                    # Concatenar clipes + áudio
                     cmd_concat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_path]
                     if audio_final_path and os.path.exists(audio_final_path):
                         cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k"]
