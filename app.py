@@ -1974,6 +1974,10 @@ def thumb_editor_save_project():
     preview_b64 = data.get("preview", "")
     if not project_json:
         return jsonify({"erro": "Projeto vazio"}), 400
+    # Limitar tamanho do projeto (max 5MB)
+    project_str = json.dumps(project_json)
+    if len(project_str) > 5 * 1024 * 1024:
+        return jsonify({"erro": "Projeto muito grande"}), 400
     import base64
     project_id = uuid.uuid4().hex[:12]
     # Salvar JSON do projeto
@@ -2048,6 +2052,10 @@ def thumb_editor_salvar_biblioteca():
     if "imagem" not in request.files:
         return jsonify({"erro": "Envie a imagem"}), 400
     img_file = request.files["imagem"]
+    img_file.seek(0, 2)
+    if img_file.tell() > 20 * 1024 * 1024:
+        return jsonify({"erro": "Imagem muito grande. Máximo 20MB."}), 400
+    img_file.seek(0)
     edit_id = uuid.uuid4().hex[:12]
     save_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{edit_id}.png")
     img_file.save(save_path)
@@ -2885,17 +2893,8 @@ def gerar_storyboard_route():
 @app.route("/storyboard_img/<sb_id>/<filename>")
 @login_required
 def storyboard_img(sb_id, filename):
-    # Verificar se o storyboard pertence ao usuário (ou se é admin)
-    if not current_user.is_admin:
-        criacao = Criacao.query.filter_by(job_id=sb_id, user_id=current_user.id).first()
-        if not criacao:
-            # Verificar se o job está em memória e pertence ao usuário
-            job = jobs.get(sb_id)
-            if not job:
-                # Pode ser um storyboard em edição — verificar se o sb_dir existe
-                sb_path = os.path.join(STORYBOARD_FOLDER, sb_id, "storyboard.json")
-                if not os.path.exists(sb_path):
-                    return jsonify({"erro": "Acesso negado"}), 403
+    if ".." in filename or filename.startswith("/"):
+        return jsonify({"erro": "Acesso negado"}), 403
     filepath = os.path.join(STORYBOARD_FOLDER, sb_id, filename)
     if not os.path.exists(filepath):
         return jsonify({"erro": "Arquivo não encontrado"}), 404
@@ -2993,13 +2992,18 @@ def upload_cena():
     index = int(request.form.get("index"))
     if "imagem" not in request.files:
         return jsonify({"erro": "Envie uma imagem"}), 400
+    img_file = request.files["imagem"]
+    img_file.seek(0, 2)
+    if img_file.tell() > 20 * 1024 * 1024:
+        return jsonify({"erro": "Imagem muito grande. Máximo 20MB."}), 400
+    img_file.seek(0)
     sb_dir = os.path.join(STORYBOARD_FOLDER, sb_id)
     sb_path = os.path.join(sb_dir, "storyboard.json")
     with open(sb_path) as f:
         sb_data = json.load(f)
     bloco = sb_data["blocos"][index - 1]
     img_path = os.path.join(sb_dir, bloco["img"])
-    request.files["imagem"].save(img_path)
+    img_file.save(img_path)
     corrigir_orientacao(img_path)
     return jsonify({"ok": True})
 
@@ -3081,6 +3085,7 @@ def status(job_id):
     job = jobs.get(job_id)
     if not job:
         return jsonify({"erro": "Job nao encontrado"}), 404
+    # Jobs em memória não têm user_id, mas são temporários e UUID aleatório
     return jsonify(job)
 
 @app.route("/download/<job_id>")
