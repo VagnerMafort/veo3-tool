@@ -8,32 +8,36 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;overflow:hidden}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#111827;border-bottom:1px solid #1e3a5f;flex-wrap:wrap;gap:8px}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#111827;border-bottom:1px solid #1e3a5f;gap:8px;flex-wrap:wrap}
 .topbar-left{display:flex;align-items:center;gap:12px}
 .topbar h1{font-size:.95rem;font-weight:700;white-space:nowrap}.topbar h1 span{color:#4a9eff}
-.topbar-actions{display:flex;gap:6px;flex-wrap:wrap}
-.tb{padding:7px 14px;border:none;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;transition:.2s;white-space:nowrap}
-.tb-ghost{background:none;border:1px solid #1e3a5f;color:#94a3b8}.tb-ghost:hover{border-color:#4a9eff;color:#fff}
-.tb-blue{background:#2563eb;color:#fff}.tb-blue:hover{background:#4a9eff}
-.tb-green{background:#059669;color:#fff}.tb-green:hover{background:#047857}
-.tb-red{background:#7f1d1d;color:#fca5a5}.tb-red:hover{background:#991b1b}
-.tb-purple{background:#7c3aed;color:#fff}.tb-purple:hover{background:#6d28d9}
+.topbar-center{display:flex;gap:4px;flex-wrap:wrap}
+.tb{padding:6px 10px;border:1px solid #1e3a5f;background:#0f172a;color:#94a3b8;border-radius:6px;font-size:.75rem;cursor:pointer;transition:.2s;white-space:nowrap}
+.tb:hover{border-color:#4a9eff;color:#fff}
+.tb.active{background:#2563eb;border-color:#2563eb;color:#fff}
+.tb-icon{font-size:.9rem}
+.topbar-right{display:flex;gap:6px}
+.tb-green{background:#059669;border-color:#059669;color:#fff}.tb-green:hover{background:#047857}
+.tb-blue{background:#2563eb;border-color:#2563eb;color:#fff}.tb-blue:hover{background:#4a9eff}
+.tb-back{background:none;border:1px solid #1e3a5f;color:#94a3b8}.tb-back:hover{border-color:#4a9eff;color:#fff}
+
 .editor-wrap{display:flex;height:calc(100vh - 50px)}
-.sidebar{width:260px;background:#111827;border-right:1px solid #1e3a5f;overflow-y:auto;flex-shrink:0;padding:12px}
-.sb-section{margin-bottom:16px}
-.sb-title{font-size:.78rem;color:#4a9eff;font-weight:700;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1e3a5f;display:flex;align-items:center;gap:6px}
-.sb-row{margin-bottom:8px}
-.sb-label{font-size:.72rem;color:#64748b;margin-bottom:3px;display:block}
-.sb-input{width:100%;padding:6px 8px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;color:#e2e8f0;font-size:.8rem}
-.sb-input:focus{border-color:#4a9eff;outline:none}
-.sb-select{width:100%;padding:6px 8px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;color:#e2e8f0;font-size:.8rem;-webkit-appearance:none}
-.sb-range{width:100%;accent-color:#4a9eff}
-.sb-color{display:flex;gap:6px;align-items:center}
-.sb-color input[type="color"]{width:32px;height:28px;padding:1px;border:1px solid #1e3a5f;border-radius:4px;background:none;cursor:pointer}
-.sb-btns{display:flex;gap:4px;flex-wrap:wrap}
-.sb-btn{padding:6px 10px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;color:#94a3b8;font-size:.72rem;cursor:pointer;transition:.2s;text-align:center;flex:1;min-width:40px}
-.sb-btn:hover{border-color:#4a9eff;color:#fff}
-.sb-btn.active{background:#2563eb;border-color:#2563eb;color:#fff}
+.sidebar{width:260px;background:#111827;border-right:1px solid #1e3a5f;padding:14px;overflow-y:auto;flex-shrink:0}
+.sidebar h3{font-size:.78rem;color:#4a9eff;margin:14px 0 8px;padding-top:10px;border-top:1px solid #1e3a5f;text-transform:uppercase;letter-spacing:.5px}
+.sidebar h3:first-child{border:none;margin-top:0;padding-top:0}
+.sidebar label{display:block;font-size:.75rem;color:#64748b;margin:8px 0 3px}
+.si{width:100%;padding:7px 8px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;color:#e2e8f0;font-size:.8rem;outline:none}
+.si:focus{border-color:#4a9eff}
+.si-ta{resize:vertical;min-height:40px;font-family:inherit}
+.cr{display:flex;gap:6px;align-items:center}
+.cr input[type="color"]{width:32px;height:28px;padding:1px;cursor:pointer;border:1px solid #1e3a5f;border-radius:4px;background:none}
+.sb{padding:6px 10px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;color:#94a3b8;font-size:.75rem;cursor:pointer;transition:.2s;text-align:center}
+.sb:hover{border-color:#4a9eff;color:#fff}
+.sb-full{width:100%;margin-top:6px}
+.layers-list{margin-top:8px}
+.ly{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;margin-bottom:4px;font-size:.75rem;color:#94a3b8;cursor:pointer}
+.ly.active{border-color:#4a9eff;color:#fff}
+.ly-del{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;padding:0 4px}
 .canvas-area{flex:1;display:flex;align-items:center;justify-content:center;background:#0a0e1a;position:relative;overflow:hidden}
 .canvas-container{border:1px solid #1e3a5f !important}
 .upload-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:10}
@@ -43,11 +47,8 @@ body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-heig
 .upload-box label{display:inline-block;padding:12px 28px;background:#2563eb;color:#fff;border-radius:10px;font-weight:600;cursor:pointer}
 .upload-box label:hover{background:#4a9eff}
 .upload-box input{display:none}
-.layers-list{max-height:200px;overflow-y:auto}
-.layer-item{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#0f172a;border:1px solid #1e3a5f;border-radius:5px;margin-bottom:4px;font-size:.72rem;color:#94a3b8;cursor:pointer}
-.layer-item:hover,.layer-item.sel{border-color:#4a9eff;color:#fff}
-.layer-del{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;padding:0 4px}
-@media(max-width:768px){.editor-wrap{flex-direction:column}.sidebar{width:100%;max-height:45vh;border-right:none;border-bottom:1px solid #1e3a5f}}
+.props-section{display:none}
+@media(max-width:768px){.editor-wrap{flex-direction:column}.sidebar{width:100%;max-height:35vh;border-right:none;border-bottom:1px solid #1e3a5f}}
 </style>
 </head>
 <body>
@@ -55,95 +56,93 @@ body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-heig
   <div class="topbar-left">
     <h1>✏️ Editor <span>Visual</span></h1>
   </div>
-  <div class="topbar-actions">
-    <button class="tb tb-ghost" onclick="history.back()">← Voltar</button>
-    <button class="tb tb-ghost" onclick="editorUndo()">↩ Desfazer</button>
-    <button class="tb tb-ghost" onclick="editorRedo()">↪ Refazer</button>
-    <button class="tb tb-purple" onclick="saveProject()">💾 Salvar</button>
+  <div class="topbar-center">
+    <button class="tb" onclick="undo()" title="Desfazer"><span class="tb-icon">↩️</span> Desfazer</button>
+    <button class="tb" onclick="redo()" title="Refazer"><span class="tb-icon">↪️</span> Refazer</button>
+    <button class="tb" onclick="duplicateObj()" title="Duplicar"><span class="tb-icon">📋</span> Duplicar</button>
+    <button class="tb" onclick="deleteObj()" title="Apagar"><span class="tb-icon">🗑️</span> Apagar</button>
+    <button class="tb" onclick="bringForward()" title="Frente">⬆️</button>
+    <button class="tb" onclick="sendBackward()" title="Trás">⬇️</button>
+    <button class="tb" onclick="centerObj()" title="Centralizar">⊞</button>
+  </div>
+  <div class="topbar-right">
+    <button class="tb tb-back" onclick="window.location.href='/dashboard'">← Voltar</button>
+    <button class="tb tb-green" onclick="saveProject()">💾 Salvar</button>
     <button class="tb tb-blue" onclick="exportPNG(1280,720)">⬇ 1280×720</button>
-    <button class="tb tb-green" onclick="exportPNG(2048,1152)">⬇ 2048×1152</button>
+    <button class="tb tb-blue" onclick="exportPNG(2048,1152)">⬇ 2048×1152</button>
   </div>
 </div>
 <div class="editor-wrap">
   <div class="sidebar">
-    <!-- Adicionar elementos -->
-    <div class="sb-section">
-      <div class="sb-title">➕ Adicionar</div>
-      <div class="sb-btns">
-        <div class="sb-btn" onclick="addText()">T Texto</div>
-        <div class="sb-btn" onclick="addArrow()">➡️ Seta</div>
-        <div class="sb-btn" onclick="addCircle()">⭕ Círculo</div>
-        <div class="sb-btn" onclick="addRect()">⬜ Retângulo</div>
-        <div class="sb-btn" onclick="addLine()">— Linha</div>
-      </div>
-      <div style="margin-top:8px">
-        <label class="sb-btn" style="display:block;text-align:center;cursor:pointer">📷 Imagem extra<input type="file" accept="image/*" style="display:none" onchange="addImage(this)"/></label>
-      </div>
+    <h3>🔧 Adicionar</h3>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="sb" onclick="addText()">T Texto</button>
+      <button class="sb" onclick="addArrow()">➡️ Seta</button>
+      <button class="sb" onclick="addCircle()">⭕ Círculo</button>
+      <button class="sb" onclick="addRect()">⬜ Retângulo</button>
+      <button class="sb" onclick="addLine()">— Linha</button>
+      <label class="sb" style="cursor:pointer">📷 Imagem<input type="file" accept="image/*" style="display:none" onchange="addImage(this)"/></label>
     </div>
 
-    <!-- Texto -->
-    <div class="sb-section" id="secTexto">
-      <div class="sb-title">📝 Texto</div>
-      <div class="sb-row"><span class="sb-label">Conteúdo</span><input class="sb-input" id="propText" value="" oninput="updateProp('text',this.value)"/></div>
-      <div class="sb-row"><span class="sb-label">Fonte</span>
-        <select class="sb-select" id="propFont" onchange="updateProp('fontFamily',this.value)">
-          <option value="Impact">Impact</option>
-          <option value="Arial Black">Arial Black</option>
-          <option value="Bebas Neue">Bebas Neue</option>
-          <option value="Montserrat">Montserrat</option>
-          <option value="Verdana">Verdana</option>
-          <option value="Georgia">Georgia</option>
-          <option value="Courier New">Courier New</option>
-          <option value="Comic Sans MS">Comic Sans</option>
-        </select>
-      </div>
-      <div class="sb-row"><span class="sb-label">Tamanho: <b id="sizeVal">60</b></span><input type="range" class="sb-range" id="propSize" min="16" max="150" value="60" oninput="updateProp('fontSize',+this.value);document.getElementById('sizeVal').textContent=this.value"/></div>
-      <div class="sb-row"><span class="sb-label">Cor</span><div class="sb-color"><input type="color" id="propColor" value="#ffffff" oninput="updateProp('fill',this.value)"/><input class="sb-input" style="flex:1" id="propColorHex" value="#ffffff" oninput="document.getElementById('propColor').value=this.value;updateProp('fill',this.value)"/></div></div>
-      <div class="sb-row"><span class="sb-label">Contorno cor</span><div class="sb-color"><input type="color" id="propStroke" value="#000000" oninput="updateProp('stroke',this.value)"/><span class="sb-label" style="margin:0">Espessura: <b id="strokeVal">3</b></span><input type="range" class="sb-range" id="propStrokeW" min="0" max="10" value="3" oninput="updateProp('strokeWidth',+this.value);document.getElementById('strokeVal').textContent=this.value"/></div></div>
-      <div class="sb-row"><span class="sb-label">Sombra</span><div class="sb-color"><input type="color" id="propShadowC" value="#000000" oninput="updateShadow()"/><span class="sb-label" style="margin:0">Blur: <b id="shadowVal">4</b></span><input type="range" class="sb-range" id="propShadowB" min="0" max="20" value="4" oninput="document.getElementById('shadowVal').textContent=this.value;updateShadow()"/></div></div>
-      <div class="sb-row sb-btns">
-        <div class="sb-btn" onclick="updateProp('fontWeight','bold')">B</div>
-        <div class="sb-btn" onclick="updateProp('fontStyle','italic')">I</div>
-        <div class="sb-btn" onclick="updateProp('underline',true)">U</div>
+    <div id="propsText" class="props-section">
+      <h3>📝 Texto</h3>
+      <label>Conteúdo</label>
+      <textarea class="si si-ta" id="pTxt" oninput="updateProp('text',this.value)">TEXTO</textarea>
+      <label>Fonte</label>
+      <select class="si" id="pFont" onchange="updateProp('fontFamily',this.value)">
+        <option value="Impact">Impact</option>
+        <option value="Arial Black">Arial Black</option>
+        <option value="Helvetica">Helvetica</option>
+        <option value="Verdana">Verdana</option>
+        <option value="Georgia">Georgia</option>
+        <option value="Trebuchet MS">Trebuchet MS</option>
+        <option value="Courier New">Courier New</option>
+        <option value="Comic Sans MS">Comic Sans MS</option>
+      </select>
+      <label>Tamanho</label>
+      <input type="range" class="si" id="pSize" min="16" max="150" value="60" oninput="updateProp('fontSize',+this.value)"/>
+      <label>Cor</label>
+      <div class="cr"><input type="color" id="pColor" value="#ffffff" oninput="updateProp('fill',this.value)"/><input class="si" style="flex:1" id="pColorH" value="#ffffff" oninput="document.getElementById('pColor').value=this.value;updateProp('fill',this.value)"/></div>
+      <label>Contorno</label>
+      <div class="cr"><input type="color" id="pStroke" value="#000000" oninput="updateProp('stroke',this.value)"/><input type="range" class="si" style="flex:1" id="pStrokeW" min="0" max="10" value="3" oninput="updateProp('strokeWidth',+this.value)"/></div>
+      <label>Sombra</label>
+      <div class="cr"><input type="color" id="pShadowC" value="#000000" oninput="updateShadow()"/><input type="range" class="si" style="flex:1" id="pShadowB" min="0" max="30" value="8" oninput="updateShadow()"/></div>
+      <div style="display:flex;gap:4px;margin-top:8px">
+        <button class="sb" style="flex:1" onclick="updateProp('fontWeight','bold')">B</button>
+        <button class="sb" style="flex:1" onclick="updateProp('fontStyle','italic')">I</button>
+        <button class="sb" style="flex:1" onclick="updateProp('underline',!fCanvas.getActiveObject()?.underline)">U</button>
       </div>
     </div>
 
-    <!-- Forma -->
-    <div class="sb-section" id="secForma">
-      <div class="sb-title">🔷 Forma</div>
-      <div class="sb-row"><span class="sb-label">Cor preenchimento</span><input type="color" id="propShapeFill" value="#ef4444" oninput="updateProp('fill',this.value)"/></div>
-      <div class="sb-row"><span class="sb-label">Cor borda</span><input type="color" id="propShapeStroke" value="#ef4444" oninput="updateProp('stroke',this.value)"/></div>
-      <div class="sb-row"><span class="sb-label">Espessura borda</span><input type="range" class="sb-range" id="propShapeStrokeW" min="1" max="12" value="4" oninput="updateProp('strokeWidth',+this.value)"/></div>
-      <div class="sb-row"><span class="sb-label">Opacidade</span><input type="range" class="sb-range" min="0.1" max="1" step="0.1" value="1" oninput="updateProp('opacity',+this.value)"/></div>
+    <div id="propsShape" class="props-section">
+      <h3>🔷 Forma</h3>
+      <label>Cor</label>
+      <div class="cr"><input type="color" id="pShapeColor" value="#ef4444" oninput="updateShapeProp('stroke',this.value)"/></div>
+      <label>Preenchimento</label>
+      <div class="cr"><input type="color" id="pShapeFill" value="#00000000" oninput="updateShapeProp('fill',this.value)"/><button class="sb" onclick="updateShapeProp('fill','transparent')" style="font-size:.7rem">Sem</button></div>
+      <label>Espessura</label>
+      <input type="range" class="si" id="pShapeW" min="1" max="15" value="4" oninput="updateShapeProp('strokeWidth',+this.value)"/>
+      <label>Opacidade</label>
+      <input type="range" class="si" id="pOpacity" min="10" max="100" value="100" oninput="updateShapeProp('opacity',this.value/100)"/>
     </div>
 
-    <!-- Imagem/Fundo -->
-    <div class="sb-section" id="secImagem">
-      <div class="sb-title">🖼️ Imagem</div>
-      <div class="sb-row"><span class="sb-label">Opacidade</span><input type="range" class="sb-range" min="0.1" max="1" step="0.1" value="1" oninput="updateProp('opacity',+this.value)"/></div>
-    </div>
-
-    <!-- Organizar -->
-    <div class="sb-section">
-      <div class="sb-title">📐 Organizar</div>
-      <div class="sb-btns">
-        <div class="sb-btn" onclick="bringFront()">⬆ Frente</div>
-        <div class="sb-btn" onclick="sendBack()">⬇ Trás</div>
-        <div class="sb-btn" onclick="centerH()">↔ Centro H</div>
-        <div class="sb-btn" onclick="centerV()">↕ Centro V</div>
-        <div class="sb-btn" onclick="duplicateObj()">📋 Duplicar</div>
-        <div class="sb-btn" onclick="deleteObj()">🗑 Apagar</div>
+    <div id="propsImage" class="props-section">
+      <h3>🖼️ Imagem</h3>
+      <label>Opacidade</label>
+      <input type="range" class="si" id="pImgOpacity" min="10" max="100" value="100" oninput="updateShapeProp('opacity',this.value/100)"/>
+      <label>Filtros</label>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="sb" onclick="applyFilter('brightness')">☀️ Brilho+</button>
+        <button class="sb" onclick="applyFilter('contrast')">🔲 Contraste+</button>
+        <button class="sb" onclick="applyFilter('blur')">💨 Blur</button>
+        <button class="sb" onclick="applyFilter('clear')">✕ Limpar</button>
       </div>
     </div>
 
-    <!-- Camadas -->
-    <div class="sb-section">
-      <div class="sb-title">📚 Camadas</div>
-      <div class="layers-list" id="layersList"></div>
-    </div>
+    <h3>📐 Camadas</h3>
+    <div id="layersList" class="layers-list"></div>
   </div>
-
-  <div class="canvas-area" id="canvasArea">
+  <div class="canvas-area">
     <div class="upload-overlay" id="uploadOverlay">
       <div class="upload-box">
         <div class="icon">🖼️</div>
@@ -156,191 +155,198 @@ body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-heig
 </div>
 
 <script>
-// ── Fabric.js Canvas ──
 const W=1280,H=720;
-const fCanvas=new fabric.Canvas('c',{width:W,height:H,backgroundColor:'#1a1a2e',preserveObjectStacking:true});
-let history=[],historyIdx=-1,maxHistory=30;
+let fCanvas, history=[], historyIdx=-1, ignoreHistory=false;
 
-// ── Responsive scaling ──
-function resizeCanvas(){
-  const area=document.getElementById('canvasArea');
-  const aw=area.clientWidth-20,ah=area.clientHeight-20;
-  const scale=Math.min(aw/W,ah/H,1);
-  const wrapper=document.querySelector('.canvas-container');
-  if(wrapper){wrapper.style.transform=`scale(${scale})`;wrapper.style.transformOrigin='center center';}
-}
-window.addEventListener('resize',resizeCanvas);
-setTimeout(resizeCanvas,100);
+// Init Fabric
+fCanvas=new fabric.Canvas('c',{width:W,height:H,backgroundColor:'#1a1a2e',preserveObjectStacking:true});
+scaleCanvas();
+window.addEventListener('resize',scaleCanvas);
 
-// ── History (undo/redo) ──
-function saveState(){
-  const json=JSON.stringify(fCanvas.toJSON(['name']));
-  history=history.slice(0,historyIdx+1);
-  history.push(json);
-  if(history.length>maxHistory)history.shift();
-  historyIdx=history.length-1;
+function scaleCanvas(){
+  const area=document.querySelector('.canvas-area');
+  const maxW=area.clientWidth-40,maxH=area.clientHeight-40;
+  const scale=Math.min(maxW/W,maxH/H,1);
+  fCanvas.setZoom(scale);
+  fCanvas.setWidth(W*scale);fCanvas.setHeight(H*scale);
 }
-function editorUndo(){
-  if(historyIdx<=0)return;
-  historyIdx--;
-  fCanvas.loadFromJSON(history[historyIdx],()=>{fCanvas.renderAll();updateLayers();});
-}
-function editorRedo(){
-  if(historyIdx>=history.length-1)return;
-  historyIdx++;
-  fCanvas.loadFromJSON(history[historyIdx],()=>{fCanvas.renderAll();updateLayers();});
-}
-fCanvas.on('object:modified',saveState);
-fCanvas.on('object:added',saveState);
-fCanvas.on('object:removed',saveState);
 
-// ── Upload background ──
+// Upload background
 document.getElementById('fileUpload').addEventListener('change',e=>{
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
-  reader.onload=ev=>{loadBgImage(ev.target.result);};
-  reader.readAsDataURL(file);
+  reader.onload=ev=>{
+    fabric.Image.fromURL(ev.target.result,img=>{
+      const scale=Math.max(W/img.width,H/img.height);
+      img.set({scaleX:scale,scaleY:scale,left:W/2,top:H/2,originX:'center',originY:'center',selectable:false,evented:false,name:'background'});
+      fCanvas.insertAt(img,0);fCanvas.renderAll();
+      document.getElementById('uploadOverlay').style.display='none';
+      saveHistory();updateLayers();
+    });
+  };reader.readAsDataURL(file);
 });
 
-function loadBgImage(src){
-  fabric.Image.fromURL(src,img=>{
+// Load from URL param
+const urlThumb=new URLSearchParams(window.location.search).get('thumb');
+if(urlThumb){
+  fabric.Image.fromURL(`/ver_thumbnail/${urlThumb}?t=${Date.now()}`,img=>{
+    if(!img)return;
     const scale=Math.max(W/img.width,H/img.height);
-    img.set({scaleX:scale,scaleY:scale,left:W/2,top:H/2,originX:'center',originY:'center',selectable:false,evented:false,name:'fundo'});
-    fCanvas.clear();fCanvas.setBackgroundColor('#1a1a2e');
-    fCanvas.add(img);fCanvas.sendToBack(img);
-    fCanvas.renderAll();
+    img.set({scaleX:scale,scaleY:scale,left:W/2,top:H/2,originX:'center',originY:'center',selectable:false,evented:false,name:'background'});
+    fCanvas.insertAt(img,0);fCanvas.renderAll();
     document.getElementById('uploadOverlay').style.display='none';
-    resizeCanvas();updateLayers();saveState();
+    saveHistory();updateLayers();
   },{crossOrigin:'anonymous'});
 }
 
-// Load from URL param
-const urlParams=new URLSearchParams(window.location.search);
-const thumbId=urlParams.get('thumb');
-if(thumbId){loadBgImage(`/ver_thumbnail/${thumbId}?t=${Date.now()}`);}
-
-// ── Add elements ──
+// Add elements
 function addText(){
-  const t=new fabric.IText('TEXTO',{left:W/2,top:H/2,originX:'center',originY:'center',fontFamily:'Impact',fontSize:60,fill:'#ffffff',stroke:'#000000',strokeWidth:3,shadow:new fabric.Shadow({color:'#000000',blur:4,offsetX:3,offsetY:3}),fontWeight:'bold',textAlign:'center',name:'texto'});
-  fCanvas.add(t);fCanvas.setActiveObject(t);updateLayers();
+  const t=new fabric.IText('TEXTO',{left:W/2,top:H/2,originX:'center',originY:'center',fontFamily:'Impact',fontSize:60,fill:'#ffffff',stroke:'#000000',strokeWidth:3,shadow:new fabric.Shadow({color:'#000',blur:8,offsetX:3,offsetY:3}),fontWeight:'bold',name:'Texto'});
+  fCanvas.add(t);fCanvas.setActiveObject(t);fCanvas.renderAll();saveHistory();updateLayers();
 }
-
 function addArrow(){
-  const line=new fabric.Line([W/2-80,H/2,W/2+80,H/2],{stroke:'#ef4444',strokeWidth:5,strokeLineCap:'round',name:'seta'});
+  const line=new fabric.Line([W/2-80,H/2,W/2+80,H/2],{stroke:'#ef4444',strokeWidth:4,strokeLineCap:'round',name:'Seta'});
   const head=new fabric.Triangle({left:W/2+80,top:H/2,width:20,height:30,fill:'#ef4444',angle:90,originX:'center',originY:'center'});
-  const group=new fabric.Group([line,head],{left:W/2,top:H/2,originX:'center',originY:'center',name:'seta'});
-  fCanvas.add(group);fCanvas.setActiveObject(group);updateLayers();
+  const group=new fabric.Group([line,head],{left:W/2,top:H/2,originX:'center',originY:'center',name:'Seta'});
+  fCanvas.add(group);fCanvas.setActiveObject(group);fCanvas.renderAll();saveHistory();updateLayers();
 }
-
 function addCircle(){
-  const c=new fabric.Ellipse({left:W/2,top:H/2,rx:60,ry:60,fill:'transparent',stroke:'#ef4444',strokeWidth:4,originX:'center',originY:'center',name:'circulo'});
-  fCanvas.add(c);fCanvas.setActiveObject(c);updateLayers();
+  const c=new fabric.Ellipse({left:W/2,top:H/2,rx:60,ry:60,fill:'transparent',stroke:'#ef4444',strokeWidth:4,originX:'center',originY:'center',name:'Círculo'});
+  fCanvas.add(c);fCanvas.setActiveObject(c);fCanvas.renderAll();saveHistory();updateLayers();
 }
-
 function addRect(){
-  const r=new fabric.Rect({left:W/2,top:H/2,width:120,height:80,fill:'transparent',stroke:'#4a9eff',strokeWidth:3,originX:'center',originY:'center',rx:8,ry:8,name:'retangulo'});
-  fCanvas.add(r);fCanvas.setActiveObject(r);updateLayers();
+  const r=new fabric.Rect({left:W/2,top:H/2,width:120,height:80,fill:'transparent',stroke:'#4a9eff',strokeWidth:3,originX:'center',originY:'center',rx:8,ry:8,name:'Retângulo'});
+  fCanvas.add(r);fCanvas.setActiveObject(r);fCanvas.renderAll();saveHistory();updateLayers();
 }
-
 function addLine(){
-  const l=new fabric.Line([W/2-80,H/2,W/2+80,H/2],{stroke:'#ffffff',strokeWidth:3,strokeLineCap:'round',name:'linha'});
-  fCanvas.add(l);fCanvas.setActiveObject(l);updateLayers();
+  const l=new fabric.Line([W/2-80,H/2,W/2+80,H/2],{stroke:'#ffffff',strokeWidth:3,strokeLineCap:'round',name:'Linha'});
+  fCanvas.add(l);fCanvas.setActiveObject(l);fCanvas.renderAll();saveHistory();updateLayers();
 }
-
 function addImage(input){
   if(!input.files[0])return;
   const reader=new FileReader();
-  reader.onload=ev=>{
-    fabric.Image.fromURL(ev.target.result,img=>{
-      img.scaleToWidth(200);img.set({left:W/2,top:H/2,originX:'center',originY:'center',name:'imagem'});
-      fCanvas.add(img);fCanvas.setActiveObject(img);updateLayers();
-    });
-  };
-  reader.readAsDataURL(input.files[0]);
+  reader.onload=e=>{fabric.Image.fromURL(e.target.result,img=>{
+    img.scaleToWidth(200);img.set({left:W/2,top:H/2,originX:'center',originY:'center',name:'Imagem'});
+    fCanvas.add(img);fCanvas.setActiveObject(img);fCanvas.renderAll();saveHistory();updateLayers();
+  });};reader.readAsDataURL(input.files[0]);
 }
 
-// ── Update properties ──
-function updateProp(prop,val){
+// Properties panel
+fCanvas.on('selection:created',showProps);
+fCanvas.on('selection:updated',showProps);
+fCanvas.on('selection:cleared',()=>{document.getElementById('propsText').style.display='none';document.getElementById('propsShape').style.display='none';document.getElementById('propsImage').style.display='none';});
+fCanvas.on('object:modified',()=>{saveHistory();updateLayers();});
+
+function showProps(){
   const obj=fCanvas.getActiveObject();if(!obj)return;
-  obj.set(prop,val);
-  if(prop==='text'&&obj.type==='i-text')obj.set('text',val);
-  fCanvas.renderAll();updateLayers();
+  document.getElementById('propsText').style.display='none';
+  document.getElementById('propsShape').style.display='none';
+  document.getElementById('propsImage').style.display='none';
+  if(obj.type==='i-text'||obj.type==='text'||obj.type==='textbox'){
+    document.getElementById('propsText').style.display='block';
+    document.getElementById('pTxt').value=obj.text||'';
+    document.getElementById('pFont').value=obj.fontFamily||'Impact';
+    document.getElementById('pSize').value=obj.fontSize||60;
+    document.getElementById('pColor').value=obj.fill||'#ffffff';
+    document.getElementById('pColorH').value=obj.fill||'#ffffff';
+    document.getElementById('pStroke').value=obj.stroke||'#000000';
+    document.getElementById('pStrokeW').value=obj.strokeWidth||0;
+    if(obj.shadow){document.getElementById('pShadowC').value=obj.shadow.color||'#000';document.getElementById('pShadowB').value=obj.shadow.blur||0;}
+  } else if(obj.type==='image'){
+    document.getElementById('propsImage').style.display='block';
+    document.getElementById('pImgOpacity').value=(obj.opacity||1)*100;
+  } else {
+    document.getElementById('propsShape').style.display='block';
+    document.getElementById('pShapeColor').value=obj.stroke||'#ef4444';
+    document.getElementById('pShapeFill').value=obj.fill==='transparent'?'#000000':obj.fill||'#000000';
+    document.getElementById('pShapeW').value=obj.strokeWidth||4;
+    document.getElementById('pOpacity').value=(obj.opacity||1)*100;
+  }
 }
 
-function updateShadow(){
-  const obj=fCanvas.getActiveObject();if(!obj)return;
-  const color=document.getElementById('propShadowC').value;
-  const blur=parseInt(document.getElementById('propShadowB').value);
-  obj.set('shadow',new fabric.Shadow({color:color,blur:blur,offsetX:3,offsetY:3}));
-  fCanvas.renderAll();
+function updateProp(prop,val){const obj=fCanvas.getActiveObject();if(!obj)return;obj.set(prop,val);fCanvas.renderAll();saveHistory();if(prop==='text')updateLayers();}
+function updateShadow(){const obj=fCanvas.getActiveObject();if(!obj)return;obj.set('shadow',new fabric.Shadow({color:document.getElementById('pShadowC').value,blur:+document.getElementById('pShadowB').value,offsetX:3,offsetY:3}));fCanvas.renderAll();saveHistory();}
+function updateShapeProp(prop,val){const obj=fCanvas.getActiveObject();if(!obj)return;obj.set(prop,val);fCanvas.renderAll();saveHistory();}
+
+function applyFilter(type){
+  const obj=fCanvas.getActiveObject();if(!obj||obj.type!=='image')return;
+  obj.filters=[];
+  if(type==='brightness')obj.filters.push(new fabric.Image.filters.Brightness({brightness:0.15}));
+  else if(type==='contrast')obj.filters.push(new fabric.Image.filters.Contrast({contrast:0.2}));
+  else if(type==='blur')obj.filters.push(new fabric.Image.filters.Blur({blur:0.1}));
+  obj.applyFilters();fCanvas.renderAll();saveHistory();
 }
 
-// ── Organize ──
-function bringFront(){const o=fCanvas.getActiveObject();if(o){fCanvas.bringToFront(o);updateLayers();}}
-function sendBack(){const o=fCanvas.getActiveObject();if(o){fCanvas.sendToBack(o);updateLayers();}}
-function centerH(){const o=fCanvas.getActiveObject();if(o){o.set('left',W/2);o.setCoords();fCanvas.renderAll();}}
-function centerV(){const o=fCanvas.getActiveObject();if(o){o.set('top',H/2);o.setCoords();fCanvas.renderAll();}}
-function duplicateObj(){const o=fCanvas.getActiveObject();if(!o)return;o.clone(c=>{c.set({left:o.left+20,top:o.top+20,name:o.name});fCanvas.add(c);fCanvas.setActiveObject(c);updateLayers();});}
-function deleteObj(){const o=fCanvas.getActiveObject();if(o){fCanvas.remove(o);updateLayers();}}
-
-// ── Layers panel ──
+// Layers
 function updateLayers(){
   const list=document.getElementById('layersList');list.innerHTML='';
-  const objs=fCanvas.getObjects();const active=fCanvas.getActiveObject();
+  const objs=fCanvas.getObjects();
   for(let i=objs.length-1;i>=0;i--){
-    const o=objs[i];const sel=o===active;
-    const icon=o.name==='fundo'?'🖼️':o.name==='texto'?'T':o.name==='seta'?'➡️':o.name==='circulo'?'⭕':o.name==='retangulo'?'⬜':o.name==='linha'?'—':o.name==='imagem'?'📷':'?';
-    const label=o.type==='i-text'?o.text.substring(0,12):(o.name||o.type);
-    const div=document.createElement('div');div.className='layer-item'+(sel?' sel':'');
-    div.innerHTML=`<span>${icon} ${label}</span>${o.name!=='fundo'?'<button class="layer-del" data-idx="'+i+'">✕</button>':''}`;
-    div.addEventListener('click',()=>{fCanvas.setActiveObject(objs[i]);fCanvas.renderAll();syncProps(objs[i]);updateLayers();});
+    const o=objs[i];const active=fCanvas.getActiveObject()===o;
+    const name=o.name||(o.type==='i-text'?'T: '+o.text?.substring(0,12):o.type);
+    const div=document.createElement('div');div.className='ly'+(active?' active':'');
+    div.innerHTML=`<span>${name}</span>${o.name!=='background'?'<button class="ly-del" onclick="delLayer('+i+')">✕</button>':''}`;
+    div.onclick=()=>{fCanvas.setActiveObject(objs[i]);fCanvas.renderAll();showProps();updateLayers();};
     list.appendChild(div);
   }
-  list.querySelectorAll('.layer-del').forEach(btn=>{btn.addEventListener('click',e=>{e.stopPropagation();const idx=+btn.dataset.idx;fCanvas.remove(objs[idx]);updateLayers();});});
 }
 
-// ── Sync sidebar with selected object ──
-function syncProps(obj){
-  if(!obj)return;
-  if(obj.type==='i-text'){
-    document.getElementById('propText').value=obj.text||'';
-    document.getElementById('propFont').value=obj.fontFamily||'Impact';
-    document.getElementById('propSize').value=obj.fontSize||60;document.getElementById('sizeVal').textContent=obj.fontSize||60;
-    document.getElementById('propColor').value=obj.fill||'#ffffff';document.getElementById('propColorHex').value=obj.fill||'#ffffff';
-    document.getElementById('propStroke').value=obj.stroke||'#000000';
-    document.getElementById('propStrokeW').value=obj.strokeWidth||0;document.getElementById('strokeVal').textContent=obj.strokeWidth||0;
-    if(obj.shadow){document.getElementById('propShadowC').value=obj.shadow.color||'#000000';document.getElementById('propShadowB').value=obj.shadow.blur||0;document.getElementById('shadowVal').textContent=obj.shadow.blur||0;}
-  }
+function delLayer(i){const objs=fCanvas.getObjects();if(objs[i]&&objs[i].name!=='background'){fCanvas.remove(objs[i]);fCanvas.renderAll();saveHistory();updateLayers();}}
+
+// Controls
+function deleteObj(){const obj=fCanvas.getActiveObject();if(obj&&obj.name!=='background'){fCanvas.remove(obj);fCanvas.renderAll();saveHistory();updateLayers();}}
+function duplicateObj(){const obj=fCanvas.getActiveObject();if(!obj)return;obj.clone(c=>{c.set({left:obj.left+20,top:obj.top+20,name:obj.name});fCanvas.add(c);fCanvas.setActiveObject(c);fCanvas.renderAll();saveHistory();updateLayers();});}
+function bringForward(){const obj=fCanvas.getActiveObject();if(obj){fCanvas.bringForward(obj);fCanvas.renderAll();updateLayers();}}
+function sendBackward(){const obj=fCanvas.getActiveObject();if(obj&&obj.name!=='background'){fCanvas.sendBackwards(obj);fCanvas.renderAll();updateLayers();}}
+function centerObj(){const obj=fCanvas.getActiveObject();if(obj){obj.set({left:W/2,top:H/2,originX:'center',originY:'center'});fCanvas.renderAll();saveHistory();}}
+
+// History (undo/redo)
+function saveHistory(){
+  if(ignoreHistory)return;
+  const json=JSON.stringify(fCanvas.toJSON(['name','selectable','evented']));
+  history=history.slice(0,historyIdx+1);history.push(json);historyIdx=history.length-1;
+  if(history.length>30){history.shift();historyIdx--;}
 }
-fCanvas.on('selection:created',e=>{syncProps(e.selected[0]);updateLayers();});
-fCanvas.on('selection:updated',e=>{syncProps(e.selected[0]);updateLayers();});
-fCanvas.on('selection:cleared',()=>{updateLayers();});
+function undo(){if(historyIdx<=0)return;historyIdx--;loadHistory();}
+function redo(){if(historyIdx>=history.length-1)return;historyIdx++;loadHistory();}
+function loadHistory(){ignoreHistory=true;fCanvas.loadFromJSON(history[historyIdx],()=>{fCanvas.renderAll();updateLayers();ignoreHistory=false;});}
 
-// ── Keyboard shortcuts ──
-document.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
-  if(e.key==='Delete'||e.key==='Backspace'){const o=fCanvas.getActiveObject();if(o&&o.name!=='fundo'){fCanvas.remove(o);updateLayers();}}
-  if(e.ctrlKey&&e.key==='z'){e.preventDefault();editorUndo();}
-  if(e.ctrlKey&&e.key==='y'){e.preventDefault();editorRedo();}
-  if(e.ctrlKey&&e.key==='d'){e.preventDefault();duplicateObj();}
-});
-
-// ── Export PNG ──
+// Export
 function exportPNG(w,h){
-  const multiplier=w/W;
-  const dataURL=fCanvas.toDataURL({format:'png',multiplier:multiplier,quality:1});
+  const scale=w/W;
+  const dataURL=fCanvas.toDataURL({format:'png',multiplier:scale,quality:1});
   const link=document.createElement('a');link.download=`thumbnail_${w}x${h}.png`;link.href=dataURL;link.click();
 }
 
-// ── Save/Load project ──
-function saveProject(){
-  const json=JSON.stringify(fCanvas.toJSON(['name']));
-  const blob=new Blob([json],{type:'application/json'});
-  const link=document.createElement('a');link.download='thumb_project.json';link.href=URL.createObjectURL(blob);link.click();
+// Save project
+async function saveProject(){
+  const json=fCanvas.toJSON(['name','selectable','evented']);
+  const dataURL=fCanvas.toDataURL({format:'png',multiplier:1,quality:0.9});
+  try{
+    const res=await fetch('/thumb_editor/save_project',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project:json,preview:dataURL})});
+    const d=await res.json();
+    if(d.ok)alert('✅ Projeto salvo!');else alert('❌ '+(d.erro||'Erro'));
+  }catch(e){alert('❌ Erro ao salvar');}
 }
 
-// Initial state
-saveState();
+// Load project from URL
+const projId=new URLSearchParams(window.location.search).get('project');
+if(projId){
+  fetch(`/thumb_editor/load_project/${projId}`).then(r=>r.json()).then(d=>{
+    if(d.project){ignoreHistory=true;fCanvas.loadFromJSON(d.project,()=>{fCanvas.renderAll();document.getElementById('uploadOverlay').style.display='none';saveHistory();updateLayers();ignoreHistory=false;});}
+  });
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
+  if(e.key==='Delete'||e.key==='Backspace')deleteObj();
+  if(e.ctrlKey&&e.key==='z'){e.preventDefault();undo();}
+  if(e.ctrlKey&&e.key==='y'){e.preventDefault();redo();}
+  if(e.ctrlKey&&e.key==='d'){e.preventDefault();duplicateObj();}
+});
+
+saveHistory();
 </script>
 </body>
 </html>

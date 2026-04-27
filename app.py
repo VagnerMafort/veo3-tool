@@ -1972,6 +1972,58 @@ def thumb_editor_ver(edit_id):
 def thumb_editor_visual():
     return render_template("thumb_editor.html")
 
+@app.route("/thumb_editor/save_project", methods=["POST"])
+@login_required
+def thumb_editor_save_project():
+    """Salva projeto do editor visual em JSON"""
+    data = request.json
+    project_json = data.get("project", {})
+    preview_b64 = data.get("preview", "")
+    if not project_json:
+        return jsonify({"erro": "Projeto vazio"}), 400
+    import base64
+    project_id = uuid.uuid4().hex[:12]
+    # Salvar JSON do projeto
+    project_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_proj_{project_id}.json")
+    with open(project_path, "w") as f:
+        json.dump(project_json, f)
+    # Salvar preview PNG
+    preview_path = ""
+    if preview_b64 and "base64," in preview_b64:
+        img_data = base64.b64decode(preview_b64.split("base64,")[1])
+        preview_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{project_id}.png")
+        with open(preview_path, "wb") as f:
+            f.write(img_data)
+        # Salvar no histórico de thumbnails
+        _init_thumbnails_table()
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?,?,?,?,?,?)",
+                     (current_user.id, project_id, "Editor Visual", "projeto", "editor", preview_path))
+        conn.commit(); conn.close()
+    # Salvar referência do projeto
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("""CREATE TABLE IF NOT EXISTS thumb_projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            project_id TEXT NOT NULL, project_path TEXT, preview_path TEXT,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP, atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        conn.execute("INSERT INTO thumb_projects (user_id, project_id, project_path, preview_path) VALUES (?,?,?,?)",
+                     (current_user.id, project_id, project_path, preview_path))
+        conn.commit(); conn.close()
+    except: pass
+    return jsonify({"ok": True, "project_id": project_id})
+
+@app.route("/thumb_editor/load_project/<project_id>")
+@login_required
+def thumb_editor_load_project(project_id):
+    """Carrega projeto do editor visual"""
+    project_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_proj_{project_id}.json")
+    if not os.path.exists(project_path):
+        return jsonify({"erro": "Projeto não encontrado"}), 404
+    with open(project_path) as f:
+        project = json.load(f)
+    return jsonify({"ok": True, "project": project})
+
 @app.route("/thumb_editor/download/<edit_id>")
 @login_required
 def thumb_editor_download(edit_id):
