@@ -82,6 +82,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     <div class="tab" onclick="trocarAba('usuarios')">👥 Usuários</div>
     <div class="tab" onclick="trocarAba('planos')">💎 Planos</div>
     <div class="tab" onclick="trocarAba('prompts')">📝 Prompts</div>
+    {% if is_master %}<div class="tab" onclick="trocarAba('docs')">📖 Docs</div>{% endif %}
   </div>
 
   <!-- MÉTRICAS -->
@@ -278,6 +279,209 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     <div class="ok-box" id="okPrompts"></div>
     <div class="erro-box" id="erroPrompts"></div>
   </div>
+
+  {% if is_master %}
+  <!-- DOCUMENTAÇÃO -->
+  <div class="pane" id="paneDocs">
+    <div class="card">
+      <h2>📖 Documentação Completa — Klyonclaw Studio</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:20px">Documentação técnica e operacional do sistema. Visível apenas para o Admin Master.</p>
+    </div>
+
+    <div class="card">
+      <h2>1. Arquitetura do Sistema</h2>
+      <h3>1.1 Stack Tecnológico</h3>
+      <div class="metric-row"><span class="metric-label">Backend</span><span class="metric-value">Python Flask</span></div>
+      <div class="metric-row"><span class="metric-label">Banco de dados</span><span class="metric-value">SQLite (SQLAlchemy + sqlite3)</span></div>
+      <div class="metric-row"><span class="metric-label">Servidor</span><span class="metric-value">Gunicorn + Nginx (Docker)</span></div>
+      <div class="metric-row"><span class="metric-label">Frontend</span><span class="metric-value">HTML/CSS/JS puro + Fabric.js</span></div>
+      <div class="metric-row"><span class="metric-label">Pagamentos</span><span class="metric-value">Stripe (checkout + webhooks)</span></div>
+      <div class="metric-row"><span class="metric-label">IA Imagens</span><span class="metric-value">OpenAI gpt-image-1 / DALL-E 3</span></div>
+      <div class="metric-row"><span class="metric-label">IA Texto</span><span class="metric-value">OpenAI GPT-4o-mini</span></div>
+      <div class="metric-row"><span class="metric-label">IA Vídeo</span><span class="metric-value">MiniMax Hailuo 2.3-Fast</span></div>
+      <div class="metric-row"><span class="metric-label">IA Áudio</span><span class="metric-value">MiniMax Speech-02-HD</span></div>
+      <div class="metric-row"><span class="metric-label">Transcrição</span><span class="metric-value">OpenAI Whisper (local)</span></div>
+      <div class="metric-row"><span class="metric-label">Vídeo</span><span class="metric-value">FFmpeg</span></div>
+      <div class="metric-row"><span class="metric-label">SSL</span><span class="metric-value">Let's Encrypt (Certbot)</span></div>
+      <div class="metric-row"><span class="metric-label">VPS</span><span class="metric-value">144.91.105.101</span></div>
+      <div class="metric-row"><span class="metric-label">Domínio</span><span class="metric-value">studio.klyonclaw.com</span></div>
+
+      <h3>1.2 Estrutura de Pastas</h3>
+      <div class="metric-row"><span class="metric-label">/var/www/veo3-tool/</span><span class="metric-value">Raiz do projeto</span></div>
+      <div class="metric-row"><span class="metric-label">app.py</span><span class="metric-value">Backend principal (~3100 linhas)</span></div>
+      <div class="metric-row"><span class="metric-label">templates/</span><span class="metric-value">HTML (dashboard, admin, login, etc.)</span></div>
+      <div class="metric-row"><span class="metric-label">instance/veo3.db</span><span class="metric-value">Banco de dados SQLite</span></div>
+      <div class="metric-row"><span class="metric-label">uploads/</span><span class="metric-value">Arquivos temporários de upload</span></div>
+      <div class="metric-row"><span class="metric-label">outputs/</span><span class="metric-value">Vídeos e ZIPs gerados</span></div>
+      <div class="metric-row"><span class="metric-label">storyboards/</span><span class="metric-value">Storyboards em edição</span></div>
+      <div class="metric-row"><span class="metric-label">thumbnails/</span><span class="metric-value">Thumbnails geradas</span></div>
+      <div class="metric-row"><span class="metric-label">thumb_edits/</span><span class="metric-value">Edições de thumbnail</span></div>
+      <div class="metric-row"><span class="metric-label">banco_imagens/</span><span class="metric-value">Banco de imagens/vídeos</span></div>
+      <div class="metric-row"><span class="metric-label">musicas/</span><span class="metric-value">Músicas de fundo</span></div>
+      <div class="metric-row"><span class="metric-label">.env</span><span class="metric-value">Variáveis de ambiente</span></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Sistema de Usuários</h2>
+      <h3>2.1 Autenticação</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Login por email/senha com Flask-Login. Senhas hasheadas com Werkzeug (PBKDF2). Rate limit: 5 tentativas/min no login, 3/min no cadastro, 2/5min no esqueci senha.</p>
+
+      <h3>2.2 Níveis de Acesso</h3>
+      <div class="metric-row"><span class="metric-label">Admin Master</span><span class="metric-value">{{ '{{ ADMIN_MASTER_EMAIL }}' }} — pode conceder/remover admin</span></div>
+      <div class="metric-row"><span class="metric-label">Admin</span><span class="metric-value">Acesso ao painel admin, créditos ilimitados</span></div>
+      <div class="metric-row"><span class="metric-label">Usuário com plano</span><span class="metric-value">Acesso às funcionalidades conforme plano</span></div>
+      <div class="metric-row"><span class="metric-label">Usuário sem plano</span><span class="metric-value">Bloqueado — sem acesso a APIs</span></div>
+
+      <h3>2.3 Isolamento de Dados</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Todos os arquivos são nomeados com user_id como prefixo. Todas as queries filtram por user_id. Rotas de arquivo verificam propriedade. Path traversal bloqueado com normpath().</p>
+    </div>
+
+    <div class="card">
+      <h2>3. Sistema de Planos e Créditos</h2>
+      <h3>3.1 Planos</h3>
+      <div class="metric-row"><span class="metric-label">API Própria (R$87,90/mês)</span><span class="metric-value">Ilimitado — usa chave do usuário</span></div>
+      <div class="metric-row"><span class="metric-label">Básico (R$39,90/mês)</span><span class="metric-value">500 créditos — usa chave do sistema</span></div>
+      <div class="metric-row"><span class="metric-label">Pro (R$79,90/mês)</span><span class="metric-value">1.500 créditos — usa chave do sistema</span></div>
+      <div class="metric-row"><span class="metric-label">Business (R$149,90/mês)</span><span class="metric-value">4.000 créditos — usa chave do sistema</span></div>
+      <div class="metric-row"><span class="metric-label">Tester (grátis)</span><span class="metric-value">200 créditos — concedido pelo admin, oculto ao usuário</span></div>
+
+      <h3>3.2 Tabela de Créditos</h3>
+      <div class="metric-row"><span class="metric-label">Dividir roteiro</span><span class="metric-value">1 crédito</span></div>
+      <div class="metric-row"><span class="metric-label">Renderizar vídeo (só banco/upload)</span><span class="metric-value">1 crédito</span></div>
+      <div class="metric-row"><span class="metric-label">Legenda (só banco/upload)</span><span class="metric-value">1 crédito</span></div>
+      <div class="metric-row"><span class="metric-label">Melhorar prompt</span><span class="metric-value">+3 créditos</span></div>
+      <div class="metric-row"><span class="metric-label">Narração por cena</span><span class="metric-value">+5 créditos</span></div>
+      <div class="metric-row"><span class="metric-label">Gerar imagem</span><span class="metric-value">12 créditos</span></div>
+      <div class="metric-row"><span class="metric-label">Gerar thumbnail (4 variações)</span><span class="metric-value">24 créditos</span></div>
+      <div class="metric-row"><span class="metric-label">Editar thumbnail com IA</span><span class="metric-value">12 créditos</span></div>
+      <div class="metric-row"><span class="metric-label">Viral Tuning</span><span class="metric-value">12 créditos</span></div>
+      <div class="metric-row"><span class="metric-label">Animar cena</span><span class="metric-value">+60 créditos</span></div>
+
+      <h3>3.3 Lógica de Cobrança</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Renderização e legenda são grátis se o vídeo já gastou créditos com outros serviços (imagens, narração, animação). Plano API Própria e Admin não gastam créditos. Créditos de animação são cobrados só pelas cenas que deram certo.</p>
+
+      <h3>3.4 Stripe</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Webhook: studio.klyonclaw.com/stripe_webhook. Eventos: checkout.session.completed, invoice.payment_succeeded, customer.subscription.deleted. Renovação mensal automática via webhook. Webhook secret obrigatório.</p>
+    </div>
+
+    <div class="card">
+      <h2>4. Módulo de Vídeo</h2>
+      <h3>4.1 Fluxo de Criação</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">1. Usuário escreve roteiro → 2. IA divide em cenas (GPT-4o-mini) → 3. Gera imagens por cena (gpt-image-1) → 4. Usuário revisa storyboard → 5. Configura narração/animação/legendas → 6. Gera vídeo final (FFmpeg)</p>
+
+      <h3>4.2 Narração</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">MiniMax Speech-02-HD. Texto completo narrado de uma vez. Whisper transcreve pra sincronizar timestamps com cenas. 16 vozes padrão + clonagem de voz.</p>
+
+      <h3>4.3 Animação</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">MiniMax Hailuo 2.3-Fast. Image-to-video, 6s por clipe, 768P. Processamento em lotes de 3. Cenas do banco são reutilizadas sem gerar. Detecção de saldo insuficiente vs rate limit.</p>
+
+      <h3>4.4 Montagem Final</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">FFmpeg concatena clipes + áudio. Legendas SRT palavra por palavra via Whisper. Música de fundo mixada em volume baixo. Zoompan em imagens estáticas. Suporte a mix de imagens e vídeos do banco.</p>
+    </div>
+
+    <div class="card">
+      <h2>5. Thumbnail Engine</h2>
+      <h3>5.1 Geração do Zero</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">IA analisa roteiro → identifica cena mais clicável → gera 4 variações com composições diferentes (close-up, medium, low angle, wide). 10 estilos: Cinematic, Hyper Realistic, Mystery, Documentary, Cartoon, Kids, Dark Drama, Sci-Fi, Bright Viral, Minimal. Pós-processamento: sharpen + contraste + brilho.</p>
+
+      <h3>5.2 Edição por IA</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Upload de thumbnail + instrução textual. Suporte a troca de rosto/personagem. Usa endpoint /v1/images/edits do gpt-image-1. Preserva composição original.</p>
+
+      <h3>5.3 Viral Tuning</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Melhoria automática: mais contraste, nitidez, cores fortes, fundo limpo, destaque no sujeito. Comparação antes/depois.</p>
+
+      <h3>5.4 Ranking</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">GPT-4o-mini analisa thumbnails com visão. Score 0-100 baseado em: contraste, clareza, foco, tamanho do rosto, emoção, legibilidade, separação fundo/sujeito.</p>
+
+      <h3>5.5 Editor Visual</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Fabric.js. Texto editável (fonte, cor, contorno, sombra, espaçamento). Seta, círculo, retângulo, linha. Upload de imagens extras. Filtros (brilho, contraste, blur). Camadas com ordenação. Undo/redo (30 estados). Export 1280×720 e 2048×1152. Salvar projeto em JSON. Integração com IA (editar/viral tuning direto do editor). Salvar na biblioteca.</p>
+    </div>
+
+    <div class="card">
+      <h2>6. Segurança</h2>
+      <h3>6.1 Autenticação e Autorização</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Flask-Login com @login_required em todas as rotas protegidas. Admin verificado com is_admin. Admin Master verificado por email. Senhas PBKDF2.</p>
+
+      <h3>6.2 Rate Limiting</h3>
+      <div class="metric-row"><span class="metric-label">Login</span><span class="metric-value">5 tentativas/min por IP</span></div>
+      <div class="metric-row"><span class="metric-label">Cadastro</span><span class="metric-value">3 tentativas/min por IP</span></div>
+      <div class="metric-row"><span class="metric-label">Esqueci senha</span><span class="metric-value">2 tentativas/5min por IP</span></div>
+      <div class="metric-row"><span class="metric-label">Gerar storyboard</span><span class="metric-value">3/min por usuário</span></div>
+      <div class="metric-row"><span class="metric-label">Regerar cena</span><span class="metric-value">5/min por usuário</span></div>
+      <div class="metric-row"><span class="metric-label">Gerar thumbnails</span><span class="metric-value">3/min por usuário</span></div>
+
+      <h3>6.3 Proteções</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Path traversal: normpath() + verificação de prefixo em todas as rotas de arquivo. Upload: limite de tamanho (20MB imagens, 30MB áudio, 50MB música, 5MB projetos JSON). Webhook Stripe: signature verification obrigatória. API keys: só acessíveis com plano ativo.</p>
+    </div>
+
+    <div class="card">
+      <h2>7. Variáveis de Ambiente (.env)</h2>
+      <div class="metric-row"><span class="metric-label">SECRET_KEY</span><span class="metric-value">Chave secreta do Flask</span></div>
+      <div class="metric-row"><span class="metric-label">STRIPE_SECRET_KEY</span><span class="metric-value">Chave secreta da Stripe</span></div>
+      <div class="metric-row"><span class="metric-label">STRIPE_WEBHOOK_SECRET</span><span class="metric-value">Secret do webhook (whsec_...)</span></div>
+      <div class="metric-row"><span class="metric-label">OPENAI_API_KEY</span><span class="metric-value">Chave OpenAI do sistema</span></div>
+      <div class="metric-row"><span class="metric-label">MINIMAX_API_KEY</span><span class="metric-value">Chave MiniMax do sistema</span></div>
+      <div class="metric-row"><span class="metric-label">MINIMAX_GROUP_ID</span><span class="metric-value">Group ID do MiniMax</span></div>
+      <div class="metric-row"><span class="metric-label">SMTP_HOST</span><span class="metric-value">Servidor SMTP (smtp.gmail.com)</span></div>
+      <div class="metric-row"><span class="metric-label">SMTP_PORT</span><span class="metric-value">Porta SMTP (587)</span></div>
+      <div class="metric-row"><span class="metric-label">SMTP_USER</span><span class="metric-value">Email do remetente</span></div>
+      <div class="metric-row"><span class="metric-label">SMTP_PASS</span><span class="metric-value">Senha do email</span></div>
+      <div class="metric-row"><span class="metric-label">ADMIN_MASTER_EMAIL</span><span class="metric-value">Email do admin master</span></div>
+      <div class="metric-row"><span class="metric-label">SUPPORT_EMAIL</span><span class="metric-value">Email de suporte (support@klyonclaw.com)</span></div>
+    </div>
+
+    <div class="card">
+      <h2>8. Manutenção</h2>
+      <h3>8.1 Deploy</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6;font-family:monospace">cd /var/www/veo3-tool && git pull origin main && sudo systemctl restart veo3</p>
+
+      <h3>8.2 Logs</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6;font-family:monospace">sudo journalctl -u veo3 -f</p>
+
+      <h3>8.3 Cleanup Automático</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Arquivos temporários em outputs/ e storyboards/ são removidos automaticamente após 7 dias na inicialização do servidor.</p>
+
+      <h3>8.4 Backup do Banco</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6;font-family:monospace">cp /var/www/veo3-tool/instance/veo3.db /backup/veo3_$(date +%Y%m%d).db</p>
+
+      <h3>8.5 Nginx</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Config em /opt/mordomo/nginx.conf (dentro do Docker mordomo-nginx). SSL via Certbot no container mordomo-certbot. Reload: docker exec mordomo-nginx nginx -s reload</p>
+
+      <h3>8.6 Serviço Systemd</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6;font-family:monospace">sudo systemctl status veo3<br>sudo systemctl restart veo3<br>sudo systemctl stop veo3</p>
+    </div>
+
+    <div class="card">
+      <h2>9. Tabelas do Banco de Dados</h2>
+      <div class="metric-row"><span class="metric-label">user</span><span class="metric-value">Usuários (email, senha, plano, créditos, API keys)</span></div>
+      <div class="metric-row"><span class="metric-label">criacao</span><span class="metric-value">Histórico de vídeos gerados</span></div>
+      <div class="metric-row"><span class="metric-label">banco_imagens</span><span class="metric-value">Banco de imagens e vídeos reutilizáveis</span></div>
+      <div class="metric-row"><span class="metric-label">thumbnails</span><span class="metric-value">Thumbnails geradas por usuário</span></div>
+      <div class="metric-row"><span class="metric-label">thumb_edits</span><span class="metric-value">Edições de thumbnail por IA</span></div>
+      <div class="metric-row"><span class="metric-label">thumb_projects</span><span class="metric-value">Projetos do editor visual</span></div>
+      <div class="metric-row"><span class="metric-label">musicas</span><span class="metric-value">Músicas de fundo por usuário</span></div>
+    </div>
+
+    <div class="card">
+      <h2>10. APIs Externas</h2>
+      <h3>10.1 OpenAI</h3>
+      <div class="metric-row"><span class="metric-label">gpt-image-1</span><span class="metric-value">Geração e edição de imagens</span></div>
+      <div class="metric-row"><span class="metric-label">dall-e-3</span><span class="metric-value">Fallback de geração de imagens</span></div>
+      <div class="metric-row"><span class="metric-label">gpt-4o-mini</span><span class="metric-value">Divisão de roteiro, prompts, análise de cena, ranking</span></div>
+      <div class="metric-row"><span class="metric-label">Whisper (local)</span><span class="metric-value">Transcrição de áudio pra legendas</span></div>
+
+      <h3>10.2 MiniMax</h3>
+      <div class="metric-row"><span class="metric-label">Speech-02-HD</span><span class="metric-value">Narração (TTS) — api.minimaxi.chat</span></div>
+      <div class="metric-row"><span class="metric-label">Hailuo 2.3-Fast</span><span class="metric-value">Animação (image-to-video) — api.minimax.io</span></div>
+      <div class="metric-row"><span class="metric-label">Voice Clone</span><span class="metric-value">Clonagem de voz — api.minimaxi.chat</span></div>
+
+      <h3>10.3 Stripe</h3>
+      <div class="metric-row"><span class="metric-label">Checkout Sessions</span><span class="metric-value">Pagamento de planos e pacotes avulso</span></div>
+      <div class="metric-row"><span class="metric-label">Webhooks</span><span class="metric-value">Renovação, cancelamento, checkout</span></div>
+      <div class="metric-row"><span class="metric-label">Billing Portal</span><span class="metric-value">Gerenciamento de assinatura pelo usuário</span></div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <script>
@@ -287,7 +491,7 @@ function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=docu
 applyTheme();
 
 function trocarAba(aba){
-  const abas=['metricas','usuarios','planos','prompts'];
+  const abas=['metricas','usuarios','planos','prompts','docs'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
