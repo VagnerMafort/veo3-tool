@@ -1247,22 +1247,19 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                             sys.stderr.write(f"[ANIMAR] Cena {i+1} tentativa {tentativa+1}: {erro_str}\n"); sys.stderr.flush()
                             if "RATE_LIMIT" in erro_str or "1002" in erro_str or "rate" in erro_str.lower():
                                 if tentativa < 2:
-                                    _t.sleep(15)
+                                    _t.sleep(30 + tentativa * 15)
                                     continue
                             clipes_video[i] = None
                             return
                     clipes_video[i] = None
 
-                # Animar em paralelo (2 por vez pra evitar rate limit)
+                # Animar sequencialmente (1 por vez com intervalo pra evitar rate limit)
                 import time as _time
-                lote_size = 2
-                for lote_start in range(0, n_cenas, lote_size):
-                    lote_end = min(lote_start + lote_size, n_cenas)
-                    lote = list(range(lote_start, lote_end))
-                    with ThreadPoolExecutor(max_workers=lote_size) as executor:
-                        list(executor.map(animar_cena, lote))
-                    if lote_end < n_cenas:
-                        _time.sleep(2)
+                for i in range(n_cenas):
+                    animar_cena(i)
+                    jobs[job_id]["progresso"] = f"Animando cenas... {sum(1 for c in clipes_video if c is not None)}/{n_cenas} prontas"
+                    if i < n_cenas - 1:
+                        _time.sleep(5)  # Intervalo entre cenas
 
                 # Cobrar créditos só pelas animações que deram certo
                 cenas_animadas = sum(1 for c in clipes_video if c is not None)
