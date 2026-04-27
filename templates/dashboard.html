@@ -19,7 +19,8 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .btn-sair:hover{border-color:#ef4444;color:#ef4444}
 .theme-toggle{background:none;border:1px solid var(--border);color:var(--text2);padding:6px 10px;border-radius:8px;cursor:pointer;font-size:.85rem}
 .tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
-.tab{flex:1;min-width:50px;padding:9px 4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:.7rem;color:var(--text2);transition:.2s}
+.tab{flex:1;min-width:50px;padding:8px 4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:.65rem;color:var(--text2);transition:.2s;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2}
+.tab div:first-child{font-size:1.1rem}
 .tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .pane{display:none}.pane.active{display:block}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px}
@@ -157,14 +158,14 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
   </div>
 
   <div class="tabs">
-    <div class="tab active" onclick="trocarAba('gerar')">🎬 Criar</div>
-    <div class="tab" onclick="trocarAba('rascunhos')">📝 Rasc.</div>
-    <div class="tab" onclick="trocarAba('thumbs')">🖼️ Thumbs</div>
-    <div class="tab" onclick="trocarAba('planos')">💎 Planos</div>
-    <div class="tab" onclick="trocarAba('historico')">🗂️ Histórico</div>
-    <div class="tab" onclick="trocarAba('clonar')">🎙️ Áudio</div>
-    <div class="tab" onclick="trocarAba('ajuda')">❓ Ajuda</div>
-    <div class="tab" onclick="trocarAba('perfil')">👤 Perfil <span class="badge {% if user.api_key %}badge-ok{% else %}badge-none{% endif %}" id="badgePerfil">{% if user.api_key %}✓{% else %}—{% endif %}</span></div>
+    <div class="tab active" onclick="trocarAba('gerar')"><div>🎬</div><div>Criar</div></div>
+    <div class="tab" onclick="trocarAba('rascunhos')"><div>📝</div><div>Rasc.</div></div>
+    <div class="tab" onclick="trocarAba('thumbs')"><div>🖼️</div><div>Thumbs</div></div>
+    <div class="tab" onclick="trocarAba('planos')"><div>💎</div><div>Planos</div></div>
+    <div class="tab" onclick="trocarAba('historico')"><div>🗂️</div><div>Histórico</div></div>
+    <div class="tab" onclick="trocarAba('clonar')"><div>🎙️</div><div>Áudio</div></div>
+    <div class="tab" onclick="trocarAba('ajuda')"><div>💬</div><div>Ajuda</div></div>
+    <div class="tab" onclick="trocarAba('perfil')"><div>👤</div><div>Perfil</div></div>
   </div>
 
   <!-- GERAR -->
