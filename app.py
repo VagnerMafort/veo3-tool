@@ -3053,6 +3053,17 @@ def download_video(job_id):
         return jsonify({"erro": "Video nao disponivel"}), 404
     return send_file(video_path, as_attachment=True, download_name="video_gerado.mp4")
 
+@app.route("/ver_video/<job_id>")
+@login_required
+def ver_video(job_id):
+    """Serve o vídeo pra streaming inline (sem forçar download)"""
+    criacao = Criacao.query.filter_by(job_id=job_id, user_id=current_user.id).first()
+    job = jobs.get(job_id)
+    video_path = criacao.video_path if criacao else (job.get("video") if job else None)
+    if not video_path or not os.path.exists(video_path):
+        return jsonify({"erro": "Video nao disponivel"}), 404
+    return send_file(video_path, mimetype="video/mp4")
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()

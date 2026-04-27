@@ -313,6 +313,10 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <div class="resultado" id="resultado">
         <div class="check">✅</div>
         <p id="resultadoInfo">Vídeo gerado!</p>
+        <!-- Player de vídeo -->
+        <div id="videoPlayer" style="margin:14px 0;border-radius:12px;overflow:hidden;background:#000">
+          <video id="videoPreview" controls playsinline style="width:100%;max-height:400px;display:block"></video>
+        </div>
         <div class="btns-resultado">
           <a href="#" id="btnDownload" class="btn-download">⬇ ZIP</a>
           <a href="#" id="btnVideo" class="btn-video">🎬 Vídeo</a>
@@ -610,8 +614,10 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           </div>
           <div class="historico-btns">
             <a href="/download/{{ c.job_id }}" class="btn-dl-hist btn-dl-zip">⬇ ZIP</a>
-            {% if c.video_path %}<a href="/download_video/{{ c.job_id }}" class="btn-dl-hist btn-dl-vid">🎬 Vídeo</a>{% endif %}
+            {% if c.video_path %}<a href="/download_video/{{ c.job_id }}" class="btn-dl-hist btn-dl-vid">⬇ Vídeo</a>
+            <button class="btn-dl-hist btn-dl-vid" onclick="this.parentElement.parentElement.querySelector('.hist-player').style.display='block';this.style.display='none'" style="cursor:pointer">▶️ Assistir</button>{% endif %}
           </div>
+          {% if c.video_path %}<div class="hist-player" style="display:none;margin-top:10px"><video src="/ver_video/{{ c.job_id }}" controls playsinline style="width:100%;border-radius:8px"></video></div>{% endif %}
         </div>
         {% endfor %}
       {% else %}
@@ -1244,7 +1250,7 @@ function pollFinal(jobId){const iv=setInterval(async()=>{const res=await fetch(`
     else if(prog.includes('Juntando'))etapaEl.textContent='🔗 Juntando clipes animados';
     else etapaEl.textContent='';
   }
-  if(d.status==='pronto'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('resultadoInfo').textContent=`${d.total} imagens + vídeo gerados`;document.getElementById('btnDownload').href=`/download/${jobId}`;document.getElementById('btnVideo').href=`/download_video/${jobId}`;document.getElementById('resultado').style.display='block';atualizarCreditos();}
+  if(d.status==='pronto'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('resultadoInfo').textContent=`${d.total} imagens + vídeo gerados`;document.getElementById('btnDownload').href=`/download/${jobId}`;document.getElementById('btnVideo').href=`/download_video/${jobId}`;document.getElementById('videoPreview').src=`/ver_video/${jobId}`;document.getElementById('resultado').style.display='block';atualizarCreditos();}
   if(d.status==='erro'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;if(d.progresso&&d.progresso.toLowerCase().includes('insuficiente')){document.getElementById('creditosRestantes').textContent=document.getElementById('creditosNum').textContent;document.getElementById('creditosModal').style.display='block';}else{document.getElementById('erroFinal').textContent='❌ '+d.progresso;document.getElementById('erroFinal').style.display='block';}}
 },3000);}
 
