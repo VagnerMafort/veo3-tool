@@ -2041,6 +2041,26 @@ def thumb_editor_download(edit_id):
     if not os.path.exists(path): return jsonify({"erro": "Não encontrada"}), 404
     return send_file(path, as_attachment=True, download_name=f"thumb_editada_{edit_id}.png")
 
+@app.route("/thumb_editor/salvar_biblioteca", methods=["POST"])
+@login_required
+def thumb_editor_salvar_biblioteca():
+    """Salva thumbnail do editor na biblioteca do banco de imagens"""
+    if "imagem" not in request.files:
+        return jsonify({"erro": "Envie a imagem"}), 400
+    img_file = request.files["imagem"]
+    edit_id = uuid.uuid4().hex[:12]
+    save_path = os.path.join(THUMB_FOLDER, f"{current_user.id}_{edit_id}.png")
+    img_file.save(save_path)
+    # Salvar no banco de imagens
+    salvar_no_banco("Thumbnail editada no Editor Visual", "", save_path, tipo="imagem", categoria="thumbnail")
+    # Salvar no histórico de thumbnails
+    _init_thumbnails_table()
+    conn = sqlite3.connect('instance/veo3.db')
+    conn.execute("INSERT INTO thumbnails (user_id, thumb_id, roteiro, prompt, estilo, path) VALUES (?,?,?,?,?,?)",
+                 (current_user.id, edit_id, "Editor Visual", "salvo na biblioteca", "editor", save_path))
+    conn.commit(); conn.close()
+    return jsonify({"ok": True})
+
 @app.route("/thumb_editor/historico")
 @login_required
 def thumb_editor_historico():

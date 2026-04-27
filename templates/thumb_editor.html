@@ -64,6 +64,9 @@ body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-heig
     <button class="tb" onclick="bringForward()" title="Frente">⬆️</button>
     <button class="tb" onclick="sendBackward()" title="Trás">⬇️</button>
     <button class="tb" onclick="centerObj()" title="Centralizar">⊞</button>
+    <button class="tb" onclick="lockObj()" title="Bloquear/Desbloquear">🔒</button>
+    <button class="tb" onclick="rotateObj(-15)" title="Girar esquerda">↺</button>
+    <button class="tb" onclick="rotateObj(15)" title="Girar direita">↻</button>
   </div>
   <div class="topbar-right">
     <button class="tb tb-back" onclick="window.location.href='/dashboard'">← Voltar</button>
@@ -112,6 +115,8 @@ body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-heig
         <button class="sb" style="flex:1" onclick="updateProp('fontStyle','italic')">I</button>
         <button class="sb" style="flex:1" onclick="updateProp('underline',!fCanvas.getActiveObject()?.underline)">U</button>
       </div>
+      <label>Espaçamento</label>
+      <input type="range" class="si" id="pSpacing" min="0" max="500" value="0" oninput="updateProp('charSpacing',+this.value)"/>
     </div>
 
     <div id="propsShape" class="props-section">
@@ -130,17 +135,25 @@ body{font-family:'Segoe UI',sans-serif;background:#0b1120;color:#e2e8f0;min-heig
       <h3>🖼️ Imagem</h3>
       <label>Opacidade</label>
       <input type="range" class="si" id="pImgOpacity" min="10" max="100" value="100" oninput="updateShapeProp('opacity',this.value/100)"/>
-      <label>Filtros</label>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="sb" onclick="applyFilter('brightness')">☀️ Brilho+</button>
-        <button class="sb" onclick="applyFilter('contrast')">🔲 Contraste+</button>
-        <button class="sb" onclick="applyFilter('blur')">💨 Blur</button>
-        <button class="sb" onclick="applyFilter('clear')">✕ Limpar</button>
-      </div>
+      <label>Brilho</label>
+      <input type="range" class="si" id="pBrightness" min="-50" max="50" value="0" oninput="applyImgFilters()"/>
+      <label>Contraste</label>
+      <input type="range" class="si" id="pContrast" min="-50" max="50" value="0" oninput="applyImgFilters()"/>
+      <label>Blur</label>
+      <input type="range" class="si" id="pBlur" min="0" max="50" value="0" oninput="applyImgFilters()"/>
+      <button class="sb sb-full" onclick="document.getElementById('pBrightness').value=0;document.getElementById('pContrast').value=0;document.getElementById('pBlur').value=0;applyImgFilters()">✕ Resetar filtros</button>
     </div>
 
     <h3>📐 Camadas</h3>
     <div id="layersList" class="layers-list"></div>
+
+    <h3>🤖 IA</h3>
+    <button class="sb sb-full" onclick="enviarParaIA()">✨ Editar com IA</button>
+    <button class="sb sb-full" onclick="viralTuningEditor()">⚡ Viral Tuning</button>
+
+    <h3>💾 Salvar</h3>
+    <button class="sb sb-full" onclick="saveProject()" style="background:#059669;border-color:#059669;color:#fff">💾 Salvar projeto</button>
+    <button class="sb sb-full" onclick="salvarNaBiblioteca()">🗃️ Salvar na biblioteca</button>
   </div>
   <div class="canvas-area">
     <div class="upload-overlay" id="uploadOverlay">
@@ -252,6 +265,7 @@ function showProps(){
     document.getElementById('pStroke').value=obj.stroke||'#000000';
     document.getElementById('pStrokeW').value=obj.strokeWidth||0;
     if(obj.shadow){document.getElementById('pShadowC').value=obj.shadow.color||'#000';document.getElementById('pShadowB').value=obj.shadow.blur||0;}
+    document.getElementById('pSpacing').value=obj.charSpacing||0;
   } else if(obj.type==='image'){
     document.getElementById('propsImage').style.display='block';
     document.getElementById('pImgOpacity').value=(obj.opacity||1)*100;
@@ -267,15 +281,6 @@ function showProps(){
 function updateProp(prop,val){const obj=fCanvas.getActiveObject();if(!obj)return;obj.set(prop,val);fCanvas.renderAll();saveHistory();if(prop==='text')updateLayers();}
 function updateShadow(){const obj=fCanvas.getActiveObject();if(!obj)return;obj.set('shadow',new fabric.Shadow({color:document.getElementById('pShadowC').value,blur:+document.getElementById('pShadowB').value,offsetX:3,offsetY:3}));fCanvas.renderAll();saveHistory();}
 function updateShapeProp(prop,val){const obj=fCanvas.getActiveObject();if(!obj)return;obj.set(prop,val);fCanvas.renderAll();saveHistory();}
-
-function applyFilter(type){
-  const obj=fCanvas.getActiveObject();if(!obj||obj.type!=='image')return;
-  obj.filters=[];
-  if(type==='brightness')obj.filters.push(new fabric.Image.filters.Brightness({brightness:0.15}));
-  else if(type==='contrast')obj.filters.push(new fabric.Image.filters.Contrast({contrast:0.2}));
-  else if(type==='blur')obj.filters.push(new fabric.Image.filters.Blur({blur:0.1}));
-  obj.applyFilters();fCanvas.renderAll();saveHistory();
-}
 
 // Layers
 function updateLayers(){
@@ -299,6 +304,78 @@ function duplicateObj(){const obj=fCanvas.getActiveObject();if(!obj)return;obj.c
 function bringForward(){const obj=fCanvas.getActiveObject();if(obj){fCanvas.bringForward(obj);fCanvas.renderAll();updateLayers();}}
 function sendBackward(){const obj=fCanvas.getActiveObject();if(obj&&obj.name!=='background'){fCanvas.sendBackwards(obj);fCanvas.renderAll();updateLayers();}}
 function centerObj(){const obj=fCanvas.getActiveObject();if(obj){obj.set({left:W/2,top:H/2,originX:'center',originY:'center'});fCanvas.renderAll();saveHistory();}}
+function rotateObj(deg){const obj=fCanvas.getActiveObject();if(obj){obj.rotate((obj.angle||0)+deg);fCanvas.renderAll();saveHistory();}}
+function lockObj(){const obj=fCanvas.getActiveObject();if(!obj||obj.name==='background')return;const locked=!obj.lockMovementX;obj.set({lockMovementX:locked,lockMovementY:locked,lockScalingX:locked,lockScalingY:locked,lockRotation:locked,hasControls:!locked});fCanvas.renderAll();updateLayers();}
+
+// Filtros de imagem ajustáveis
+function applyImgFilters(){
+  const obj=fCanvas.getActiveObject();if(!obj||obj.type!=='image')return;
+  const b=+document.getElementById('pBrightness').value/100;
+  const c=+document.getElementById('pContrast').value/100;
+  const bl=+document.getElementById('pBlur').value/100;
+  obj.filters=[];
+  if(b!==0)obj.filters.push(new fabric.Image.filters.Brightness({brightness:b}));
+  if(c!==0)obj.filters.push(new fabric.Image.filters.Contrast({contrast:c}));
+  if(bl>0)obj.filters.push(new fabric.Image.filters.Blur({blur:bl}));
+  obj.applyFilters();fCanvas.renderAll();saveHistory();
+}
+
+// Integração IA
+async function enviarParaIA(){
+  const dataURL=fCanvas.toDataURL({format:'png',multiplier:1});
+  const instrucao=prompt('Instrução de edição por IA:');
+  if(!instrucao)return;
+  try{
+    const blob=await(await fetch(dataURL)).blob();
+    const fd=new FormData();fd.append('imagem',blob,'thumb.png');fd.append('instrucao',instrucao);
+    const res=await fetch('/thumb_editor/editar',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.erro){alert('❌ '+d.erro);return;}
+    // Carregar resultado como novo fundo
+    fabric.Image.fromURL(`/thumb_editor/ver/${d.edit_id}?t=${Date.now()}`,img=>{
+      if(!img)return;
+      const scale=Math.max(W/img.width,H/img.height);
+      img.set({scaleX:scale,scaleY:scale,left:W/2,top:H/2,originX:'center',originY:'center',selectable:false,evented:false,name:'background'});
+      // Remover fundo antigo
+      const bg=fCanvas.getObjects().find(o=>o.name==='background');
+      if(bg)fCanvas.remove(bg);
+      fCanvas.insertAt(img,0);fCanvas.renderAll();saveHistory();updateLayers();
+      alert('✅ Edição por IA aplicada!');
+    },{crossOrigin:'anonymous'});
+  }catch(e){alert('❌ Erro: '+e.message);}
+}
+
+async function viralTuningEditor(){
+  const dataURL=fCanvas.toDataURL({format:'png',multiplier:1});
+  try{
+    const blob=await(await fetch(dataURL)).blob();
+    const fd=new FormData();fd.append('imagem',blob,'thumb.png');
+    const res=await fetch('/thumb_editor/viral_tuning',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.erro){alert('❌ '+d.erro);return;}
+    fabric.Image.fromURL(`/thumb_editor/ver/${d.edit_id}?t=${Date.now()}`,img=>{
+      if(!img)return;
+      const scale=Math.max(W/img.width,H/img.height);
+      img.set({scaleX:scale,scaleY:scale,left:W/2,top:H/2,originX:'center',originY:'center',selectable:false,evented:false,name:'background'});
+      const bg=fCanvas.getObjects().find(o=>o.name==='background');
+      if(bg)fCanvas.remove(bg);
+      fCanvas.insertAt(img,0);fCanvas.renderAll();saveHistory();updateLayers();
+      alert('✅ Viral Tuning aplicado!');
+    },{crossOrigin:'anonymous'});
+  }catch(e){alert('❌ Erro: '+e.message);}
+}
+
+async function salvarNaBiblioteca(){
+  const dataURL=fCanvas.toDataURL({format:'png',multiplier:1});
+  try{
+    const blob=await(await fetch(dataURL)).blob();
+    const fd=new FormData();fd.append('imagem',blob,'thumb_editor.png');
+    const res=await fetch('/thumb_editor/salvar_biblioteca',{method:'POST',body:fd});
+    const d=await res.json();
+    if(d.ok)alert('✅ Salvo na biblioteca!');
+    else alert('❌ '+(d.erro||'Erro'));
+  }catch(e){alert('❌ Erro ao salvar');}
+}
 
 // History (undo/redo)
 function saveHistory(){
