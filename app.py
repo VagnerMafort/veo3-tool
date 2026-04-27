@@ -205,7 +205,9 @@ RULES:
 3. Each scene = one short sentence from the original text.
 4. Output each scene on a NEW LINE. Nothing else.
 5. Keep the SAME LANGUAGE as the input.
-6. Do NOT add descriptions, visual details, or embellishments."""
+6. Do NOT add descriptions, visual details, or embellishments.
+7. CRITICAL: Maintain the EXACT chronological order of the narrative. NEVER reorder scenes. The first scene in the output must correspond to the first event in the text, and so on.
+8. Even if a scene seems out of context, keep it in its original position in the narrative sequence."""
 }
 
 def load_prompts():
@@ -2086,6 +2088,17 @@ def contatar_suporte():
     assunto = request.json.get("assunto", "").strip()
     mensagem = request.json.get("mensagem", "").strip()
     if not assunto or not mensagem: return jsonify({"erro": "Preencha assunto e mensagem"}), 400
+    # Salvar no banco
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("""CREATE TABLE IF NOT EXISTS suporte_msgs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, nome TEXT, email TEXT,
+            plano TEXT, assunto TEXT, mensagem TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        conn.execute("INSERT INTO suporte_msgs (user_id, nome, email, plano, assunto, mensagem) VALUES (?,?,?,?,?,?)",
+                     (current_user.id, current_user.nome, current_user.email, current_user.plano or 'Sem plano', assunto, mensagem))
+        conn.commit(); conn.close()
+    except: pass
+    # Tentar enviar email
     corpo = f"""<div style="font-family:Arial;max-width:600px;margin:0 auto;padding:20px">
         <h2 style="color:#4a9eff">Suporte — Klyonclaw Studio</h2>
         <p><b>De:</b> {current_user.nome} ({current_user.email})</p>
@@ -2100,6 +2113,22 @@ def contatar_suporte():
 def logout():
     logout_user()
     return redirect(url_for("login"))
+
+@app.route("/admin/suporte_msgs")
+@login_required
+def admin_suporte_msgs():
+    if not current_user.is_admin: return jsonify({"erro": "Sem permissao"}), 403
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("""CREATE TABLE IF NOT EXISTS suporte_msgs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, nome TEXT, email TEXT,
+            plano TEXT, assunto TEXT, mensagem TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        rows = conn.execute("SELECT id, nome, email, plano, assunto, mensagem, criado_em FROM suporte_msgs ORDER BY id DESC LIMIT 50").fetchall()
+        conn.close()
+        msgs = [{"id": r[0], "nome": r[1], "email": r[2], "plano": r[3], "assunto": r[4], "mensagem": r[5], "criado_em": r[6]} for r in rows]
+        return jsonify({"msgs": msgs})
+    except:
+        return jsonify({"msgs": []})
 
 # ── Rotas Stripe ─────────────────────────────────────────
 @app.route("/planos")

@@ -82,6 +82,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     <div class="tab" onclick="trocarAba('usuarios')">👥 Usuários</div>
     <div class="tab" onclick="trocarAba('planos')">💎 Planos</div>
     <div class="tab" onclick="trocarAba('prompts')">📝 Prompts</div>
+    <div class="tab" onclick="trocarAba('suporteAdmin')">💬 Suporte</div>
     {% if is_master %}<div class="tab" onclick="trocarAba('docs')">📖 Docs</div>{% endif %}
   </div>
 
@@ -278,6 +279,14 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     <button class="btn btn-save" id="btnSalvarPrompts">Salvar Prompts</button>
     <div class="ok-box" id="okPrompts"></div>
     <div class="erro-box" id="erroPrompts"></div>
+  </div>
+
+  <!-- SUPORTE ADMIN -->
+  <div class="pane" id="paneSuporteAdmin">
+    <div class="card">
+      <h2>💬 Mensagens de Suporte</h2>
+      <div id="listaSuporte"><div class="vazio">Carregando...</div></div>
+    </div>
   </div>
 
   {% if is_master %}
@@ -491,7 +500,7 @@ function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=docu
 applyTheme();
 
 function trocarAba(aba){
-  const abas=['metricas','usuarios','planos','prompts','docs'];
+  const abas=['metricas','usuarios','planos','prompts','suporteAdmin','docs'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
@@ -572,6 +581,23 @@ fetch('/admin/verificar_apis').then(r=>r.json()).then(d=>{
     const icon=info.status==='ok'?'🟢':'🔴';
     const nome={openai:'OpenAI (Imagens)',minimax:'MiniMax (Vídeo/Áudio)',stripe:'Stripe (Pagamentos)'}[api];
     el.innerHTML+=`<div class="metric-row"><span class="metric-label">${icon} ${nome}</span><span class="metric-value">${info.msg}</span></div>`;
+  });
+});
+
+// Carregar mensagens de suporte
+fetch('/admin/suporte_msgs').then(r=>r.json()).then(d=>{
+  const lista=document.getElementById('listaSuporte');
+  if(!d.msgs||d.msgs.length===0){lista.innerHTML='<div class="vazio">Nenhuma mensagem de suporte.</div>';return;}
+  lista.innerHTML='';
+  d.msgs.forEach(m=>{
+    lista.innerHTML+=`<div class="user-row" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div><b style="color:var(--text)">${m.nome}</b> <span style="color:var(--text3);font-size:.75rem">(${m.email})</span></div>
+        <span style="font-size:.7rem;color:var(--text3)">${m.criado_em||''}</span>
+      </div>
+      <div style="font-size:.75rem;color:var(--accent);margin-bottom:4px">Plano: ${m.plano} | Assunto: ${m.assunto}</div>
+      <div style="font-size:.82rem;color:var(--text2);background:var(--bg2);padding:10px;border-radius:6px;white-space:pre-wrap">${m.mensagem}</div>
+    </div>`;
   });
 });
   document.getElementById('brandSubtitulo').value=d.subtitulo||'AI Video Automation';

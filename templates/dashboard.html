@@ -1537,7 +1537,8 @@ document.getElementById('btnViralTuning').addEventListener('click',async()=>{
 });
 
 // Suporte
-document.getElementById('btnSuporte').addEventListener('click',async()=>{
+const btnSuporte=document.getElementById('btnSuporte');
+if(btnSuporte)btnSuporte.addEventListener('click',async()=>{
   const assunto=document.getElementById('suporteAssunto').value.trim();const msg=document.getElementById('suporteMensagem').value.trim();
   if(!assunto||!msg){document.getElementById('erroSuporte').textContent='❌ Preencha assunto e mensagem';document.getElementById('erroSuporte').style.display='block';return;}
   document.getElementById('erroSuporte').style.display='none';
