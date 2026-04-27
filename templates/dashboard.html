@@ -212,6 +212,24 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <label style="margin-top:16px">🎯 Direção criativa <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
         <textarea id="direcaoCriativa" style="min-height:60px;font-size:.82rem" placeholder="Descreva o clima do vídeo. Ex: atmosfera sombria com elementos de mistério, ou visual futurista com hologramas e luzes neon"></textarea>
         <p class="tip">Orienta a IA sobre o tom, atmosfera e elementos visuais que você quer no vídeo.</p>
+
+        <label style="margin-top:16px">🎬 Tipo de vídeo <span style="color:#ef4444;font-weight:700">*</span></label>
+        <div class="modo-btns" id="tipoVideoBtns">
+          <div class="modo-btn" id="btnTipoAnimado" onclick="setTipoVideo('animado')">🎬 Animado (6s/cena)</div>
+          <div class="modo-btn" id="btnTipoEstatico" onclick="setTipoVideo('estatico')">🖼️ Imagens estáticas</div>
+        </div>
+        <input type="hidden" id="tipoVideo" value=""/>
+        <div id="intervaloSection" style="display:none;margin-top:10px">
+          <label>⏱️ Intervalo entre imagens</label>
+          <select id="intervaloInicio">
+            <option value="2">A cada 2 segundos</option>
+            <option value="3">A cada 3 segundos</option>
+            <option value="5" selected>A cada 5 segundos</option>
+            <option value="8">A cada 8 segundos</option>
+          </select>
+        </div>
+        <p class="tip" id="tipoVideoTip" style="display:none;margin-top:6px"></p>
+        <div class="erro-box" id="erroTipoVideo" style="display:none;margin-top:8px">⚠️ Escolha o tipo de vídeo antes de continuar</div>
         </div>
       </div>
       <button class="btn" id="btnGerarSB">1. Dividir em Cenas</button>
@@ -1027,6 +1045,21 @@ function setModo(m){document.getElementById('modoVideo').value=m;document.getEle
 
 function setFormato(f){document.getElementById('formatoVideo').value=f;document.getElementById('btnVertical').classList.toggle('active',f==='vertical');document.getElementById('btnHorizontal').classList.toggle('active',f==='horizontal');document.getElementById('btnQuadrado').classList.toggle('active',f==='quadrado');}
 
+function setTipoVideo(tipo){
+  document.getElementById('tipoVideo').value=tipo;
+  document.getElementById('btnTipoAnimado').classList.toggle('active',tipo==='animado');
+  document.getElementById('btnTipoEstatico').classList.toggle('active',tipo==='estatico');
+  document.getElementById('erroTipoVideo').style.display='none';
+  const tip=document.getElementById('tipoVideoTip');
+  if(tipo==='animado'){
+    document.getElementById('intervaloSection').style.display='none';
+    tip.textContent='Cada cena será animada em um clipe de 6 segundos com IA.';tip.style.display='block';
+  } else {
+    document.getElementById('intervaloSection').style.display='block';
+    tip.textContent='As imagens serão exibidas com efeito de zoom no intervalo escolhido.';tip.style.display='block';
+  }
+}
+
 const cfgProvider=document.getElementById('cfgProvider'),opcoesOpenAI=document.getElementById('opcoesOpenAI');
 function toggleOpenAI(){if(opcoesOpenAI)opcoesOpenAI.style.display=cfgProvider&&cfgProvider.value==='openai'?'block':'none';}
 if(cfgProvider)cfgProvider.addEventListener('change',toggleOpenAI);
@@ -1123,6 +1156,10 @@ let previewCenas=[], cenasPreenchidas={};
 document.getElementById('btnGerarSB').addEventListener('click',async()=>{
   const texto=document.getElementById('textoRoteiro').value.trim();
   if(!texto){document.getElementById('erroSB').textContent='❌ Escreva o roteiro';document.getElementById('erroSB').style.display='block';return;}
+  // Validar tipo de vídeo obrigatório
+  const tipoVideo=document.getElementById('tipoVideo').value;
+  if(!tipoVideo){document.getElementById('erroTipoVideo').style.display='block';return;}
+  document.getElementById('erroTipoVideo').style.display='none';
   document.getElementById('erroSB').style.display='none';document.getElementById('btnGerarSB').disabled=true;document.getElementById('statusSB').style.display='block';
   // Animar barra de progresso durante divisão
   let progresso=0;
@@ -1258,7 +1295,15 @@ function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/st
     mostrarErroSB(d.progresso);}
 },3000);}
 
-function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaPreview').style.display='none';document.getElementById('etapaStoryboard').style.display='block';const lista=document.getElementById('listaCenas');lista.innerHTML='';sbBlocos.forEach((b,i)=>{
+function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaPreview').style.display='none';document.getElementById('etapaStoryboard').style.display='block';
+  // Pré-configurar animação baseado na escolha inicial
+  const tipoVideo=document.getElementById('tipoVideo').value;
+  const animarEl=document.getElementById('animarIA');
+  if(animarEl){
+    if(tipoVideo==='animado'){animarEl.checked=true;animarEl.disabled=true;}
+    else{animarEl.checked=false;}
+  }
+  const lista=document.getElementById('listaCenas');lista.innerHTML='';sbBlocos.forEach((b,i)=>{
   const hasVideo=b.video?true:false;
   const videoBadge=hasVideo?'<span style="background:var(--green);color:#fff;font-size:.65rem;padding:2px 8px;border-radius:10px;margin-left:6px">🎬 Vídeo do banco</span>':'';
   lista.innerHTML+=`<div class="sb-cena" id="cena-${b.index}"><div class="sb-num">Cena ${b.index}${videoBadge}</div>${hasVideo?`<video src="/storyboard_img/${sbId}/${b.video}?t=${Date.now()}" style="width:100%;border-radius:8px;margin-bottom:10px" controls muted playsinline></video>`:`<img src="/storyboard_img/${sbId}/${b.img}?t=${Date.now()}" alt="Cena ${b.index}"/>`}<div class="sb-texto" contenteditable="true" id="texto-${b.index}">${b.texto}</div><div class="sb-btns"><button class="btn-sm" style="background:var(--accent)" onclick="regerarCena(${b.index})">🔄 Regerar</button><button class="btn-sm" style="background:#f59e0b" onclick="girarCena(${b.index})">↻ Girar</button><label class="btn-sm" style="background:#1d4ed8;cursor:pointer">📤 Upload<input type="file" accept="image/*" style="display:none" onchange="uploadCena(${b.index},this)"/></label><button class="btn-sm" style="background:var(--green)" onclick="abrirBanco(${b.index})">🗃️ Banco</button></div></div>`;});}
@@ -1319,7 +1364,16 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   document.getElementById('erroFinal').style.display='none';document.getElementById('btnFinalizar').disabled=true;document.getElementById('statusFinal').style.display='block';document.getElementById('resultado').style.display='none';
   const fd=new FormData();fd.append('sb_id',sbId);const voiceEl=document.getElementById('voiceId');fd.append('voice_id',voiceEl?voiceEl.value:'');fd.append('modo_video',document.getElementById('modoVideo').value);fd.append('intervalo',document.getElementById('intervalo').value);
   fd.append('legenda_ativo',legendaAtivo&&legendaAtivo.checked?'true':'false');fd.append('legenda_fonte',document.getElementById('legendaFonte')?document.getElementById('legendaFonte').value:'Arial');fd.append('legenda_tamanho',document.getElementById('legendaTamanho')?document.getElementById('legendaTamanho').value:'18');fd.append('legenda_cor',document.getElementById('legendaCor')?document.getElementById('legendaCor').value:'&H00FFFFFF');fd.append('legenda_posicao',document.getElementById('legendaPosicao')?document.getElementById('legendaPosicao').value:'2');fd.append('legenda_sombra',document.getElementById('legendaSombra')&&document.getElementById('legendaSombra').checked?'true':'false');
-  const animarEl=document.getElementById('animarIA');fd.append('animar_ia',animarEl&&animarEl.checked?'true':'false');
+  const animarEl=document.getElementById('animarIA');
+  // Usar tipo de vídeo escolhido no início
+  const tipoVideo=document.getElementById('tipoVideo').value;
+  if(tipoVideo==='animado'){fd.append('animar_ia','true');}
+  else{fd.append('animar_ia',animarEl&&animarEl.checked?'true':'false');}
+  // Usar intervalo escolhido no início se for estático
+  if(tipoVideo==='estatico'){
+    const intervaloInicio=document.getElementById('intervaloInicio');
+    if(intervaloInicio)fd.append('intervalo',intervaloInicio.value);
+  }
   fd.append('musica_id',document.getElementById('musicaId').value);
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}
 });
