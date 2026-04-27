@@ -1007,6 +1007,10 @@ async function abrirRascunho(rascunhoId){
     sbId=d.sb_id;
     sbBlocos=d.blocos;
     sbEstilo=d.estilo||'';
+    // Definir tipo de vídeo padrão se não foi escolhido
+    if(!document.getElementById('tipoVideo').value){
+      setTipoVideo('estatico');
+    }
     trocarAba('gerar');
     setTimeout(()=>mostrarStoryboard(),100);
   }catch(e){alert('Erro ao carregar rascunho');}
@@ -1389,7 +1393,7 @@ function mostrarErroSB(msg){
   }
 }
 
-document.getElementById('btnNovo').addEventListener('click',()=>{document.getElementById('resultado').style.display='none';document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';document.getElementById('textoRoteiro').value='';});
+document.getElementById('btnNovo').addEventListener('click',()=>{document.getElementById('resultado').style.display='none';document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';document.getElementById('textoRoteiro').value='';document.getElementById('tipoVideo').value='';document.getElementById('btnTipoAnimado').classList.remove('active');document.getElementById('btnTipoEstatico').classList.remove('active');document.getElementById('intervaloSection').style.display='none';document.getElementById('tipoVideoTip').style.display='none';});
 
 // Thumbnail Engine
 let _thumbAnalise=null, _thumbAnaliseJson='';
