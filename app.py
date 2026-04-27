@@ -55,7 +55,7 @@ SMTP_PASS = os.environ.get("SMTP_PASS", "")
 EMAIL_FROM = os.environ.get("EMAIL_FROM", SMTP_USER)
 
 # Admin Master — único que pode conceder/remover admin de outros
-ADMIN_MASTER_EMAIL = "ministerioprvagner@gmail.com"
+ADMIN_MASTER_EMAIL = os.environ.get("ADMIN_MASTER_EMAIL", "ministerioprvagner@gmail.com")
 
 def enviar_email(destinatario, assunto, corpo_html):
     """Envia email em background"""
@@ -1021,7 +1021,9 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             if cenas_a_gerar:
                 creditos_por_cena = calcular_creditos_cena(melhorar_prompt=melhorar_prompts, narracao=False, animar=False)
                 creditos_gastos_sb = len(cenas_a_gerar) * creditos_por_cena
-                user.gastar_creditos(creditos_gastos_sb)
+                if not user.gastar_creditos(creditos_gastos_sb):
+                    jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes. Necessário: {creditos_gastos_sb}", "total": 0, "atual": 0}
+                    return
                 db.session.commit()
 
             blocos.sort(key=lambda x: x["index"])
@@ -1609,6 +1611,8 @@ def thumb_engine_analisar():
 @app.route("/thumb_engine/gerar", methods=["POST"])
 @login_required
 def thumb_engine_gerar():
+    if rate_limit_check(f"thumbgen_{current_user.id}", max_requests=3, window=60):
+        return jsonify({"erro": "Aguarde antes de gerar novamente."}), 429
     roteiro = request.form.get("roteiro", "").strip()
     estilo = request.form.get("estilo", "cinematic").strip()
     analise_json = request.form.get("analise", "{}").strip()
@@ -1800,6 +1804,12 @@ def thumb_editor_editar():
         return jsonify({"erro": "Escreva uma instrução de edição"}), 400
     if "imagem" not in request.files or not request.files["imagem"].filename:
         return jsonify({"erro": "Envie a imagem de referência"}), 400
+    # Validar tamanho (max 20MB)
+    img_file = request.files["imagem"]
+    img_file.seek(0, 2)
+    if img_file.tell() > 20 * 1024 * 1024:
+        return jsonify({"erro": "Imagem muito grande. Máximo 20MB."}), 400
+    img_file.seek(0)
     if not current_user.get_api_key():
         return jsonify({"erro": "Assine um plano para usar."}), 400
     if not current_user.gastar_creditos(CREDITOS_POR_IMAGEM):
@@ -2054,7 +2064,7 @@ def contatar_suporte():
         <p><b>Plano:</b> {current_user.plano or 'Sem plano'} | <b>Créditos:</b> {current_user.creditos}</p>
         <p><b>Assunto:</b> {assunto}</p><hr/>
         <p style="white-space:pre-wrap">{mensagem}</p></div>"""
-    enviar_email("support@klyonclaw.com", f"[Suporte] {assunto} — {current_user.nome}", corpo)
+    enviar_email(os.environ.get("SUPPORT_EMAIL", "support@klyonclaw.com"), f"[Suporte] {assunto} — {current_user.nome}", corpo)
     return jsonify({"ok": True, "msg": "Mensagem enviada! Responderemos em breve."})
 
 @app.route("/logout")
@@ -2172,16 +2182,16 @@ def pagamento_sucesso():
 
 @app.route("/stripe_webhook", methods=["POST"])
 def stripe_webhook():
+    if not STRIPE_WEBHOOK_SECRET:
+        return jsonify({"erro": "Webhook não configurado"}), 500
+
     payload = request.get_data()
     sig_header = request.headers.get("Stripe-Signature")
 
-    if STRIPE_WEBHOOK_SECRET:
-        try:
-            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-        except (ValueError, stripe.error.SignatureVerificationError):
-            return jsonify({"erro": "Webhook invalido"}), 400
-    else:
-        event = json.loads(payload)
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+    except (ValueError, stripe.error.SignatureVerificationError):
+        return jsonify({"erro": "Webhook invalido"}), 400
 
     # Renovação mensal da assinatura
     if event["type"] == "invoice.payment_succeeded":
@@ -2272,12 +2282,24 @@ def dashboard():
 def perfil():
     if request.method == "POST":
         data = request.json
-        current_user.provider = data.get("provider", "")
-        current_user.api_key = data.get("api_key", "")
-        current_user.image_size = data.get("image_size", "1024x1024")
-        current_user.quality = data.get("quality", "standard")
-        current_user.minimax_key = data.get("minimax_key", "")
-        current_user.minimax_group_id = data.get("minimax_group_id", "")
+        provider = data.get("provider", "").strip()
+        api_key = data.get("api_key", "").strip()
+        # Validar provider
+        if provider and provider not in ("openai", "replicate"):
+            return jsonify({"erro": "Provedor inválido"}), 400
+        # Validar tamanhos
+        image_size = data.get("image_size", "1024x1024")
+        if image_size not in ("1024x1024", "1792x1024", "1024x1792"):
+            image_size = "1024x1024"
+        quality = data.get("quality", "standard")
+        if quality not in ("standard", "hd"):
+            quality = "standard"
+        current_user.provider = provider
+        current_user.api_key = api_key
+        current_user.image_size = image_size
+        current_user.quality = quality
+        current_user.minimax_key = data.get("minimax_key", "").strip()
+        current_user.minimax_group_id = data.get("minimax_group_id", "").strip()
         db.session.commit()
         return jsonify({"ok": True})
     return jsonify({"provider": current_user.provider, "api_key": current_user.api_key,
@@ -2484,7 +2506,14 @@ def admin_branding():
 
 @app.route("/static/<path:filename>")
 def static_files(filename):
-    return send_file(os.path.join("static", filename))
+    if ".." in filename or filename.startswith("/"):
+        return jsonify({"erro": "Acesso negado"}), 403
+    filepath = os.path.normpath(os.path.join("static", filename))
+    if not filepath.startswith(os.path.normpath("static")):
+        return jsonify({"erro": "Acesso negado"}), 403
+    if not os.path.exists(filepath):
+        return jsonify({"erro": "Não encontrado"}), 404
+    return send_file(filepath)
 
 @app.route("/admin/banco_imagens")
 @login_required
@@ -2549,10 +2578,11 @@ def admin_definir_plano():
 @app.route("/banco_img/<path:filename>")
 @login_required
 def banco_img_file(filename):
-    # Prevenir path traversal
     if ".." in filename or filename.startswith("/"):
         return jsonify({"erro": "Acesso negado"}), 403
-    filepath = os.path.join(BANCO_IMG_FOLDER, filename)
+    filepath = os.path.normpath(os.path.join(BANCO_IMG_FOLDER, filename))
+    if not filepath.startswith(os.path.normpath(BANCO_IMG_FOLDER)):
+        return jsonify({"erro": "Acesso negado"}), 403
     if not os.path.exists(filepath):
         return jsonify({"erro": "Arquivo não encontrado"}), 404
     return send_file(filepath)
@@ -2659,6 +2689,12 @@ def clonar_voz():
     if not nome_voz:
         return jsonify({"erro": "Digite um nome para a voz"}), 400
     audio = request.files["audio"]
+    if not audio.filename.lower().endswith((".mp3", ".wav", ".m4a", ".ogg")):
+        return jsonify({"erro": "Formato inválido. Use MP3, WAV, M4A ou OGG"}), 400
+    audio.seek(0, 2)
+    if audio.tell() > 30 * 1024 * 1024:
+        return jsonify({"erro": "Arquivo muito grande. Máximo 30MB."}), 400
+    audio.seek(0)
     voice_id = f"user_{current_user.id}_{uuid.uuid4().hex[:8]}"
     caminho = os.path.join(UPLOAD_FOLDER, f"{voice_id}.mp3")
     audio.save(caminho)
@@ -2690,8 +2726,14 @@ def upload_musica():
         return jsonify({"erro": "Envie um arquivo de música"}), 400
     musica = request.files["musica"]
     nome = request.form.get("nome", "").strip() or musica.filename
-    if not musica.filename.endswith((".mp3", ".wav", ".m4a", ".ogg")):
+    if not musica.filename.lower().endswith((".mp3", ".wav", ".m4a", ".ogg")):
         return jsonify({"erro": "Formato inválido. Use MP3, WAV, M4A ou OGG"}), 400
+    # Verificar tamanho (max 50MB)
+    musica.seek(0, 2)
+    size = musica.tell()
+    musica.seek(0)
+    if size > 50 * 1024 * 1024:
+        return jsonify({"erro": "Arquivo muito grande. Máximo 50MB."}), 400
     musica_id = f"mus_{current_user.id}_{uuid.uuid4().hex[:8]}"
     filename = f"{musica_id}.mp3"
     filepath = os.path.join(MUSICAS_FOLDER, filename)
@@ -2740,8 +2782,11 @@ def deletar_musica():
 @app.route("/musica_file/<path:filename>")
 @login_required
 def musica_file(filename):
-    # Verificar se a música pertence ao usuário
-    filepath = os.path.join(MUSICAS_FOLDER, filename)
+    if ".." in filename or filename.startswith("/"):
+        return jsonify({"erro": "Acesso negado"}), 403
+    filepath = os.path.normpath(os.path.join(MUSICAS_FOLDER, filename))
+    if not filepath.startswith(os.path.normpath(MUSICAS_FOLDER)):
+        return jsonify({"erro": "Acesso negado"}), 403
     try:
         conn = sqlite3.connect('instance/veo3.db')
         row = conn.execute("SELECT id FROM musicas WHERE user_id=? AND path=?", (current_user.id, filepath)).fetchone()
@@ -2885,6 +2930,8 @@ def carregar_rascunho(sb_id):
 @app.route("/regerar_cena", methods=["POST"])
 @login_required
 def regerar_cena():
+    if rate_limit_check(f"regerar_{current_user.id}", max_requests=5, window=60):
+        return jsonify({"erro": "Aguarde antes de regerar novamente."}), 429
     if not current_user.get_api_key():
         return jsonify({"erro": "Nenhuma chave de API disponível"}), 400
     # Cobrar crédito por regeneração (só imagem base)

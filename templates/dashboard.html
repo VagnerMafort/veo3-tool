@@ -981,9 +981,11 @@ async function atualizarCreditos(){
 setInterval(atualizarCreditos,30000);
 
 // Salvar perfil
-document.getElementById('btnSalvarPerfil').addEventListener('click',async()=>{
-  const data={provider:cfgProvider?cfgProvider.value:'',api_key:document.getElementById('cfgApiKey').value.trim(),quality:document.getElementById('cfgQuality')?document.getElementById('cfgQuality').value:'standard',image_size:document.getElementById('cfgSize')?document.getElementById('cfgSize').value:'1024x1024',minimax_key:document.getElementById('cfgMinimaxKey').value.trim(),minimax_group_id:document.getElementById('cfgMinimaxGroupId').value.trim()};
-  if(!data.provider||!data.api_key){document.getElementById('erroPerfil').textContent='❌ Preencha provedor e chave';document.getElementById('erroPerfil').style.display='block';return;}
+const btnSalvarPerfil=document.getElementById('btnSalvarPerfil');
+if(btnSalvarPerfil)btnSalvarPerfil.addEventListener('click',async()=>{
+  const apiKeyEl=document.getElementById('cfgApiKey');const mmKeyEl=document.getElementById('cfgMinimaxKey');const mmGidEl=document.getElementById('cfgMinimaxGroupId');
+  const data={provider:cfgProvider?cfgProvider.value:'',api_key:apiKeyEl?apiKeyEl.value.trim():'',quality:document.getElementById('cfgQuality')?document.getElementById('cfgQuality').value:'standard',image_size:document.getElementById('cfgSize')?document.getElementById('cfgSize').value:'1024x1024',minimax_key:mmKeyEl?mmKeyEl.value.trim():'',minimax_group_id:mmGidEl?mmGidEl.value.trim():''};
+  if(!data.provider&&!data.api_key){/* sem API configurada, ok */}
   const res=await fetch('/perfil',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
   if((await res.json()).ok){document.getElementById('badgePerfil').className='badge badge-ok';document.getElementById('badgePerfil').textContent='✓';document.getElementById('erroPerfil').style.display='none';location.reload();}
 });
@@ -1402,7 +1404,8 @@ document.getElementById('btnSuporte').addEventListener('click',async()=>{
   try{const res=await fetch('/suporte',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assunto,mensagem:msg})});const d=await res.json();if(d.erro)throw new Error(d.erro);document.getElementById('okSuporte').textContent='✅ '+d.msg;document.getElementById('okSuporte').style.display='block';document.getElementById('suporteAssunto').value='';document.getElementById('suporteMensagem').value='';}catch(e){document.getElementById('erroSuporte').textContent='❌ '+e.message;document.getElementById('erroSuporte').style.display='block';}
 });
 
-document.getElementById('btnMudarSenha').addEventListener('click',async()=>{
+const btnMudarSenha=document.getElementById('btnMudarSenha');
+if(btnMudarSenha)btnMudarSenha.addEventListener('click',async()=>{
   const atual=document.getElementById('senhaAtual').value;const nova=document.getElementById('novaSenha').value;
   if(!atual||!nova){document.getElementById('erroSenha').textContent='❌ Preencha os dois campos';document.getElementById('erroSenha').style.display='block';return;}
   const res=await fetch('/mudar_senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({senha_atual:atual,nova_senha:nova})});const d=await res.json();
