@@ -958,7 +958,7 @@ def dividir_roteiro(texto, api_key):
     except: pass
     return [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()] or [texto.strip()]
 
-def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco=False, cenas_preenchidas=None, direcao_criativa="", formato="vertical"):
+def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco=False, cenas_preenchidas=None, direcao_criativa="", formato="vertical", personagem_path=""):
     if cenas_preenchidas is None:
         cenas_preenchidas = {}
     with app.app_context():
@@ -1009,7 +1009,16 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
-                gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
+                # Se tem personagem de referência, usar edição com imagem
+                if personagem_path and os.path.exists(personagem_path):
+                    try:
+                        ref_prompt = f"Generate an image for this scene: {prompt_final}. The main character MUST look exactly like the person in the reference photo. Keep the same face, skin tone, hair, and body type. The character should be in the scene described, wearing appropriate clothing for the setting."
+                        editar_imagem_openai(ref_prompt, user.get_api_key(), [personagem_path], img_path,
+                                             size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
+                    except:
+                        gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
+                else:
+                    gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
                 blocos.append({"index": i_linha+1, "texto": linha, "img": f"{i_linha+1:03d}.png"})
                 jobs[job_id]["atual"] = len(blocos)
                 jobs[job_id]["progresso"] = f"Gerando imagem {len(blocos)} de {total}..."
@@ -2919,9 +2928,16 @@ def gerar_storyboard_route():
     direcao_criativa = request.form.get("direcao_criativa", "").strip()
     formato = request.form.get("formato", "vertical")
 
+    # Salvar personagem de referência se enviado
+    personagem_path = ""
+    if "personagem" in request.files and request.files["personagem"].filename:
+        personagem_file = request.files["personagem"]
+        personagem_path = os.path.join(UPLOAD_FOLDER, f"personagem_{current_user.id}_{uuid.uuid4().hex[:8]}.png")
+        personagem_file.save(personagem_path)
+
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, False, cenas_preenchidas, direcao_criativa, formato))
+    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, False, cenas_preenchidas, direcao_criativa, formato, personagem_path))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})

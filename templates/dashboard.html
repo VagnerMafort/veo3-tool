@@ -213,6 +213,20 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <textarea id="direcaoCriativa" style="min-height:60px;font-size:.82rem" placeholder="Descreva o clima do vídeo. Ex: atmosfera sombria com elementos de mistério, ou visual futurista com hologramas e luzes neon"></textarea>
         <p class="tip">Orienta a IA sobre o tom, atmosfera e elementos visuais que você quer no vídeo.</p>
 
+        <label style="margin-top:16px">👤 Personagem de referência <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
+        <p class="tip" style="margin-bottom:8px">Envie uma foto de uma pessoa ou personagem. A IA vai gerar todas as cenas com esse personagem.</p>
+        <div class="drop-area" id="dropAreaPersonagem" style="padding:14px">
+          <input type="file" id="filePersonagem" accept="image/*"/>
+          <div class="drop-icon" style="font-size:1.2rem">👤</div>
+          <p style="font-size:.82rem">Enviar foto do personagem</p>
+          <p class="fmt">PNG · JPG</p>
+        </div>
+        <div id="previewPersonagem" style="display:none;margin-top:8px;text-align:center">
+          <img id="previewPersonagemImg" style="max-width:120px;border-radius:10px;border:2px solid var(--accent)"/>
+          <p style="font-size:.75rem;color:var(--accent);margin-top:4px">Personagem carregado ✓</p>
+          <button class="btn-sm" style="background:var(--red);margin-top:4px" onclick="limparPersonagem()">✕ Remover</button>
+        </div>
+
         <label style="margin-top:16px">🎬 Tipo de vídeo <span style="color:#ef4444;font-weight:700">*</span></label>
         <div class="modo-btns" id="tipoVideoBtns">
           <div class="modo-btn" id="btnTipoAnimado" onclick="setTipoVideo('animado')">🎬 Animado (6s/cena)</div>
@@ -1054,6 +1068,18 @@ function setTipoVideo(tipo){
   }
 }
 
+// Personagem de referência
+let _personagemFile=null;
+const filePersonagem=document.getElementById('filePersonagem');
+if(filePersonagem)filePersonagem.addEventListener('change',()=>{
+  _personagemFile=filePersonagem.files[0];
+  if(_personagemFile){
+    const r=new FileReader();r.onload=e=>{document.getElementById('previewPersonagemImg').src=e.target.result;document.getElementById('previewPersonagem').style.display='block';};
+    r.readAsDataURL(_personagemFile);
+  }
+});
+function limparPersonagem(){_personagemFile=null;document.getElementById('previewPersonagem').style.display='none';document.getElementById('filePersonagem').value='';}
+
 const cfgProvider=document.getElementById('cfgProvider'),opcoesOpenAI=document.getElementById('opcoesOpenAI');
 function toggleOpenAI(){if(opcoesOpenAI)opcoesOpenAI.style.display=cfgProvider&&cfgProvider.value==='openai'?'block':'none';}
 if(cfgProvider)cfgProvider.addEventListener('change',toggleOpenAI);
@@ -1249,6 +1275,7 @@ document.getElementById('btnGerarFaltantes').addEventListener('click',async()=>{
   fd.append('direcao_criativa',document.getElementById('direcaoCriativa').value.trim());
   fd.append('formato',document.getElementById('formatoVideo').value);
   fd.append('cenas_preenchidas',JSON.stringify(cenasPreenchidas));
+  if(_personagemFile)fd.append('personagem',_personagemFile);
   try{
     const res=await fetch('/gerar_storyboard',{method:'POST',body:fd});
     const d=await res.json();if(d.erro)throw new Error(d.erro);
@@ -1393,7 +1420,7 @@ function mostrarErroSB(msg){
   }
 }
 
-document.getElementById('btnNovo').addEventListener('click',()=>{document.getElementById('resultado').style.display='none';document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';document.getElementById('textoRoteiro').value='';document.getElementById('tipoVideo').value='';document.getElementById('btnTipoAnimado').classList.remove('active');document.getElementById('btnTipoEstatico').classList.remove('active');document.getElementById('intervaloSection').style.display='none';document.getElementById('tipoVideoTip').style.display='none';});
+document.getElementById('btnNovo').addEventListener('click',()=>{document.getElementById('resultado').style.display='none';document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';document.getElementById('textoRoteiro').value='';document.getElementById('tipoVideo').value='';document.getElementById('btnTipoAnimado').classList.remove('active');document.getElementById('btnTipoEstatico').classList.remove('active');document.getElementById('intervaloSection').style.display='none';document.getElementById('tipoVideoTip').style.display='none';limparPersonagem();});
 
 // Thumbnail Engine
 let _thumbAnalise=null, _thumbAnaliseJson='';
