@@ -2624,6 +2624,32 @@ def admin_deletar_imagem():
     conn.close()
     return jsonify({"ok": True})
 
+@app.route("/admin/upload_banco", methods=["POST"])
+@login_required
+def admin_upload_banco():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    if "arquivo" not in request.files or not request.files["arquivo"].filename:
+        return jsonify({"erro": "Envie um arquivo"}), 400
+    arquivo = request.files["arquivo"]
+    filename = arquivo.filename.lower()
+    if not filename.endswith((".png", ".jpg", ".jpeg", ".webp", ".mp4")):
+        return jsonify({"erro": "Formato inválido. Use PNG, JPG, WEBP ou MP4"}), 400
+    arquivo.seek(0, 2)
+    if arquivo.tell() > 100 * 1024 * 1024:
+        return jsonify({"erro": "Arquivo muito grande. Máximo 100MB."}), 400
+    arquivo.seek(0)
+    ext = filename.rsplit(".", 1)[-1]
+    nome = f"{uuid.uuid4().hex[:12]}.{ext}"
+    destino = os.path.join(BANCO_IMG_FOLDER, nome)
+    arquivo.save(destino)
+    tipo = "video" if ext == "mp4" else "imagem"
+    conn = sqlite3.connect('instance/veo3.db')
+    conn.execute("INSERT INTO banco_imagens (prompt, estilo, tags, path, tipo, categoria, descricao) VALUES (?,?,?,?,?,?,?)",
+                 ("Upload admin", "", "upload admin", destino, tipo, "admin_upload", "Upload manual pelo admin"))
+    conn.commit(); conn.close()
+    return jsonify({"ok": True})
+
 @app.route("/admin/dar_creditos", methods=["POST"])
 @login_required
 def admin_dar_creditos():

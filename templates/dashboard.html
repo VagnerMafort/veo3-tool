@@ -92,8 +92,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 .sb-cena .sb-texto{font-size:.88rem;color:var(--text);margin-bottom:10px;padding:8px;background:var(--bg2);border-radius:6px;border:1px solid var(--border)}
 .sb-cena .sb-num{font-size:.72rem;color:var(--accent);font-weight:700;margin-bottom:6px}
 .sb-btns{display:flex;gap:6px;flex-wrap:wrap}
-.banco-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;padding:20px;overflow-y:auto}
-.banco-content{max-width:500px;margin:40px auto;background:var(--bg2);border-radius:14px;padding:20px}
+.banco-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:100;overflow-y:auto}
+.banco-content{max-width:900px;margin:0 auto;background:var(--bg2);min-height:100vh;padding:20px}
 .banco-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .banco-item{border:2px solid var(--border);border-radius:8px;cursor:pointer;overflow:hidden;transition:.2s}
 .banco-item:hover{border-color:var(--accent)}
@@ -947,15 +947,23 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 <!-- Modal Banco de Imagens -->
 <div class="banco-modal" id="bancoModal">
   <div class="banco-content">
-    <h2 style="margin-bottom:14px">🗃️ Banco de Imagens e Vídeos</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:var(--bg2);padding:10px 0;z-index:10;border-bottom:1px solid var(--border)">
+      <h2 style="margin:0">🗃️ Banco de Imagens e Vídeos</h2>
+      <button onclick="fecharBanco()" style="background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:600">✕ Fechar</button>
+    </div>
     <input type="text" id="bancoBusca" placeholder="Buscar por descrição ou palavra-chave..." oninput="buscarBanco()"/>
-    <div style="display:flex;gap:6px;margin-top:10px">
+    <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
       <button class="modo-btn active" id="filtroTodos" onclick="filtrarBanco('')">Todos</button>
       <button class="modo-btn" id="filtroImg" onclick="filtrarBanco('imagem')">🖼️ Imagens</button>
       <button class="modo-btn" id="filtroVid" onclick="filtrarBanco('video')">🎬 Vídeos</button>
+      {% if user.is_admin %}
+      <label class="modo-btn" style="cursor:pointer">📤 Upload<input type="file" accept="image/*,video/mp4" style="display:none" id="bancoUploadAdmin" onchange="uploadBancoAdmin(this)"/></label>
+      {% endif %}
     </div>
-    <div class="banco-grid" id="bancoGrid"></div>
-    <button class="btn-outline" onclick="fecharBanco()" style="margin-top:14px">Fechar</button>
+    <div class="banco-grid" id="bancoGrid" style="grid-template-columns:repeat(3,1fr)"></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn-outline" onclick="fecharBanco()" style="flex:1">✕ Fechar</button>
+    </div>
   </div>
 </div>
 
@@ -1350,24 +1358,36 @@ async function buscarBanco(append){
   const d=await res.json();
   const grid=document.getElementById('bancoGrid');
   if(!append){grid.innerHTML='';_bancoCache={};}
-  // Remover botão carregar mais anterior
   const btnMais=document.getElementById('btnCarregarMais');if(btnMais)btnMais.remove();
   if(d.imgs.length===0&&!append){grid.innerHTML='<p style="grid-column:1/-1;text-align:center;color:var(--text3)">Nenhum item encontrado</p>';return;}
+  const isAdmin={{ 'true' if user.is_admin else 'false' }};
   d.imgs.forEach(img=>{_bancoCache[img.id]=img;const isVideo=img.tipo==='video';const badge=isVideo?'<span style="position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;font-size:.6rem;padding:2px 6px;border-radius:10px">🎬</span>':'';
+    const delBtn=isAdmin?`<button onclick="event.stopPropagation();deletarBancoItem(${img.id})" style="position:absolute;top:4px;left:4px;background:rgba(220,38,38,0.9);color:#fff;border:none;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:.7rem">✕</button>`:'';
     grid.innerHTML+=`<div class="banco-item" style="position:relative">
-      ${badge}
-      ${isVideo?`<video src="/banco_img/${img.path}" style="width:100%;display:block;border-radius:6px" controls muted playsinline preload="metadata"></video>`:`<img src="/banco_img/${img.path}" alt="" style="width:100%;display:block"/>`}
+      ${badge}${delBtn}
+      ${isVideo?`<video src="/banco_img/${img.path}" style="width:100%;display:block;border-radius:6px" controls muted playsinline preload="none" poster=""></video>`:`<img loading="lazy" src="/banco_img/${img.path}" alt="" style="width:100%;display:block"/>`}
       <p title="${img.descricao||img.prompt}" style="padding:6px;font-size:.72rem;color:var(--text3)">${(img.descricao||img.prompt).substring(0,60)}</p>
-      <button onclick="selecionarBanco(${img.id})" style="width:100%;padding:6px;background:var(--accent);color:#fff;border:none;border-radius:0 0 6px 6px;font-size:.75rem;cursor:pointer">Usar esta ${isVideo?'cena':'imagem'}</button>
+      <button onclick="selecionarBanco(${img.id})" style="width:100%;padding:6px;background:var(--accent);color:#fff;border:none;border-radius:0 0 6px 6px;font-size:.75rem;cursor:pointer">Usar ${isVideo?'cena':'imagem'}</button>
     </div>`;
   });
-  // Botão carregar mais
   if(d.tem_mais){
     const container=grid.parentElement;
     const btn=document.createElement('button');btn.id='btnCarregarMais';btn.className='btn-outline';btn.style.cssText='margin-top:10px;width:100%';btn.textContent=`Carregar mais (${d.total - bancoPagina*20} restantes)`;
     btn.onclick=()=>{bancoPagina++;buscarBanco(true);};
     container.insertBefore(btn,container.querySelector('.btn-outline:last-child'));
   }
+}
+async function deletarBancoItem(imgId){
+  if(!confirm('Deletar este item do banco?'))return;
+  const res=await fetch('/admin/deletar_imagem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:imgId})});
+  const d=await res.json();
+  if(d.ok)buscarBanco();else alert('❌ '+(d.erro||'Erro'));
+}
+async function uploadBancoAdmin(input){
+  if(!input.files[0])return;
+  const fd=new FormData();fd.append('arquivo',input.files[0]);
+  try{const res=await fetch('/admin/upload_banco',{method:'POST',body:fd});const d=await res.json();if(d.ok){alert('✅ Enviado!');buscarBanco();}else alert('❌ '+(d.erro||'Erro'));}catch(e){alert('❌ Erro');}
+  input.value='';
 }
 
 document.getElementById('btnVoltarRoteiro').addEventListener('click',()=>{document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';});
