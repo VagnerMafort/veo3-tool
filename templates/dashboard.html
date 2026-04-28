@@ -134,7 +134,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
     <h1>Klyonclaw <span>Studio</span></h1>
     <div class="header-right">
       <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">🌙</button>
-      {% if user.is_admin %}<a href="/admin" style="color:var(--accent);font-size:.8rem;text-decoration:none">⚙️ Admin</a>{% endif %}
+      {% if user.is_admin %}<a href="/admin" style="color:var(--accent);font-size:.8rem;text-decoration:none;position:relative">⚙️ Admin<span id="adminBadge" style="display:none;position:absolute;top:-6px;right:-10px;background:#ef4444;color:#fff;font-size:.6rem;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700"></span></a>{% endif %}
       <div class="avatar">{{ user.nome[0].upper() }}</div>
       <button class="btn-sair" onclick="window.location.href='/logout'">Sair</button>
     </div>
@@ -1126,6 +1126,18 @@ async function atualizarCreditos(){
   }catch(e){}
 }
 setInterval(atualizarCreditos,30000);
+
+// Verificar mensagens de suporte não lidas (só admin)
+{% if user.is_admin %}
+async function checkSuporteNaoLidas(){
+  try{const res=await fetch('/admin/suporte_nao_lidas');const d=await res.json();
+    const badge=document.getElementById('adminBadge');
+    if(badge){if(d.count>0){badge.textContent=d.count;badge.style.display='flex';}else{badge.style.display='none';}}
+  }catch(e){}
+}
+checkSuporteNaoLidas();
+setInterval(checkSuporteNaoLidas,30000);
+{% endif %}
 
 // Salvar perfil
 const btnSalvarPerfil=document.getElementById('btnSalvarPerfil');

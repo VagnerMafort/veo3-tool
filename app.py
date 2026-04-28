@@ -2137,7 +2137,7 @@ def contatar_suporte():
         conn = sqlite3.connect('instance/veo3.db')
         conn.execute("""CREATE TABLE IF NOT EXISTS suporte_msgs (
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, nome TEXT, email TEXT,
-            plano TEXT, assunto TEXT, mensagem TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+            plano TEXT, assunto TEXT, mensagem TEXT, lida INTEGER DEFAULT 0, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
         conn.execute("INSERT INTO suporte_msgs (user_id, nome, email, plano, assunto, mensagem) VALUES (?,?,?,?,?,?)",
                      (current_user.id, current_user.nome, current_user.email, current_user.plano or 'Sem plano', assunto, mensagem))
         conn.commit(); conn.close()
@@ -2166,13 +2166,31 @@ def admin_suporte_msgs():
         conn = sqlite3.connect('instance/veo3.db')
         conn.execute("""CREATE TABLE IF NOT EXISTS suporte_msgs (
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, nome TEXT, email TEXT,
-            plano TEXT, assunto TEXT, mensagem TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
-        rows = conn.execute("SELECT id, nome, email, plano, assunto, mensagem, criado_em FROM suporte_msgs ORDER BY id DESC LIMIT 50").fetchall()
-        conn.close()
-        msgs = [{"id": r[0], "nome": r[1], "email": r[2], "plano": r[3], "assunto": r[4], "mensagem": r[5], "criado_em": r[6]} for r in rows]
+            plano TEXT, assunto TEXT, mensagem TEXT, lida INTEGER DEFAULT 0, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        try: conn.execute("ALTER TABLE suporte_msgs ADD COLUMN lida INTEGER DEFAULT 0")
+        except: pass
+        rows = conn.execute("SELECT id, nome, email, plano, assunto, mensagem, criado_em, lida FROM suporte_msgs ORDER BY id DESC LIMIT 50").fetchall()
+        # Marcar como lidas
+        conn.execute("UPDATE suporte_msgs SET lida=1 WHERE lida=0")
+        conn.commit(); conn.close()
+        msgs = [{"id": r[0], "nome": r[1], "email": r[2], "plano": r[3], "assunto": r[4], "mensagem": r[5], "criado_em": r[6], "lida": r[7] if len(r) > 7 else 1} for r in rows]
         return jsonify({"msgs": msgs})
     except:
         return jsonify({"msgs": []})
+
+@app.route("/admin/suporte_nao_lidas")
+@login_required
+def admin_suporte_nao_lidas():
+    if not current_user.is_admin: return jsonify({"count": 0})
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        try: conn.execute("ALTER TABLE suporte_msgs ADD COLUMN lida INTEGER DEFAULT 0")
+        except: pass
+        count = conn.execute("SELECT COUNT(*) FROM suporte_msgs WHERE lida=0").fetchone()[0]
+        conn.close()
+        return jsonify({"count": count})
+    except:
+        return jsonify({"count": 0})
 
 # ── Rotas Stripe ─────────────────────────────────────────
 @app.route("/planos")
