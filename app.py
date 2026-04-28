@@ -1018,7 +1018,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 # Se tem personagem de referência, usar edição com imagem
                 if personagem_path and os.path.exists(personagem_path):
                     try:
-                        ref_prompt = f"Generate an image for this scene: {prompt_final}. The MAIN CHARACTER (protagonist) in this scene MUST look exactly like the person in the reference photo — same face, skin tone, hair, and body type. Other characters in the scene should look DIFFERENT from the reference. The main character should be in the scene described, wearing appropriate clothing for the setting."
+                        ref_prompt = f"Generate an image for this scene: {prompt_final}. CRITICAL: The main character in this scene MUST be IDENTICAL to the character in the reference image. Copy EXACTLY: the same colors (body color, feather color, skin color), the same design, the same style, the same proportions, the same markings/spots/patterns. Do NOT change the character's colors or design in any way. The character must be recognizable as the EXACT same character from the reference. Place this character in the scene described."
                         editar_imagem_openai(ref_prompt, user.get_api_key(), [personagem_path], img_path,
                                              size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
                     except:
