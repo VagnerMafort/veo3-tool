@@ -1302,18 +1302,40 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 if any(clipes_video):
                     jobs[job_id]["progresso"] = "Juntando clipes animados..."
 
-                    # Concatenar clipes originais (sem trim — manter 6s cada)
+                    # Calcular duração total do áudio
+                    duracao_audio = 0
+                    if audio_final_path and os.path.exists(audio_final_path):
+                        try:
+                            probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audio_final_path], capture_output=True, text=True)
+                            duracao_audio = float(probe.stdout.strip()) if probe.returncode == 0 else 0
+                        except: pass
+
+                    # Calcular duração total dos clipes
+                    clipes_validos = [cp for cp in clipes_video if cp and os.path.exists(cp)]
+                    duracao_video = len(clipes_validos) * 6  # cada clipe ~6s
+
+                    sys.stderr.write(f"[SYNC] Audio: {duracao_audio:.1f}s | Video: {duracao_video:.1f}s | Clipes: {len(clipes_validos)}\n"); sys.stderr.flush()
+
+                    # Se áudio é mais longo que vídeo, repetir clipes pra cobrir
                     concat_path = os.path.join(job_dir, "concat_list.txt")
                     with open(concat_path, "w") as f:
-                        for cp in clipes_video:
-                            if cp and os.path.exists(cp):
-                                f.write(f"file '{os.path.abspath(cp)}'\n")
+                        for cp in clipes_validos:
+                            f.write(f"file '{os.path.abspath(cp)}'\n")
+                        # Repetir clipes se necessário
+                        if duracao_audio > duracao_video + 2 and clipes_validos:
+                            falta = duracao_audio - duracao_video
+                            idx = 0
+                            while falta > 0:
+                                f.write(f"file '{os.path.abspath(clipes_validos[idx % len(clipes_validos)])}'\n")
+                                falta -= 6
+                                idx += 1
+                            sys.stderr.write(f"[SYNC] Repetindo {idx} clipes pra cobrir audio\n"); sys.stderr.flush()
                     video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
 
-                    # Concatenar clipes + áudio
+                    # Concatenar clipes + áudio (shortest corta quando áudio termina)
                     cmd_concat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_path]
                     if audio_final_path and os.path.exists(audio_final_path):
-                        cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k"]
+                        cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest"]
                     else:
                         cmd_concat += ["-c:v", "copy"]
 
