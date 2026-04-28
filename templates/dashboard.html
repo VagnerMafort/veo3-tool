@@ -957,7 +957,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <button class="modo-btn" id="filtroImg" onclick="filtrarBanco('imagem')">🖼️ Imagens</button>
       <button class="modo-btn" id="filtroVid" onclick="filtrarBanco('video')">🎬 Vídeos</button>
       {% if user.is_admin %}
-      <label class="modo-btn" style="cursor:pointer">📤 Upload<input type="file" accept="image/*,video/mp4" style="display:none" id="bancoUploadAdmin" onchange="uploadBancoAdmin(this)"/></label>
+      <label class="modo-btn" style="cursor:pointer">📤 Upload<input type="file" accept="image/*,video/mp4" style="display:none" id="bancoUploadAdmin" multiple onchange="uploadBancoAdmin(this)"/></label>
       {% endif %}
     </div>
     <div class="banco-grid" id="bancoGrid" style="grid-template-columns:repeat(3,1fr)"></div>
@@ -1396,10 +1396,14 @@ async function deletarBancoItem(imgId){
   if(d.ok)buscarBanco();else alert('❌ '+(d.erro||'Erro'));
 }
 async function uploadBancoAdmin(input){
-  if(!input.files[0])return;
-  const fd=new FormData();fd.append('arquivo',input.files[0]);
-  try{const res=await fetch('/admin/upload_banco',{method:'POST',body:fd});const d=await res.json();if(d.ok){alert('✅ Enviado!');buscarBanco();}else alert('❌ '+(d.erro||'Erro'));}catch(e){alert('❌ Erro');}
-  input.value='';
+  if(!input.files||input.files.length===0)return;
+  const total=input.files.length;
+  for(let i=0;i<total;i++){
+    const fd=new FormData();fd.append('arquivo',input.files[i]);
+    try{await fetch('/admin/upload_banco',{method:'POST',body:fd});}catch(e){}
+  }
+  alert(`✅ ${total} arquivo(s) enviado(s)!`);
+  buscarBanco();input.value='';
 }
 
 document.getElementById('btnVoltarRoteiro').addEventListener('click',()=>{document.getElementById('etapaStoryboard').style.display='none';document.getElementById('etapaRoteiro').style.display='block';});
