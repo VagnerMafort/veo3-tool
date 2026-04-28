@@ -22,6 +22,12 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
+@login_manager.unauthorized_handler
+def unauthorized():
+    if request.is_json or request.headers.get('Content-Type', '').startswith('application/json') or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({"erro": "Sessão expirada. Faça login novamente."}), 401
+    return redirect(url_for("login"))
+
 # ── Rate Limiting simples ────────────────────────────────
 _rate_limits = {}
 
@@ -1012,7 +1018,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 # Se tem personagem de referência, usar edição com imagem
                 if personagem_path and os.path.exists(personagem_path):
                     try:
-                        ref_prompt = f"Generate an image for this scene: {prompt_final}. The main character MUST look exactly like the person in the reference photo. Keep the same face, skin tone, hair, and body type. The character should be in the scene described, wearing appropriate clothing for the setting."
+                        ref_prompt = f"Generate an image for this scene: {prompt_final}. The MAIN CHARACTER (protagonist) in this scene MUST look exactly like the person in the reference photo — same face, skin tone, hair, and body type. Other characters in the scene should look DIFFERENT from the reference. The main character should be in the scene described, wearing appropriate clothing for the setting."
                         editar_imagem_openai(ref_prompt, user.get_api_key(), [personagem_path], img_path,
                                              size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
                     except:

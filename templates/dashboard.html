@@ -1436,6 +1436,7 @@ document.getElementById('btnAnalisarThumb').addEventListener('click',async()=>{
   document.getElementById('thumbGaleria').style.display='none';
   try{
     const res1=await fetch('/thumb_engine/analisar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roteiro})});
+    if(res1.redirected||!res1.ok){const txt=await res1.text();if(txt.includes('<!DOCTYPE')){throw new Error('Sessão expirada. Recarregue a página.');}try{const j=JSON.parse(txt);throw new Error(j.erro||'Erro');}catch(pe){throw new Error('Erro no servidor. Tente novamente.');}}
     const d1=await res1.json();
     if(d1.erro)throw new Error(d1.erro);
     _thumbAnalise=d1.analise;_thumbAnaliseJson=JSON.stringify(d1.analise);
