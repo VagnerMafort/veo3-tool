@@ -2611,6 +2611,14 @@ def admin_panel():
         total_videos = conn.execute("SELECT COUNT(*) FROM banco_imagens WHERE tipo='video'").fetchone()[0]
     except:
         total_videos = 0
+    try:
+        total_musicas = conn.execute("SELECT COUNT(*) FROM musicas_sistema WHERE tipo='musica' OR tipo IS NULL").fetchone()[0]
+    except:
+        total_musicas = 0
+    try:
+        total_efeitos = conn.execute("SELECT COUNT(*) FROM musicas_sistema WHERE tipo='efeito'").fetchone()[0]
+    except:
+        total_efeitos = 0
     conn.close()
     total_criacoes = Criacao.query.count()
     total_creditos = sum(u.creditos for u in users)
@@ -2620,6 +2628,7 @@ def admin_panel():
     users_recentes = sum(1 for u in users if (hoje - u.criado_em).days <= 7)
     return render_template("admin.html", users=users, prompts=prompts, total_imgs=total_imgs,
                            total_criacoes=total_criacoes, total_videos=total_videos,
+                           total_musicas=total_musicas, total_efeitos=total_efeitos,
                            total_creditos=total_creditos, users_com_plano=users_com_plano,
                            users_recentes=users_recentes, planos=PLANOS_STRIPE,
                            is_master=current_user.email == ADMIN_MASTER_EMAIL)

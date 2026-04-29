@@ -70,11 +70,13 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     </div>
   </div>
 
-  <div class="stats">
+  <div class="stats" style="grid-template-columns:repeat(6,1fr)">
     <div class="stat-box"><div class="stat-num">{{ users|length }}</div><div class="stat-label">Usuários</div></div>
     <div class="stat-box"><div class="stat-num">{{ users_com_plano }}</div><div class="stat-label">Assinantes</div></div>
     <div class="stat-box"><div class="stat-num">{{ total_criacoes }}</div><div class="stat-label">Criações</div></div>
     <div class="stat-box"><div class="stat-num">{{ total_imgs + total_videos }}</div><div class="stat-label">Banco</div></div>
+    <div class="stat-box"><div class="stat-num">{{ total_musicas }}</div><div class="stat-label">Músicas</div></div>
+    <div class="stat-box"><div class="stat-num">{{ total_efeitos }}</div><div class="stat-label">Efeitos</div></div>
   </div>
 
   <div class="tabs">
