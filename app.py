@@ -360,6 +360,9 @@ MUSICAS_SISTEMA_FOLDER = "musicas_sistema"
 os.makedirs(MUSICAS_FOLDER, exist_ok=True)
 os.makedirs(MUSICAS_SISTEMA_FOLDER, exist_ok=True)
 
+# Jamendo API (músicas royalty-free)
+JAMENDO_CLIENT_ID = os.environ.get("JAMENDO_CLIENT_ID", "709fa152")
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -3069,6 +3072,79 @@ def musica_sistema_file(filename):
         return jsonify({"erro": "Não encontrado"}), 404
     return send_file(filepath)
 
+@app.route("/jamendo/buscar")
+@login_required
+def jamendo_buscar():
+    """Busca músicas na Jamendo API por tag/mood"""
+    tag = request.args.get("tag", "").strip()
+    busca = request.args.get("q", "").strip()
+    pagina = int(request.args.get("pagina", 1))
+    try:
+        params = {
+            "client_id": JAMENDO_CLIENT_ID,
+            "format": "json",
+            "limit": 20,
+            "offset": (pagina - 1) * 20,
+            "include": "musicinfo",
+            "audioformat": "mp32",
+        }
+        if tag:
+            params["tags"] = tag
+            params["order"] = "popularity_total"
+        elif busca:
+            params["namesearch"] = busca
+            params["order"] = "relevance"
+        else:
+            params["order"] = "popularity_total"
+
+        r = requests.get("https://api.jamendo.com/v3.0/tracks", params=params, timeout=10)
+        if r.ok:
+            data = r.json()
+            tracks = []
+            for t in data.get("results", []):
+                tracks.append({
+                    "id": f"jam_{t['id']}",
+                    "nome": t.get("name", ""),
+                    "artista": t.get("artist_name", ""),
+                    "duracao": t.get("duration", 0),
+                    "audio_url": t.get("audio", ""),
+                    "audiodownload": t.get("audiodownload", ""),
+                    "tags": ", ".join(t.get("musicinfo", {}).get("tags", {}).get("genres", [])),
+                    "categoria": "jamendo",
+                })
+            return jsonify({"ok": True, "tracks": tracks, "total": data.get("headers", {}).get("results_fullcount", 0)})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+    return jsonify({"tracks": [], "total": 0})
+
+@app.route("/jamendo/download", methods=["POST"])
+@login_required
+def jamendo_download():
+    """Baixa uma música da Jamendo e salva como música do sistema"""
+    audio_url = request.json.get("audio_url", "")
+    nome = request.json.get("nome", "")
+    tag = request.json.get("tag", "geral")
+    if not audio_url or not nome:
+        return jsonify({"erro": "Dados incompletos"}), 400
+    try:
+        r = requests.get(audio_url, timeout=60)
+        if r.ok:
+            filename = f"jam_{uuid.uuid4().hex[:8]}.mp3"
+            filepath = os.path.join(MUSICAS_SISTEMA_FOLDER, filename)
+            with open(filepath, "wb") as f:
+                f.write(r.content)
+            # Salvar no banco
+            conn = sqlite3.connect('instance/veo3.db')
+            conn.execute("""CREATE TABLE IF NOT EXISTS musicas_sistema (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, categoria TEXT, path TEXT,
+                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+            conn.execute("INSERT INTO musicas_sistema (nome, categoria, path) VALUES (?,?,?)", (nome, tag, filename))
+            conn.commit(); conn.close()
+            return jsonify({"ok": True})
+        return jsonify({"erro": "Erro ao baixar"}), 500
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
 @app.route("/admin/upload_musica_sistema", methods=["POST"])
 @login_required
 def admin_upload_musica_sistema():
@@ -3336,13 +3412,34 @@ def finalizar_video_route():
     musica_id = request.form.get("musica_id", "").strip()
     musica_path = ""
     if musica_id:
-        try:
-            conn = sqlite3.connect('instance/veo3.db')
-            row = conn.execute("SELECT path FROM musicas WHERE id=? AND user_id=?", (int(musica_id), current_user.id)).fetchone()
-            conn.close()
-            if row and os.path.exists(row[0]):
-                musica_path = row[0]
-        except: pass
+        if musica_id.startswith("jamendo:"):
+            # Baixar música da Jamendo
+            try:
+                audio_url = musica_id[8:]  # remover "jamendo:"
+                r_mus = requests.get(audio_url, timeout=60)
+                if r_mus.ok:
+                    musica_path = os.path.join(UPLOAD_FOLDER, f"jamendo_{uuid.uuid4().hex[:8]}.mp3")
+                    with open(musica_path, "wb") as f:
+                        f.write(r_mus.content)
+            except: pass
+        elif musica_id.startswith("sys_"):
+            # Música do sistema
+            try:
+                sys_id = int(musica_id[4:])
+                conn = sqlite3.connect('instance/veo3.db')
+                row = conn.execute("SELECT path FROM musicas_sistema WHERE id=?", (sys_id,)).fetchone()
+                conn.close()
+                if row:
+                    musica_path = os.path.join(MUSICAS_SISTEMA_FOLDER, row[0])
+            except: pass
+        else:
+            try:
+                conn = sqlite3.connect('instance/veo3.db')
+                row = conn.execute("SELECT path FROM musicas WHERE id=? AND user_id=?", (int(musica_id), current_user.id)).fetchone()
+                conn.close()
+                if row and os.path.exists(row[0]):
+                    musica_path = row[0]
+            except: pass
     import sys
     sys.stderr.write(f"[ROTA] animar_ia={animar_ia}, musica={musica_path or 'nenhuma'}\n")
     sys.stderr.flush()

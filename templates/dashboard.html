@@ -321,6 +321,7 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
               <button class="modo-btn" onclick="filtrarMusicas('infantil')" style="font-size:.72rem;padding:6px 10px">🧸 Kids</button>
               <button class="modo-btn" onclick="filtrarMusicas('calmo')" style="font-size:.72rem;padding:6px 10px">🌿 Calmo</button>
               <button class="modo-btn" onclick="filtrarMusicas('usuario')" style="font-size:.72rem;padding:6px 10px">📤 Minhas</button>
+              <button class="modo-btn" onclick="filtrarMusicas('jamendo')" style="font-size:.72rem;padding:6px 10px">🌐 Jamendo</button>
             </div>
             <div id="listaMusSeletor" style="max-height:200px;overflow-y:auto;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
               <div style="padding:10px;text-align:center;color:var(--text3);font-size:.8rem">Carregando músicas...</div>
@@ -1212,7 +1213,44 @@ function filtrarMusicas(cat){
   _musicaFiltro=cat;
   document.querySelectorAll('#musicaSeletor .modo-btn').forEach(b=>b.classList.remove('active'));
   event.target.classList.add('active');
+  if(cat==='jamendo'){renderizarJamendo();return;}
   renderizarMusicaSeletor();
+}
+
+async function renderizarJamendo(tag,busca){
+  const container=document.getElementById('listaMusSeletor');
+  container.innerHTML='<div style="padding:10px;text-align:center;color:var(--text3);font-size:.8rem">Buscando músicas...</div>';
+  const params=new URLSearchParams();
+  if(tag)params.set('tag',tag);
+  if(busca)params.set('q',busca);
+  try{
+    const res=await fetch('/jamendo/buscar?'+params.toString());const d=await res.json();
+    if(!d.tracks||!d.tracks.length){container.innerHTML='<div style="padding:10px;text-align:center;color:var(--text3);font-size:.8rem">Nenhuma música encontrada</div>';return;}
+    let html='<div style="padding:6px;display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border)">';
+    ['epic','motivational','suspense','children','calm','happy','sad','romantic','electronic'].forEach(t=>{
+      html+=`<button onclick="renderizarJamendo('${t}')" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);padding:3px 8px;border-radius:4px;font-size:.65rem;cursor:pointer">${t}</button>`;
+    });
+    html+='<input type="text" placeholder="Buscar..." style="flex:1;min-width:80px;padding:3px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:.7rem" onkeydown="if(event.key===\'Enter\')renderizarJamendo(null,this.value)"/></div>';
+    d.tracks.forEach(t=>{
+      const durMin=Math.floor(t.duracao/60);const durSec=t.duracao%60;
+      html+=`<div style="padding:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.78rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.nome}</div>
+          <div style="font-size:.62rem;color:var(--text3)">${t.artista} · ${durMin}:${String(durSec).padStart(2,'0')} · ${t.tags}</div>
+        </div>
+        <audio src="${t.audio_url}" preload="none" style="height:24px;width:90px" controls></audio>
+        <button onclick="selecionarMusicaJamendo('${t.id}','${t.nome.replace(/'/g,"\\'")}','${t.audio_url}')" style="background:var(--accent);color:#fff;border:none;padding:4px 8px;border-radius:4px;font-size:.68rem;cursor:pointer;white-space:nowrap">Usar</button>
+      </div>`;
+    });
+    container.innerHTML=html;
+  }catch(e){container.innerHTML='<div style="padding:10px;text-align:center;color:var(--red2);font-size:.8rem">Erro ao buscar</div>';}
+}
+
+function selecionarMusicaJamendo(id,nome,audioUrl){
+  // Salvar URL da Jamendo pra usar na finalização
+  document.getElementById('musicaId').value='jamendo:'+audioUrl;
+  const info=document.getElementById('musicaSelecionada');
+  info.textContent='🌐 '+nome+' (Jamendo)';info.style.display='block';
 }
 
 function renderizarMusicaSeletor(){
