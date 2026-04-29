@@ -937,7 +937,7 @@ def montar_video(imagens, audio_path, output_path, legenda_cfg=None):
         cmd += ["-i", audio_path]
     cmd += ["-filter_complex", fc, "-map", saida_v]
     if audio_path and os.path.exists(audio_path):
-        cmd += ["-map", f"{len(imagens)}:a", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+        cmd += ["-map", f"{len(imagens)}:a", "-c:a", "aac", "-b:a", "192k"]
     cmd += ["-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p", output_path]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
