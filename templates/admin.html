@@ -9,7 +9,7 @@
 [data-theme="light"]{--bg:#f0f4f8;--bg2:#fff;--bg3:#e8edf2;--border:#c8d6e5;--text:#1a2332;--text2:#4a5568;--text3:#718096;--accent:#2563eb;--accent2:#1d4ed8;--red-bg:#fff5f5;--red-border:#feb2b2;--red-text:#c53030}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:20px;transition:background .3s,color .3s}
-.container{max-width:960px;margin:0 auto}
+.container{max-width:900px;margin:0 auto}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
 .header h1{font-size:1.2rem}.header h1 span{color:var(--accent)}
 .header-right{display:flex;align-items:center;gap:10px}
@@ -83,6 +83,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     <div class="tab" onclick="trocarAba('planos')">💎 Planos</div>
     <div class="tab" onclick="trocarAba('prompts')">📝 Prompts</div>
     <div class="tab" onclick="trocarAba('banco')">🗃️ Banco</div>
+    <div class="tab" onclick="trocarAba('audio')">🎵 Áudio</div>
     <div class="tab" onclick="trocarAba('suporteAdmin')">💬 Suporte</div>
     {% if is_master %}<div class="tab" onclick="trocarAba('docs')">📖 Docs</div>{% endif %}
   </div>
@@ -282,32 +283,35 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     <div class="erro-box" id="erroPrompts"></div>
   </div>
 
-  <!-- BANCO -->
+  <!-- BANCO (só imagens e vídeos) -->
   <div class="pane" id="paneBanco">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <!-- COLUNA ESQUERDA: Imagens e Vídeos -->
-      <div class="card" style="margin-bottom:0">
-        <h2>🗃️ Imagens e Vídeos</h2>
-        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-          <label class="btn-sm btn-green" style="cursor:pointer;padding:8px 12px;font-size:.8rem">📤 Imagens<input type="file" accept="image/*" style="display:none" multiple onchange="uploadBancoMultiplo(this)"/></label>
-          <label class="btn-sm btn-blue" style="cursor:pointer;padding:8px 12px;font-size:.8rem">📤 Vídeos<input type="file" accept="video/mp4" style="display:none" multiple onchange="uploadBancoMultiplo(this)"/></label>
-          <button class="btn-sm" style="background:#f59e0b;padding:8px 12px;font-size:.8rem" onclick="renomearBancoIA()">🧠 IA</button>
-        </div>
-        <div id="uploadProgressAdm" style="display:none;margin-bottom:10px;background:var(--bg3);border-radius:8px;padding:8px;font-size:.78rem;color:var(--text2)"></div>
-        <input type="text" id="bancoBuscaAdm" placeholder="Buscar..." oninput="carregarBancoAdm()" style="margin-bottom:8px"/>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <button class="btn-sm btn-blue" onclick="bancoFiltroAdm='';bancoCatAdm='';carregarBancoAdm()">Todos</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" onclick="bancoFiltroAdm='imagem';carregarBancoAdm()">🖼️ Imagens</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" onclick="bancoFiltroAdm='video';carregarBancoAdm()">🎬 Vídeos</button>
-        </div>
-        <div id="bancoCatsAdm" style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;font-size:.7rem"></div>
-        <div id="bancoGridAdm" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px"></div>
-        <button class="btn-outline-sm" id="btnMaisBancoAdm" style="display:none;width:100%;margin-top:10px" onclick="bancoPagAdm++;carregarBancoAdm(true)">Carregar mais</button>
+    <div class="card">
+      <h2>🗃️ Banco de Imagens e Vídeos</h2>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <label class="btn-sm btn-green" style="cursor:pointer;padding:8px 12px;font-size:.8rem">📤 Imagens<input type="file" accept="image/*" style="display:none" multiple onchange="uploadBancoMultiplo(this)"/></label>
+        <label class="btn-sm btn-blue" style="cursor:pointer;padding:8px 12px;font-size:.8rem">📤 Vídeos<input type="file" accept="video/mp4" style="display:none" multiple onchange="uploadBancoMultiplo(this)"/></label>
+        <button class="btn-sm" style="background:#f59e0b;padding:8px 12px;font-size:.8rem" onclick="renomearBancoIA()">🧠 Renomear com IA</button>
       </div>
+      <div id="uploadProgressAdm" style="display:none;margin-bottom:10px;background:var(--bg3);border-radius:8px;padding:8px;font-size:.78rem;color:var(--text2)"></div>
+      <input type="text" id="bancoBuscaAdm" placeholder="🔍 Buscar..." oninput="carregarBancoAdm()" style="margin-bottom:8px"/>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button class="btn-sm btn-blue" onclick="bancoFiltroAdm='';bancoCatAdm='';carregarBancoAdm()">Todos</button>
+        <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" onclick="bancoFiltroAdm='imagem';carregarBancoAdm()">🖼️ Imagens</button>
+        <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" onclick="bancoFiltroAdm='video';carregarBancoAdm()">🎬 Vídeos</button>
+      </div>
+      <div id="bancoCatsAdm" style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;font-size:.7rem"></div>
+      <div id="bancoGridAdm" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
+      <button class="btn-outline-sm" id="btnMaisBancoAdm" style="display:none;width:100%;margin-top:10px" onclick="bancoPagAdm++;carregarBancoAdm(true)">Carregar mais</button>
+    </div>
+  </div>
 
-      <!-- COLUNA DIREITA: Músicas do Sistema -->
+  <!-- ÁUDIO (músicas + efeitos sonoros) -->
+  <div class="pane" id="paneAudio">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <!-- COLUNA ESQUERDA: Músicas -->
       <div class="card" style="margin-bottom:0">
-        <h2>🎵 Músicas do Sistema</h2>
+        <h2>🎵 Músicas</h2>
+        <p style="font-size:.75rem;color:var(--text3);margin-bottom:10px">Músicas instrumentais disponíveis pra todos os usuários com add-on de áudio.</p>
         <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
           <input type="text" id="nomeMusicaSys" placeholder="Nome da música" style="flex:1;min-width:120px;font-size:.82rem"/>
           <select id="catMusicaSys" style="width:auto;font-size:.82rem">
@@ -321,35 +325,70 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
             <option value="triste">😢 Triste</option>
             <option value="romantico">❤️ Romântico</option>
             <option value="tecnologia">🤖 Tecnologia</option>
-            <option value="efeito">🔊 Efeito Sonoro</option>
             <option value="geral">🎵 Geral</option>
           </select>
         </div>
-        <label class="btn-sm btn-green" style="cursor:pointer;padding:8px 12px;font-size:.8rem;display:inline-block">📤 Upload Músicas<input type="file" accept=".mp3,.wav,.m4a,.ogg" style="display:none" multiple onchange="uploadMusicaSistema(this)"/></label>
+        <label class="btn-sm btn-green" style="cursor:pointer;padding:8px 12px;font-size:.8rem;display:inline-block">📤 Upload Músicas<input type="file" accept=".mp3,.wav,.m4a,.ogg" style="display:none" multiple onchange="uploadAudioSistema(this,'musica')"/></label>
         <div id="progMusicaSys" style="display:none;margin-top:8px;font-size:.78rem;color:var(--text2)"></div>
-        <!-- Filtros de busca e categoria -->
-        <input type="text" id="buscaMusicaSysAdm" placeholder="🔍 Buscar por nome..." oninput="filtrarMusicasSysAdm()" style="margin-top:10px;font-size:.8rem;padding:7px 10px"/>
-        <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap" id="catFilterMusicaSys">
-          <button class="btn-sm btn-blue" onclick="filtroMusicaSysCat='';filtrarMusicasSysAdm()" style="font-size:.65rem;padding:3px 8px">Todas</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='epico';filtrarMusicasSysAdm()">⚔️</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='motivacional';filtrarMusicasSysAdm()">💪</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='suspense';filtrarMusicasSysAdm()">🔮</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='infantil';filtrarMusicasSysAdm()">🧸</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='calmo';filtrarMusicasSysAdm()">🌿</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='alegre';filtrarMusicasSysAdm()">🎉</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='triste';filtrarMusicasSysAdm()">😢</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='romantico';filtrarMusicasSysAdm()">❤️</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='tecnologia';filtrarMusicasSysAdm()">🤖</button>
-          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusicaSysCat='efeito';filtrarMusicasSysAdm()">🔊</button>
+        <input type="text" id="buscaMusicaSysAdm" placeholder="🔍 Buscar por nome..." oninput="filtrarAudioSysAdm('musica')" style="margin-top:10px;font-size:.8rem;padding:7px 10px"/>
+        <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn-sm btn-blue" onclick="filtroMusCat='';filtrarAudioSysAdm('musica')" style="font-size:.65rem;padding:3px 8px">Todas</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusCat='epico';filtrarAudioSysAdm('musica')">⚔️ Épico</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusCat='motivacional';filtrarAudioSysAdm('musica')">💪 Motiv.</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusCat='suspense';filtrarAudioSysAdm('musica')">🔮 Susp.</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusCat='calmo';filtrarAudioSysAdm('musica')">🌿 Calmo</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusCat='alegre';filtrarAudioSysAdm('musica')">🎉 Alegre</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusCat='triste';filtrarAudioSysAdm('musica')">😢 Triste</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusCat='romantico';filtrarAudioSysAdm('musica')">❤️ Rom.</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroMusCat='tecnologia';filtrarAudioSysAdm('musica')">🤖 Tech</button>
         </div>
         <div id="listaMusicaSys" style="margin-top:10px;max-height:400px;overflow-y:auto"></div>
       </div>
-    </div>
 
-    <!-- Responsivo: em telas pequenas empilha -->
+      <!-- COLUNA DIREITA: Efeitos Sonoros -->
+      <div class="card" style="margin-bottom:0">
+        <h2>🔊 Efeitos Sonoros</h2>
+        <p style="font-size:.75rem;color:var(--text3);margin-bottom:10px">Sons curtos: transições, impactos, whoosh, notificações, ambiente, etc.</p>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <input type="text" id="nomeEfeitoSys" placeholder="Nome do efeito" style="flex:1;min-width:120px;font-size:.82rem"/>
+          <select id="catEfeitoSys" style="width:auto;font-size:.82rem">
+            <option value="auto" selected>🤖 Auto</option>
+            <option value="transicao">🔄 Transição</option>
+            <option value="impacto">💥 Impacto</option>
+            <option value="whoosh">💨 Whoosh</option>
+            <option value="notificacao">🔔 Notificação</option>
+            <option value="ambiente">🌍 Ambiente</option>
+            <option value="risada">😂 Risada</option>
+            <option value="aplausos">👏 Aplausos</option>
+            <option value="suspense">🔮 Suspense</option>
+            <option value="magico">✨ Mágico</option>
+            <option value="tecnologia">🤖 Tecnologia</option>
+            <option value="natureza">🌿 Natureza</option>
+            <option value="ui">🖱️ UI</option>
+            <option value="cinematico">🎬 Cinemático</option>
+            <option value="geral">🔊 Geral</option>
+          </select>
+        </div>
+        <label class="btn-sm btn-green" style="cursor:pointer;padding:8px 12px;font-size:.8rem;display:inline-block">📤 Upload Efeitos<input type="file" accept=".mp3,.wav,.m4a,.ogg" style="display:none" multiple onchange="uploadAudioSistema(this,'efeito')"/></label>
+        <div id="progEfeitoSys" style="display:none;margin-top:8px;font-size:.78rem;color:var(--text2)"></div>
+        <input type="text" id="buscaEfeitoSysAdm" placeholder="🔍 Buscar por nome..." oninput="filtrarAudioSysAdm('efeito')" style="margin-top:10px;font-size:.8rem;padding:7px 10px"/>
+        <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn-sm btn-blue" onclick="filtroEfxCat='';filtrarAudioSysAdm('efeito')" style="font-size:.65rem;padding:3px 8px">Todos</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroEfxCat='transicao';filtrarAudioSysAdm('efeito')">🔄 Trans.</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroEfxCat='impacto';filtrarAudioSysAdm('efeito')">💥 Impacto</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroEfxCat='whoosh';filtrarAudioSysAdm('efeito')">💨 Whoosh</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroEfxCat='ambiente';filtrarAudioSysAdm('efeito')">🌍 Amb.</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroEfxCat='suspense';filtrarAudioSysAdm('efeito')">🔮 Susp.</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroEfxCat='cinematico';filtrarAudioSysAdm('efeito')">🎬 Cine.</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroEfxCat='magico';filtrarAudioSysAdm('efeito')">✨ Mágico</button>
+          <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.65rem;padding:3px 8px" onclick="filtroEfxCat='natureza';filtrarAudioSysAdm('efeito')">🌿 Nat.</button>
+        </div>
+        <div id="listaEfeitoSys" style="margin-top:10px;max-height:400px;overflow-y:auto"></div>
+      </div>
+    </div>
     <style>
       @media(max-width:700px){
-        #paneBanco > div:first-child{grid-template-columns:1fr !important}
+        #paneAudio > div:first-child{grid-template-columns:1fr !important}
       }
     </style>
   </div>
@@ -573,7 +612,7 @@ function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=docu
 applyTheme();
 
 function trocarAba(aba){
-  const abas=['metricas','usuarios','planos','prompts','banco','suporteAdmin','docs'];
+  const abas=['metricas','usuarios','planos','prompts','banco','audio','suporteAdmin','docs'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
@@ -717,51 +756,64 @@ async function renomearBancoIA(){
   }catch(e){prog.textContent='❌ Erro: '+e.message;setTimeout(()=>{prog.style.display='none';},5000);}
 }
 
-// Músicas do sistema
-let _musicasSysAdm=[], filtroMusicaSysCat='';
-async function uploadMusicaSistema(input){
+// Áudio do sistema (músicas + efeitos)
+let _musicasSysAdm=[], _efeitosSysAdm=[], filtroMusCat='', filtroEfxCat='';
+async function uploadAudioSistema(input, tipoAudio){
   if(!input.files||!input.files.length)return;
-  const nome=document.getElementById('nomeMusicaSys').value.trim();
-  const cat=document.getElementById('catMusicaSys').value;
-  const prog=document.getElementById('progMusicaSys');
+  const isMusica=tipoAudio==='musica';
+  const nome=document.getElementById(isMusica?'nomeMusicaSys':'nomeEfeitoSys').value.trim();
+  const cat=document.getElementById(isMusica?'catMusicaSys':'catEfeitoSys').value;
+  const prog=document.getElementById(isMusica?'progMusicaSys':'progEfeitoSys');
   prog.style.display='block';
-  let ok=0;
+  let ok=0,erros=0;
   for(let i=0;i<input.files.length;i++){
     const fd=new FormData();fd.append('arquivo',input.files[i]);
     fd.append('nome',nome||(input.files[i].name.replace(/\.[^.]+$/,'')));
     fd.append('categoria',cat);
+    fd.append('tipo_audio',tipoAudio);
     prog.textContent=`Enviando ${i+1}/${input.files.length}...`;
-    try{const res=await fetch('/admin/upload_musica_sistema',{method:'POST',body:fd});const d=await res.json();if(d.ok)ok++;}catch(e){}
+    try{const res=await fetch('/admin/upload_musica_sistema',{method:'POST',body:fd});const d=await res.json();if(d.ok)ok++;else{erros++;if(d.duplicada)prog.textContent=`${input.files[i].name}: já existe`;}}catch(e){erros++;}
   }
-  prog.textContent=`✅ ${ok} música(s) enviada(s)!`;
+  prog.textContent=`✅ ${ok} enviado(s)${erros?`, ${erros} erro(s)`:''}`;
   setTimeout(()=>{prog.style.display='none';},3000);
-  carregarMusicasSistema();input.value='';
+  carregarAudioSistema();input.value='';
 }
-async function carregarMusicasSistema(){
+async function carregarAudioSistema(){
   try{
     const res=await fetch('/musicas_sistema');const d=await res.json();
-    _musicasSysAdm=d.musicas||[];
-    filtrarMusicasSysAdm();
+    _musicasSysAdm=(d.musicas||[]).filter(m=>(m.tipo_audio||'musica')==='musica');
+    _efeitosSysAdm=(d.musicas||[]).filter(m=>(m.tipo_audio||'musica')==='efeito');
+    filtrarAudioSysAdm('musica');
+    filtrarAudioSysAdm('efeito');
   }catch(e){}
 }
-function filtrarMusicasSysAdm(){
-  const busca=(document.getElementById('buscaMusicaSysAdm').value||'').toLowerCase().trim();
-  let filtradas=_musicasSysAdm;
-  if(filtroMusicaSysCat)filtradas=filtradas.filter(m=>(m.categoria||'').includes(filtroMusicaSysCat));
+function filtrarAudioSysAdm(tipoAudio){
+  const isMusica=tipoAudio==='musica';
+  const busca=(document.getElementById(isMusica?'buscaMusicaSysAdm':'buscaEfeitoSysAdm').value||'').toLowerCase().trim();
+  const catFiltro=isMusica?filtroMusCat:filtroEfxCat;
+  let filtradas=isMusica?_musicasSysAdm:_efeitosSysAdm;
+  if(catFiltro)filtradas=filtradas.filter(m=>(m.categoria||'').includes(catFiltro));
   if(busca)filtradas=filtradas.filter(m=>(m.nome||'').toLowerCase().includes(busca)||(m.categoria||'').toLowerCase().includes(busca));
-  const lista=document.getElementById('listaMusicaSys');
-  if(!filtradas.length){lista.innerHTML='<div style="color:var(--text3);font-size:.82rem;padding:8px">Nenhuma música encontrada.</div>';return;}
+  const lista=document.getElementById(isMusica?'listaMusicaSys':'listaEfeitoSys');
+  if(!filtradas.length){lista.innerHTML=`<div style="color:var(--text3);font-size:.82rem;padding:8px">Nenhum ${isMusica?'música':'efeito'} encontrado.</div>`;return;}
   lista.innerHTML='';
-  const catEmojis={epico:'⚔️',motivacional:'💪',suspense:'🔮',infantil:'🧸',calmo:'🌿',alegre:'🎉',triste:'😢',romantico:'❤️',tecnologia:'🤖',efeito:'🔊',geral:'🎵'};
+  const catEmojis={epico:'⚔️',motivacional:'💪',suspense:'🔮',infantil:'🧸',calmo:'🌿',alegre:'🎉',triste:'😢',romantico:'❤️',tecnologia:'🤖',efeito:'🔊',geral:'🎵',transicao:'🔄',impacto:'💥',whoosh:'💨',notificacao:'🔔',ambiente:'🌍',risada:'😂',aplausos:'👏',magico:'✨',natureza:'🌿',ui:'🖱️',cinematico:'🎬'};
   filtradas.forEach(m=>{
+    const realId=m.id.replace('sys_','');
     const cats=(m.categoria||'geral').split(',').map(c=>{const e=catEmojis[c.trim()]||'🎵';return `<span style="background:var(--accent2);color:#fff;padding:1px 5px;border-radius:4px;font-size:.58rem;margin-right:2px">${e} ${c.trim()}</span>`;}).join('');
     lista.innerHTML+=`<div class="user-row" style="padding:6px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
       <div style="flex:1;min-width:0"><div style="font-size:.78rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.nome}</div><div style="margin-top:2px;line-height:1.5">${cats}</div></div>
-      <audio src="/musica_sistema/${m.path}" preload="none" controls style="height:26px;width:110px"></audio>
+      <audio src="/musica_sistema/${m.path}" preload="none" controls style="height:26px;width:100px"></audio>
+      <button onclick="deletarAudioSys(${realId})" style="background:rgba(220,38,38,0.9);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:.65rem">✕</button>
     </div>`;
   });
 }
-carregarMusicasSistema();
+async function deletarAudioSys(id){
+  if(!confirm('Deletar?'))return;
+  await fetch('/admin/deletar_musica_sistema',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+  carregarAudioSistema();
+}
+carregarAudioSistema();
 
 // Carregar branding atual
 fetch('/admin/branding').then(r=>r.json()).then(d=>{

@@ -3170,12 +3170,15 @@ def musicas_sistema():
         conn = sqlite3.connect('instance/veo3.db')
         conn.execute("""CREATE TABLE IF NOT EXISTS musicas_sistema (
             id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, categoria TEXT, path TEXT,
+            tipo TEXT DEFAULT 'musica',
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
-        rows = conn.execute("SELECT id, nome, categoria, path FROM musicas_sistema ORDER BY categoria, nome").fetchall()
+        try: conn.execute("ALTER TABLE musicas_sistema ADD COLUMN tipo TEXT DEFAULT 'musica'")
+        except: pass
+        rows = conn.execute("SELECT id, nome, categoria, path, tipo FROM musicas_sistema ORDER BY tipo, categoria, nome").fetchall()
         conn.close()
         for r in rows:
             if os.path.exists(os.path.join(MUSICAS_SISTEMA_FOLDER, r[3])):
-                musicas.append({"id": f"sys_{r[0]}", "nome": r[1], "categoria": r[2], "path": r[3]})
+                musicas.append({"id": f"sys_{r[0]}", "nome": r[1], "categoria": r[2], "path": r[3], "tipo_audio": r[4] or "musica"})
     except: pass
     return jsonify({"musicas": musicas})
 
@@ -3274,27 +3277,42 @@ def admin_upload_musica_sistema():
     arquivo = request.files["arquivo"]
     nome = request.form.get("nome", "").strip() or arquivo.filename.rsplit(".", 1)[0].replace("-", " ").replace("_", " ")
     categoria = request.form.get("categoria", "").strip()
+    tipo_audio = request.form.get("tipo_audio", "musica").strip()  # musica ou efeito
+    if tipo_audio not in ("musica", "efeito"):
+        tipo_audio = "musica"
     if not arquivo.filename.lower().endswith((".mp3", ".wav", ".m4a", ".ogg")):
         return jsonify({"erro": "Formato inválido"}), 400
     # Auto-categorizar se não especificou
     if not categoria or categoria == "auto":
-        # Usar GPT pra categorizar pelo nome do arquivo
         try:
             api_key = current_user.get_api_key()
             if api_key:
                 headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-                body = {"model": "gpt-4o-mini", "messages": [
-                    {"role": "system", "content": """Analise o nome deste arquivo de música instrumental e retorne TODAS as categorias que se encaixam.
-Categorias disponíveis: epico, motivacional, suspense, infantil, calmo, alegre, triste, romantico, tecnologia, efeito, geral
+                if tipo_audio == "efeito":
+                    cats_disponiveis = "transicao, impacto, whoosh, notificacao, ambiente, risada, aplausos, suspense, magico, tecnologia, natureza, ui, cinematico, geral"
+                    prompt_sys = f"""Analise o nome deste arquivo de efeito sonoro e retorne TODAS as categorias que se encaixam.
+Categorias disponíveis: {cats_disponiveis}
 
 Retorne APENAS as categorias separadas por vírgula. Exemplo:
-epico, motivacional"""},
+impacto, cinematico"""
+                else:
+                    cats_disponiveis = "epico, motivacional, suspense, infantil, calmo, alegre, triste, romantico, tecnologia, efeito, geral"
+                    prompt_sys = f"""Analise o nome deste arquivo de música instrumental e retorne TODAS as categorias que se encaixam.
+Categorias disponíveis: {cats_disponiveis}
+
+Retorne APENAS as categorias separadas por vírgula. Exemplo:
+epico, motivacional"""
+                body = {"model": "gpt-4o-mini", "messages": [
+                    {"role": "system", "content": prompt_sys},
                     {"role": "user", "content": f"Nome do arquivo: {arquivo.filename}"}
                 ], "max_tokens": 30}
                 r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=10)
                 if r.ok:
                     texto = r.json()["choices"][0]["message"]["content"].strip().lower()
-                    categorias_validas = ["epico","motivacional","suspense","infantil","calmo","alegre","triste","romantico","tecnologia","efeito","geral"]
+                    if tipo_audio == "efeito":
+                        categorias_validas = ["transicao","impacto","whoosh","notificacao","ambiente","risada","aplausos","suspense","magico","tecnologia","natureza","ui","cinematico","geral"]
+                    else:
+                        categorias_validas = ["epico","motivacional","suspense","infantil","calmo","alegre","triste","romantico","tecnologia","efeito","geral"]
                     cats = [c.strip() for c in texto.split(",") if c.strip() in categorias_validas]
                     if cats:
                         categoria = ",".join(cats)
@@ -3307,16 +3325,38 @@ epico, motivacional"""},
     conn = sqlite3.connect('instance/veo3.db')
     conn.execute("""CREATE TABLE IF NOT EXISTS musicas_sistema (
         id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, categoria TEXT, path TEXT,
+        tipo TEXT DEFAULT 'musica',
         criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
-    # Verificar duplicata pelo nome
-    existente = conn.execute("SELECT id FROM musicas_sistema WHERE nome=?", (nome,)).fetchone()
+    try: conn.execute("ALTER TABLE musicas_sistema ADD COLUMN tipo TEXT DEFAULT 'musica'")
+    except: pass
+    # Verificar duplicata pelo nome + tipo
+    existente = conn.execute("SELECT id FROM musicas_sistema WHERE nome=? AND tipo=?", (nome, tipo_audio)).fetchone()
     if existente:
         os.remove(filepath)
         conn.close()
-        return jsonify({"ok": False, "erro": "Música já existe", "duplicada": True})
-    conn.execute("INSERT INTO musicas_sistema (nome, categoria, path) VALUES (?,?,?)", (nome, categoria, filename))
+        return jsonify({"ok": False, "erro": "Já existe", "duplicada": True})
+    conn.execute("INSERT INTO musicas_sistema (nome, categoria, path, tipo) VALUES (?,?,?,?)", (nome, categoria, filename, tipo_audio))
     conn.commit(); conn.close()
     return jsonify({"ok": True, "categoria": categoria})
+
+@app.route("/admin/deletar_musica_sistema", methods=["POST"])
+@login_required
+def admin_deletar_musica_sistema():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    musica_id = request.json.get("id")
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        row = conn.execute("SELECT path FROM musicas_sistema WHERE id=?", (musica_id,)).fetchone()
+        if row:
+            filepath = os.path.join(MUSICAS_SISTEMA_FOLDER, row[0])
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        conn.execute("DELETE FROM musicas_sistema WHERE id=?", (musica_id,))
+        conn.commit(); conn.close()
+        return jsonify({"ok": True})
+    except:
+        return jsonify({"erro": "Erro ao deletar"}), 500
 
 # ── Rotas Storyboard ─────────────────────────────────────
 @app.route("/dividir_roteiro", methods=["POST"])
