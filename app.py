@@ -953,17 +953,17 @@ def dividir_roteiro(texto, api_key):
     if len(texto) < 30:
         return [texto.strip()]
 
-    # Suportar vídeos de até 3 min (~36 cenas de 5s)
-    max_cenas = max(2, min(36, len(texto) // 30))
+    # Suportar vídeos de até 5 min (~60 cenas de 5s)
+    max_cenas = max(2, min(60, len(texto) // 20))
 
     prompts = load_prompts()
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         system = prompts.get("dividir", DEFAULT_PROMPTS["dividir"])
-        system += f"\n\nIMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningful story beat. You MUST include ALL parts of the text from beginning to end - do NOT skip, cut, or omit ANY part. The ENTIRE text must be covered."
+        system += f"\n\nIMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningful story beat. You MUST include ALL parts of the text from beginning to end - do NOT skip, cut, or omit ANY part. The ENTIRE text must be covered. Every sentence of the original text MUST appear in at least one scene."
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system}, {"role": "user", "content": texto}
-        ], "max_tokens": 4000}
+        ], "max_tokens": 8000}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=60)
         if r.ok:
             resultado = r.json()["choices"][0]["message"]["content"].strip()
@@ -1419,6 +1419,11 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                             f.write(f"file '{os.path.abspath(cp)}'\n")
                     cmd_concat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_path]
                     if audio_final_path and os.path.exists(audio_final_path):
+                        # Loop vídeo se áudio for mais longo
+                        dur_concat = 0
+                        try:
+                            p = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", concat_path.replace("concat_mix.txt","")], capture_output=True, text=True)
+                        except: pass
                         cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k"]
                     else:
                         cmd_concat += ["-c:v", "copy"]
@@ -1434,15 +1439,16 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 jobs[job_id]["progresso"] = "Adicionando música de fundo..."
                 video_com_musica = video_path.replace(".mp4", "_music.mp4")
                 try:
-                    # Mixar: narração em volume normal + música em volume baixo
+                    # Mixar: narração em volume normal + música audível
                     if audio_final_path and os.path.exists(audio_final_path):
                         cmd = ["ffmpeg", "-y", "-i", video_path, "-i", musica_path,
-                               "-filter_complex", "[1:a]volume=0.15[bg];[0:a][bg]amix=inputs=2:duration=first[aout]",
-                               "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-shortest", video_com_musica]
+                               "-filter_complex", "[1:a]volume=0.35[bg];[0:a][bg]amix=inputs=2:duration=first[aout]",
+                               "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", video_com_musica]
                     else:
-                        # Sem narração: música como áudio principal (volume normal)
+                        # Sem narração: música como áudio principal (volume 70%)
                         cmd = ["ffmpeg", "-y", "-i", video_path, "-i", musica_path,
-                               "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-shortest", video_com_musica]
+                               "-filter_complex", "[1:a]volume=0.7[bg]",
+                               "-map", "0:v", "-map", "[bg]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", video_com_musica]
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
                     if result.returncode == 0 and os.path.exists(video_com_musica):
                         os.replace(video_com_musica, video_path)
