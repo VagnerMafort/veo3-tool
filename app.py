@@ -3171,28 +3171,28 @@ def admin_upload_musica_sistema():
         return jsonify({"erro": "Formato inválido"}), 400
     # Auto-categorizar se não especificou
     if not categoria or categoria == "auto":
-        nome_lower = nome.lower() + " " + arquivo.filename.lower()
-        if any(w in nome_lower for w in ["epic", "epico", "battle", "war", "heroic", "cinematic", "trailer", "orchestra"]):
-            categoria = "epico"
-        elif any(w in nome_lower for w in ["motivat", "inspir", "uplift", "triumph", "victory", "power"]):
-            categoria = "motivacional"
-        elif any(w in nome_lower for w in ["suspense", "tension", "thriller", "mystery", "dark", "horror", "creepy", "scary"]):
-            categoria = "suspense"
-        elif any(w in nome_lower for w in ["kids", "child", "infant", "cartoon", "fun", "playful", "cute"]):
-            categoria = "infantil"
-        elif any(w in nome_lower for w in ["calm", "relax", "peace", "ambient", "meditation", "nature", "soft", "gentle"]):
-            categoria = "calmo"
-        elif any(w in nome_lower for w in ["happy", "alegr", "joy", "cheerful", "upbeat", "party", "celebrat"]):
-            categoria = "alegre"
-        elif any(w in nome_lower for w in ["sad", "trist", "melanchol", "emotional", "sorrow", "cry", "piano sad"]):
-            categoria = "triste"
-        elif any(w in nome_lower for w in ["love", "roman", "wedding", "heart", "passion", "tender"]):
-            categoria = "romantico"
-        elif any(w in nome_lower for w in ["tech", "electro", "digital", "cyber", "synth", "futur", "sci-fi", "robot"]):
-            categoria = "tecnologia"
-        elif any(w in nome_lower for w in ["sfx", "effect", "efeito", "sound effect", "whoosh", "boom", "click", "transition"]):
-            categoria = "efeito"
-        else:
+        # Usar GPT pra categorizar pelo nome do arquivo
+        try:
+            api_key = current_user.get_api_key()
+            if api_key:
+                headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                body = {"model": "gpt-4o-mini", "messages": [
+                    {"role": "system", "content": """Analise o nome deste arquivo de música instrumental e retorne TODAS as categorias que se encaixam.
+Categorias disponíveis: epico, motivacional, suspense, infantil, calmo, alegre, triste, romantico, tecnologia, efeito, geral
+
+Retorne APENAS as categorias separadas por vírgula. Exemplo:
+epico, motivacional"""},
+                    {"role": "user", "content": f"Nome do arquivo: {arquivo.filename}"}
+                ], "max_tokens": 30}
+                r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=10)
+                if r.ok:
+                    texto = r.json()["choices"][0]["message"]["content"].strip().lower()
+                    categorias_validas = ["epico","motivacional","suspense","infantil","calmo","alegre","triste","romantico","tecnologia","efeito","geral"]
+                    cats = [c.strip() for c in texto.split(",") if c.strip() in categorias_validas]
+                    if cats:
+                        categoria = ",".join(cats)
+        except: pass
+        if not categoria:
             categoria = "geral"
     filename = f"{uuid.uuid4().hex[:8]}_{arquivo.filename}"
     filepath = os.path.join(MUSICAS_SISTEMA_FOLDER, filename)
