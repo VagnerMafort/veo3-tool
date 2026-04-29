@@ -321,7 +321,10 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
               <button class="modo-btn" onclick="filtrarMusicas('infantil')" style="font-size:.72rem;padding:6px 10px">🧸 Kids</button>
               <button class="modo-btn" onclick="filtrarMusicas('calmo')" style="font-size:.72rem;padding:6px 10px">🌿 Calmo</button>
               <button class="modo-btn" onclick="filtrarMusicas('usuario')" style="font-size:.72rem;padding:6px 10px">📤 Minhas</button>
+              <!-- Jamendo desativado por agora (uso futuro)
               <button class="modo-btn" onclick="filtrarMusicas('jamendo')" style="font-size:.72rem;padding:6px 10px">🌐 Jamendo</button>
+              -->
+              <button class="modo-btn" onclick="filtrarMusicas('efeito')" style="font-size:.72rem;padding:6px 10px">🔊 Efeitos</button>
             </div>
             <div id="listaMusSeletor" style="max-height:200px;overflow-y:auto;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
               <div style="padding:10px;text-align:center;color:var(--text3);font-size:.8rem">Carregando músicas...</div>
@@ -1204,8 +1207,9 @@ async function carregarMusicas(){
   });
   // Combinar sistema + usuário pra seletor
   _todasMusicas=[];
-  (dS.musicas||[]).forEach(m=>{_todasMusicas.push({...m,tipo:'sistema'});});
-  d.musicas.forEach(m=>{_todasMusicas.push({...m,tipo:'usuario'});});
+  const audioAtivo={{ 'true' if user.audio_ativo or user.is_admin else 'false' }};
+  (dS.musicas||[]).forEach(m=>{_todasMusicas.push({...m,tipo:'sistema',bloqueado:!audioAtivo});});
+  d.musicas.forEach(m=>{_todasMusicas.push({...m,tipo:'usuario',bloqueado:false});});
   renderizarMusicaSeletor();
 }
 
@@ -1268,6 +1272,13 @@ function renderizarMusicaSeletor(){
     const isFav=_musicasFavoritas.includes(favKey);
     const src=m.tipo==='sistema'?`/musica_sistema/${m.path}`:`/musica_file/${m.path}`;
     const selected=document.getElementById('musicaId').value==m.id?'background:rgba(74,158,255,0.15);':'';
+    if(m.bloqueado){
+      html+=`<div style="padding:8px;border-bottom:1px solid var(--border);opacity:0.5;display:flex;align-items:center;gap:8px">
+        <span style="font-size:.9rem">🔒</span>
+        <div style="flex:1"><div style="font-size:.78rem;color:var(--text3)">${m.nome}</div><div style="font-size:.62rem;color:var(--text3)">${m.categoria||''}</div></div>
+        <button onclick="comprarPlano('{{ audio_addon_price }}')" style="background:#f59e0b;color:#fff;border:none;padding:4px 8px;border-radius:4px;font-size:.68rem;cursor:pointer">Assinar</button>
+      </div>`;
+    } else {
     html+=`<div style="padding:8px;border-bottom:1px solid var(--border);${selected}display:flex;align-items:center;gap:8px">
       <button onclick="toggleFavMusica('${favKey}')" style="background:none;border:none;cursor:pointer;font-size:.9rem">${isFav?'⭐':'☆'}</button>
       <div style="flex:1;min-width:0">
@@ -1277,6 +1288,7 @@ function renderizarMusicaSeletor(){
       <audio src="${src}" preload="none" style="height:24px;width:100px" controls></audio>
       <button onclick="selecionarMusica('${m.id}','${m.nome}')" style="background:var(--accent);color:#fff;border:none;padding:4px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;white-space:nowrap">Usar</button>
     </div>`;
+    }
   });
   container.innerHTML=html;
 }

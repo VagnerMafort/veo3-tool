@@ -93,6 +93,10 @@ CREDITOS_CENA_COMPLETA = 80  # Tudo junto (12+3+5+60)
 BANCO_ADDON_PRICE_ID = "price_1TPFcuLW3ZSF3MIlECdLofvd"
 BANCO_ADDON_VALOR = "R$14,97/mês"
 
+# Add-on Banco de Áudio
+AUDIO_ADDON_PRICE_ID = "price_1TReAmLW3ZSF3MIlNH81ggsU"
+AUDIO_ADDON_VALOR = "R$9,97/mês"
+
 PLANOS_STRIPE = {
     "api_propria": {
         "nome": "API Própria",
@@ -167,6 +171,7 @@ for key, p in PLANOS_STRIPE.items():
 for key, p in PACOTES_AVULSO.items():
     PRICE_MAP[p["price_id"]] = {**p, "key": key, "tipo": "avulso"}
 PRICE_MAP[BANCO_ADDON_PRICE_ID] = {"nome": "Banco de Imagens", "key": "banco", "tipo": "addon", "creditos": 0}
+PRICE_MAP[AUDIO_ADDON_PRICE_ID] = {"nome": "Banco de Áudio", "key": "audio", "tipo": "addon", "creditos": 0}
 
 UPLOAD_FOLDER = "uploads"
 OUTPUT_FOLDER = "outputs"
@@ -245,6 +250,7 @@ class User(UserMixin, db.Model):
     plano = db.Column(db.Text, default="")
     stripe_customer_id = db.Column(db.Text, default="")
     banco_ativo = db.Column(db.Boolean, default=False)
+    audio_ativo = db.Column(db.Boolean, default=False)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
     criacoes = db.relationship("Criacao", backref="user", lazy=True)
 
@@ -2305,6 +2311,8 @@ def pagamento_sucesso():
                 elif tipo == "addon":
                     if plano_key == "banco":
                         current_user.banco_ativo = True
+                    elif plano_key == "audio":
+                        current_user.audio_ativo = True
 
                 db.session.commit()
         except Exception as e:
@@ -2363,6 +2371,8 @@ def stripe_webhook():
                 elif tipo == "addon":
                     if plano_key == "banco":
                         user.banco_ativo = True
+                    elif plano_key == "audio":
+                        user.audio_ativo = True
                 db.session.commit()
 
     return jsonify({"ok": True})
@@ -2406,7 +2416,9 @@ def dashboard():
                            creditos_narracao=CREDITOS_NARRACAO,
                            creditos_animacao=CREDITOS_ANIMACAO,
                            banco_addon_price=BANCO_ADDON_PRICE_ID,
-                           banco_addon_valor=BANCO_ADDON_VALOR)
+                           banco_addon_valor=BANCO_ADDON_VALOR,
+                           audio_addon_price=AUDIO_ADDON_PRICE_ID,
+                           audio_addon_valor=AUDIO_ADDON_VALOR)
 
 @app.route("/perfil", methods=["GET", "POST"])
 @login_required
@@ -3556,6 +3568,8 @@ if __name__ == "__main__":
             conn = sqlite3.connect('instance/veo3.db')
             try: conn.execute("ALTER TABLE user ADD COLUMN banco_ativo BOOLEAN DEFAULT 0")
             except: pass
+            try: conn.execute("ALTER TABLE user ADD COLUMN audio_ativo BOOLEAN DEFAULT 0")
+            except: pass
             conn.commit()
             conn.close()
         except: pass
@@ -3566,6 +3580,8 @@ else:
         try:
             conn = sqlite3.connect('instance/veo3.db')
             try: conn.execute("ALTER TABLE user ADD COLUMN banco_ativo BOOLEAN DEFAULT 0")
+            except: pass
+            try: conn.execute("ALTER TABLE user ADD COLUMN audio_ativo BOOLEAN DEFAULT 0")
             except: pass
             conn.commit()
             conn.close()
