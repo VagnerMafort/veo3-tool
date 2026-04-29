@@ -1298,49 +1298,65 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     creditos_gastos_video += cenas_animadas * CREDITOS_ANIMACAO
                     db.session.commit()
 
-                # Se pelo menos 1 clipe foi gerado, trimma e concatena os vídeos
+                # Se pelo menos 1 clipe foi gerado, montar vídeo final
                 if any(clipes_video):
-                    jobs[job_id]["progresso"] = "Juntando clipes animados..."
+                    jobs[job_id]["progresso"] = "Montando vídeo final..."
 
-                    # Calcular duração total do áudio
-                    duracao_audio = 0
-                    if audio_final_path and os.path.exists(audio_final_path):
-                        try:
-                            probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audio_final_path], capture_output=True, text=True)
-                            duracao_audio = float(probe.stdout.strip()) if probe.returncode == 0 else 0
-                        except: pass
-
-                    # Calcular duração total dos clipes
                     clipes_validos = [cp for cp in clipes_video if cp and os.path.exists(cp)]
-                    duracao_video = len(clipes_validos) * 6  # cada clipe ~6s
 
-                    sys.stderr.write(f"[SYNC] Audio: {duracao_audio:.1f}s | Video: {duracao_video:.1f}s | Clipes: {len(clipes_validos)}\n"); sys.stderr.flush()
-
-                    # Se áudio é mais longo que vídeo, repetir clipes pra cobrir
+                    # PASSO 1: Concatenar todos os clipes em um vídeo mudo
                     concat_path = os.path.join(job_dir, "concat_list.txt")
+                    video_mudo = os.path.join(job_dir, "video_mudo.mp4")
                     with open(concat_path, "w") as f:
                         for cp in clipes_validos:
                             f.write(f"file '{os.path.abspath(cp)}'\n")
-                        # Repetir clipes se necessário
-                        if duracao_audio > duracao_video + 2 and clipes_validos:
-                            falta = duracao_audio - duracao_video
-                            idx = 0
-                            while falta > 0:
-                                f.write(f"file '{os.path.abspath(clipes_validos[idx % len(clipes_validos)])}'\n")
-                                falta -= 6
-                                idx += 1
-                            sys.stderr.write(f"[SYNC] Repetindo {idx} clipes pra cobrir audio\n"); sys.stderr.flush()
+                    cmd_mudo = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_path, "-c:v", "copy", "-an", video_mudo]
+                    subprocess.run(cmd_mudo, capture_output=True, text=True)
+
+                    # PASSO 2: Medir durações reais
+                    def medir_duracao(filepath):
+                        try:
+                            p = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filepath], capture_output=True, text=True)
+                            return float(p.stdout.strip()) if p.returncode == 0 else 0
+                        except: return 0
+
+                    dur_video = medir_duracao(video_mudo)
+                    dur_audio = medir_duracao(audio_final_path) if audio_final_path and os.path.exists(audio_final_path) else 0
+
+                    sys.stderr.write(f"[SYNC] Video mudo: {dur_video:.1f}s | Audio: {dur_audio:.1f}s\n"); sys.stderr.flush()
+
                     video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
 
-                    # Concatenar clipes + áudio (shortest corta quando áudio termina)
-                    cmd_concat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_path]
-                    if audio_final_path and os.path.exists(audio_final_path):
-                        cmd_concat += ["-i", audio_final_path, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+                    # PASSO 3: Combinar vídeo + áudio
+                    if audio_final_path and os.path.exists(audio_final_path) and dur_audio > 0:
+                        if dur_video >= dur_audio:
+                            # Vídeo mais longo ou igual ao áudio: cortar vídeo no fim do áudio
+                            cmd_final = ["ffmpeg", "-y", "-i", video_mudo, "-i", audio_final_path,
+                                         "-t", str(dur_audio),
+                                         "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", video_path]
+                        else:
+                            # Áudio mais longo que vídeo: loop o vídeo pra cobrir o áudio
+                            cmd_final = ["ffmpeg", "-y",
+                                         "-stream_loop", "-1", "-i", video_mudo,
+                                         "-i", audio_final_path,
+                                         "-t", str(dur_audio),
+                                         "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p",
+                                         "-c:a", "aac", "-b:a", "192k", video_path]
+                            sys.stderr.write(f"[SYNC] Looping video pra cobrir audio ({dur_audio:.1f}s)\n"); sys.stderr.flush()
                     else:
-                        cmd_concat += ["-c:v", "copy"]
+                        # Sem áudio: usar vídeo mudo direto
+                        shutil.copy(video_mudo, video_path)
+                        cmd_final = None
 
-                    # Adicionar legendas se ativo
-                    if legenda_cfg and legenda_cfg.get("ativo") and audio_final_path:
+                    if cmd_final:
+                        result = subprocess.run(cmd_final, capture_output=True, text=True)
+                        if result.returncode != 0:
+                            sys.stderr.write(f"[SYNC] FFmpeg erro: {result.stderr[-300:]}\n"); sys.stderr.flush()
+                            # Fallback: copiar vídeo mudo
+                            shutil.copy(video_mudo, video_path)
+
+                    # PASSO 4: Adicionar legendas se ativo
+                    if legenda_cfg and legenda_cfg.get("ativo") and audio_final_path and os.path.exists(video_path):
                         srt_path = video_path.replace(".mp4", ".srt")
                         gerar_srt_palavras(audio_final_path, srt_path)
                         fonte = legenda_cfg.get("fonte", "Arial")
@@ -1348,24 +1364,15 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         tam = legenda_cfg.get("tamanho", "18")
                         pos = legenda_cfg.get("posicao", "2")
                         sombra = "1" if legenda_cfg.get("sombra", True) else "0"
-                        video_temp = os.path.join(job_dir, "temp_concat.mp4")
-                        cmd_concat += [video_temp]
-                        result = subprocess.run(cmd_concat, capture_output=True, text=True)
-                        if result.returncode != 0:
-                            raise Exception(f"FFmpeg concat erro: {result.stderr[-500:]}")
+                        video_com_leg = video_path.replace(".mp4", "_leg.mp4")
                         srt_esc = os.path.abspath(srt_path)
-                        cmd_sub = ["ffmpeg", "-y", "-i", video_temp,
+                        cmd_sub = ["ffmpeg", "-y", "-i", video_path,
                                    "-vf", f"subtitles={srt_esc}:force_style='FontName={fonte},FontSize={tam},PrimaryColour={cor},Alignment={pos},Shadow={sombra},Bold=1'",
                                    "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p",
-                                   "-c:a", "copy", video_path]
+                                   "-c:a", "copy", video_com_leg]
                         result = subprocess.run(cmd_sub, capture_output=True, text=True)
-                        if result.returncode != 0:
-                            raise Exception(f"FFmpeg legendas erro: {result.stderr[-500:]}")
-                    else:
-                        cmd_concat += [video_path]
-                        result = subprocess.run(cmd_concat, capture_output=True, text=True)
-                        if result.returncode != 0:
-                            raise Exception(f"FFmpeg concat erro: {result.stderr[-500:]}")
+                        if result.returncode == 0 and os.path.exists(video_com_leg):
+                            os.replace(video_com_leg, video_path)
                 else:
                     # Nenhum clipe gerado — verificar se foi rate limit ou erro técnico
                     jobs[job_id] = {"status": "erro", "progresso": "Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde. Se o erro persistir, entre em contato com o suporte técnico.", "total": 0, "atual": 0}
