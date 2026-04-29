@@ -1062,7 +1062,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
         except Exception as e:
             jobs[job_id] = {"status": "erro", "progresso": str(e), "total": 0, "atual": 0}
 
-def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia=False, musica_path=""):
+def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia=False, musica_path="", efeitos_sonoros=False):
     with app.app_context():
         try:
             user = User.query.get(user_id)
@@ -1449,6 +1449,137 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 except Exception as e:
                     import sys
                     sys.stderr.write(f"[MUSICA] Erro ao mixar: {e}\n"); sys.stderr.flush()
+
+            # Efeitos sonoros automáticos
+            if efeitos_sonoros and os.path.exists(video_path):
+                jobs[job_id]["progresso"] = "Analisando cenas para efeitos sonoros..."
+                try:
+                    import sys as _sys
+                    # 1. Buscar efeitos disponíveis no banco
+                    conn_sfx = sqlite3.connect('instance/veo3.db')
+                    try: conn_sfx.execute("ALTER TABLE musicas_sistema ADD COLUMN tipo TEXT DEFAULT 'musica'")
+                    except: pass
+                    sfx_rows = conn_sfx.execute("SELECT id, nome, categoria, path FROM musicas_sistema WHERE tipo='efeito'").fetchall()
+                    conn_sfx.close()
+                    sfx_disponiveis = [{"id": r[0], "nome": r[1], "categoria": r[2], "path": r[3]} for r in sfx_rows
+                                       if os.path.exists(os.path.join(MUSICAS_SISTEMA_FOLDER, r[3]))]
+
+                    if sfx_disponiveis and imagens:
+                        # 2. Pedir ao GPT pra analisar cada cena e sugerir efeitos
+                        api_key = user.get_api_key()
+                        if api_key:
+                            categorias_sfx = list(set(cat.strip() for s in sfx_disponiveis for cat in s["categoria"].split(",")))
+                            cenas_texto = []
+                            for img in imagens:
+                                cenas_texto.append(f"Cena {img['index']} [{img['inicio']}s-{img['fim']}s]: {img['texto']}")
+                            prompt_sfx = f"""Analise estas cenas de um vídeo e sugira efeitos sonoros para dar mais impacto.
+
+Cenas:
+{chr(10).join(cenas_texto)}
+
+Categorias de efeitos disponíveis: {', '.join(categorias_sfx)}
+
+Para cada cena que merece um efeito, retorne no formato (uma por linha):
+CENA:numero|MOMENTO:inicio/meio/fim|CATEGORIA:categoria
+
+Regras:
+- NÃO coloque efeito em todas as cenas, só onde faz sentido (ação, impacto, transição, emoção forte)
+- Máximo 1 efeito por cena
+- Se nenhuma cena precisa de efeito, retorne: NENHUM
+- Use APENAS categorias da lista disponível"""
+
+                            headers_sfx = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                            body_sfx = {"model": "gpt-4o-mini", "messages": [
+                                {"role": "system", "content": "Você é um sound designer de vídeos. Sugira efeitos sonoros pontuais para dar impacto nas cenas certas."},
+                                {"role": "user", "content": prompt_sfx}
+                            ], "max_tokens": 300}
+                            r_sfx = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_sfx, json=body_sfx, timeout=15)
+
+                            if r_sfx.ok:
+                                resposta_sfx = r_sfx.json()["choices"][0]["message"]["content"].strip()
+                                _sys.stderr.write(f"[SFX] GPT sugeriu: {resposta_sfx}\n"); _sys.stderr.flush()
+
+                                if "NENHUM" not in resposta_sfx.upper():
+                                    # 3. Parsear sugestões
+                                    sfx_aplicar = []
+                                    for linha in resposta_sfx.split("\n"):
+                                        linha = linha.strip()
+                                        if not linha or "CENA:" not in linha.upper():
+                                            continue
+                                        try:
+                                            partes = {}
+                                            for p in linha.split("|"):
+                                                if ":" in p:
+                                                    k, v = p.split(":", 1)
+                                                    partes[k.strip().upper()] = v.strip().lower()
+                                            cena_num = int(partes.get("CENA", "0"))
+                                            momento = partes.get("MOMENTO", "meio")
+                                            cat_sfx = partes.get("CATEGORIA", "")
+                                            if cena_num > 0 and cat_sfx:
+                                                # Buscar efeito que bate com a categoria
+                                                candidatos = [s for s in sfx_disponiveis if cat_sfx in s["categoria"].lower()]
+                                                if candidatos:
+                                                    import random
+                                                    escolhido = random.choice(candidatos)
+                                                    # Calcular timestamp
+                                                    cena_img = next((im for im in imagens if im["index"] == cena_num), None)
+                                                    if cena_img:
+                                                        inicio_cena = cena_img["inicio"]
+                                                        fim_cena = cena_img["fim"]
+                                                        dur_cena = fim_cena - inicio_cena
+                                                        if momento == "inicio":
+                                                            ts = inicio_cena + 0.3
+                                                        elif momento == "fim":
+                                                            ts = max(inicio_cena, fim_cena - 1.0)
+                                                        else:
+                                                            ts = inicio_cena + dur_cena * 0.5
+                                                        sfx_aplicar.append({
+                                                            "timestamp": round(ts, 2),
+                                                            "path": os.path.join(MUSICAS_SISTEMA_FOLDER, escolhido["path"]),
+                                                            "nome": escolhido["nome"],
+                                                            "cena": cena_num
+                                                        })
+                                        except:
+                                            continue
+
+                                    # 4. Mixar efeitos no vídeo com FFmpeg
+                                    if sfx_aplicar:
+                                        jobs[job_id]["progresso"] = f"Adicionando {len(sfx_aplicar)} efeito(s) sonoro(s)..."
+                                        _sys.stderr.write(f"[SFX] Aplicando {len(sfx_aplicar)} efeitos\n"); _sys.stderr.flush()
+
+                                        video_com_sfx = video_path.replace(".mp4", "_sfx.mp4")
+                                        # Construir comando FFmpeg com múltiplos inputs
+                                        cmd_sfx = ["ffmpeg", "-y", "-i", video_path]
+                                        for sfx in sfx_aplicar:
+                                            cmd_sfx += ["-i", sfx["path"]]
+
+                                        # Construir filter_complex
+                                        n_sfx = len(sfx_aplicar)
+                                        filters = []
+                                        for i, sfx in enumerate(sfx_aplicar):
+                                            # Delay em ms, volume baixo pra não sobrepor narração
+                                            delay_ms = int(sfx["timestamp"] * 1000)
+                                            vol = "0.6" if audio_final_path else "0.8"
+                                            filters.append(f"[{i+1}:a]adelay={delay_ms}|{delay_ms},volume={vol}[sfx{i}]")
+
+                                        # Mixar tudo junto
+                                        mix_inputs = "[0:a]" + "".join(f"[sfx{i}]" for i in range(n_sfx))
+                                        filters.append(f"{mix_inputs}amix=inputs={n_sfx+1}:duration=first:dropout_transition=2[aout]")
+
+                                        cmd_sfx += ["-filter_complex", ";".join(filters),
+                                                    "-map", "0:v", "-map", "[aout]",
+                                                    "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                                                    video_com_sfx]
+
+                                        result_sfx = subprocess.run(cmd_sfx, capture_output=True, text=True, timeout=120)
+                                        if result_sfx.returncode == 0 and os.path.exists(video_com_sfx):
+                                            os.replace(video_com_sfx, video_path)
+                                            _sys.stderr.write(f"[SFX] Efeitos aplicados com sucesso\n"); _sys.stderr.flush()
+                                        else:
+                                            _sys.stderr.write(f"[SFX] FFmpeg erro: {result_sfx.stderr[-300:]}\n"); _sys.stderr.flush()
+                except Exception as e:
+                    import sys
+                    sys.stderr.write(f"[SFX] Erro geral: {e}\n"); sys.stderr.flush()
 
             # Cobrar renderização/legenda se não gastou nada com outros serviços
             if creditos_gastos_video == 0:
@@ -3599,6 +3730,7 @@ def finalizar_video_route():
         "sombra": request.form.get("legenda_sombra", "true") == "true",
     }
     animar_ia = request.form.get("animar_ia", "false") == "true"
+    efeitos_sonoros = request.form.get("efeitos_sonoros", "false") == "true"
     musica_id = request.form.get("musica_id", "").strip()
     musica_path = ""
     if musica_id:
@@ -3631,11 +3763,11 @@ def finalizar_video_route():
                     musica_path = row[0]
             except: pass
     import sys
-    sys.stderr.write(f"[ROTA] animar_ia={animar_ia}, musica={musica_path or 'nenhuma'}\n")
+    sys.stderr.write(f"[ROTA] animar_ia={animar_ia}, efeitos_sonoros={efeitos_sonoros}, musica={musica_path or 'nenhuma'}\n")
     sys.stderr.flush()
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia, musica_path))
+    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia, musica_path, efeitos_sonoros))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})

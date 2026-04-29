@@ -336,6 +336,11 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           </div>
           <p class="tip">Faça upload de músicas na aba 🎙️ Áudio</p>
           <div class="toggle-row">
+            <label>🔊 Efeitos sonoros automáticos</label>
+            <label class="toggle"><input type="checkbox" id="efeitosSonoros"><span class="slider"></span></label>
+          </div>
+          <p class="tip" id="tipEfeitos" style="display:none;margin-top:4px">A IA analisa cada cena e adiciona efeitos de impacto, transição e ambiente nos momentos certos.</p>
+          <div class="toggle-row">
             <label>💬 Legendas</label>
             <label class="toggle"><input type="checkbox" id="legendaAtivo"><span class="slider"></span></label>
           </div>
@@ -1116,6 +1121,8 @@ toggleOpenAI();
 
 const legendaAtivo=document.getElementById('legendaAtivo'),secaoLegenda=document.getElementById('secaoLegenda');
 if(legendaAtivo)legendaAtivo.addEventListener('change',()=>{secaoLegenda.style.display=legendaAtivo.checked?'block':'none';});
+const efeitosSonorosEl=document.getElementById('efeitosSonoros'),tipEfeitos=document.getElementById('tipEfeitos');
+if(efeitosSonorosEl)efeitosSonorosEl.addEventListener('change',()=>{if(tipEfeitos)tipEfeitos.style.display=efeitosSonorosEl.checked?'block':'none';});
 
 // Stripe - Comprar plano
 async function comprarPlano(priceId){
@@ -1557,6 +1564,8 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   }
   fd.append('legenda_ativo',legendaAtivo&&legendaAtivo.checked?'true':'false');fd.append('legenda_fonte',document.getElementById('legendaFonte')?document.getElementById('legendaFonte').value:'Arial');fd.append('legenda_tamanho',document.getElementById('legendaTamanho')?document.getElementById('legendaTamanho').value:'18');fd.append('legenda_cor',document.getElementById('legendaCor')?document.getElementById('legendaCor').value:'&H00FFFFFF');fd.append('legenda_posicao',document.getElementById('legendaPosicao')?document.getElementById('legendaPosicao').value:'2');fd.append('legenda_sombra',document.getElementById('legendaSombra')&&document.getElementById('legendaSombra').checked?'true':'false');
   fd.append('musica_id',document.getElementById('musicaId').value);
+  const efxCheck=document.getElementById('efeitosSonoros');
+  fd.append('efeitos_sonoros',efxCheck&&efxCheck.checked?'true':'false');
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}
 });
 
