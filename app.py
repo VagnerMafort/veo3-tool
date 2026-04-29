@@ -2684,6 +2684,19 @@ def admin_toggle_banco():
         return jsonify({"ok": True, "banco_ativo": user.banco_ativo})
     return jsonify({"erro": "Usuario nao encontrado"}), 404
 
+@app.route("/admin/toggle_audio", methods=["POST"])
+@login_required
+def admin_toggle_audio():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    user_id = request.json.get("user_id")
+    user = User.query.get(user_id)
+    if user:
+        user.audio_ativo = not user.audio_ativo
+        db.session.commit()
+        return jsonify({"ok": True, "audio_ativo": user.audio_ativo})
+    return jsonify({"erro": "Usuario nao encontrado"}), 404
+
 @app.route("/admin/mudar_senha", methods=["POST"])
 @login_required
 def admin_mudar_senha():

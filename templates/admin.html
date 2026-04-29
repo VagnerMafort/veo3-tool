@@ -155,6 +155,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
             {% endif %}
             <button class="btn-outline-sm" onclick="mostrarCreditos({{ u.id }})">💰 Créditos</button>
             <button class="btn-outline-sm" onclick="toggleBanco({{ u.id }})">🗃️ {% if u.banco_ativo %}Banco ✓{% else %}Banco{% endif %}</button>
+            <button class="btn-outline-sm" onclick="toggleAudio({{ u.id }})">🎵 {% if u.audio_ativo %}Áudio ✓{% else %}Áudio{% endif %}</button>
             <button class="btn-outline-sm" onclick="mostrarSenha({{ u.id }})">🔑 Senha</button>
             <button class="btn-sm btn-red" onclick="deletarUser({{ u.id }})">🗑</button>
           </div>
@@ -249,6 +250,20 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
         <span class="metric-value">{{ users|selectattr('plano','equalto',key)|list|length }} assinantes</span>
       </div>
       {% endfor %}
+    </div>
+
+    <div class="card">
+      <h2>🛒 Add-ons</h2>
+      <div class="metric-row">
+        <span class="metric-label">🗃️ Banco de Imagens e Vídeos — R$14,97/mês</span>
+        <span class="metric-value">{{ users|selectattr('banco_ativo')|list|length }} assinantes</span>
+      </div>
+      <div style="font-size:.75rem;color:var(--text3);padding:4px 0 10px">Acesso a imagens e vídeos reutilizáveis no storyboard. Economiza créditos de geração.</div>
+      <div class="metric-row">
+        <span class="metric-label">🎵 Banco de Músicas e Efeitos — R$4,99/mês</span>
+        <span class="metric-value">{{ users|selectattr('audio_ativo')|list|length }} assinantes</span>
+      </div>
+      <div style="font-size:.75rem;color:var(--text3);padding:4px 0 0">Músicas instrumentais, efeitos sonoros e efeitos automáticos com IA nos vídeos.</div>
     </div>
 
     <div class="card">
@@ -637,7 +652,9 @@ async function toggleAdmin(uid,nome,isAdmin){
   else{alert('❌ '+(d.erro||'Erro'));}
 }
 
-async function toggleBanco(uid){const res=await fetch('/admin/toggle_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});const d=await res.json();if(d.ok){alert(d.banco_ativo?'Banco ativado!':'Banco desativado!');location.reload();}}
+async function toggleBanco(uid){const res=await fetch('/admin/toggle_banco',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});const d=await res.json();if(d.ok){alert(d.banco_ativo?'Banco de Imagens ativado!':'Banco de Imagens desativado!');location.reload();}}
+
+async function toggleAudio(uid){const res=await fetch('/admin/toggle_audio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});const d=await res.json();if(d.ok){alert(d.audio_ativo?'Banco de Áudio ativado!':'Banco de Áudio desativado!');location.reload();}}
 
 function mostrarSenha(uid){const el=document.getElementById('senha-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('creditos-'+uid).style.display='none';}
 function mostrarCreditos(uid){const el=document.getElementById('creditos-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('senha-'+uid).style.display='none';}
