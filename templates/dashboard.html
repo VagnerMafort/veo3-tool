@@ -312,18 +312,21 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
           <label>🎵 Música de fundo</label>
           <div id="musicaSeletor" style="margin-bottom:10px">
+            <input type="text" id="buscaMusicaNome" placeholder="🔍 Buscar música por nome..." oninput="renderizarMusicaSeletor()" style="margin-bottom:8px;font-size:.82rem;padding:8px 10px"/>
             <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
               <button class="modo-btn active" onclick="filtrarMusicas('')" id="filtMusicaTodas" style="font-size:.72rem;padding:6px 10px">Todas</button>
               <button class="modo-btn" onclick="filtrarMusicas('favoritas')" id="filtMusicaFav" style="font-size:.72rem;padding:6px 10px">⭐ Favoritas</button>
+              <button class="modo-btn" onclick="filtrarMusicas('usuario')" style="font-size:.72rem;padding:6px 10px">📤 Minhas</button>
+              <button class="modo-btn" onclick="filtrarMusicas('sistema')" style="font-size:.72rem;padding:6px 10px">🎵 Banco</button>
               <button class="modo-btn" onclick="filtrarMusicas('epico')" style="font-size:.72rem;padding:6px 10px">⚔️ Épico</button>
               <button class="modo-btn" onclick="filtrarMusicas('motivacional')" style="font-size:.72rem;padding:6px 10px">💪 Motiv.</button>
               <button class="modo-btn" onclick="filtrarMusicas('suspense')" style="font-size:.72rem;padding:6px 10px">🔮 Suspense</button>
               <button class="modo-btn" onclick="filtrarMusicas('infantil')" style="font-size:.72rem;padding:6px 10px">🧸 Kids</button>
               <button class="modo-btn" onclick="filtrarMusicas('calmo')" style="font-size:.72rem;padding:6px 10px">🌿 Calmo</button>
-              <button class="modo-btn" onclick="filtrarMusicas('usuario')" style="font-size:.72rem;padding:6px 10px">📤 Minhas</button>
-              <!-- Jamendo desativado por agora (uso futuro)
-              <button class="modo-btn" onclick="filtrarMusicas('jamendo')" style="font-size:.72rem;padding:6px 10px">🌐 Jamendo</button>
-              -->
+              <button class="modo-btn" onclick="filtrarMusicas('alegre')" style="font-size:.72rem;padding:6px 10px">🎉 Alegre</button>
+              <button class="modo-btn" onclick="filtrarMusicas('triste')" style="font-size:.72rem;padding:6px 10px">😢 Triste</button>
+              <button class="modo-btn" onclick="filtrarMusicas('romantico')" style="font-size:.72rem;padding:6px 10px">❤️ Romântico</button>
+              <button class="modo-btn" onclick="filtrarMusicas('tecnologia')" style="font-size:.72rem;padding:6px 10px">🤖 Tech</button>
               <button class="modo-btn" onclick="filtrarMusicas('efeito')" style="font-size:.72rem;padding:6px 10px">🔊 Efeitos</button>
             </div>
             <div id="listaMusSeletor" style="max-height:200px;overflow-y:auto;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
@@ -1259,10 +1262,15 @@ function selecionarMusicaJamendo(id,nome,audioUrl){
 
 function renderizarMusicaSeletor(){
   const container=document.getElementById('listaMusSeletor');
+  const buscaNome=(document.getElementById('buscaMusicaNome').value||'').toLowerCase().trim();
   let filtradas=_todasMusicas;
+  // Filtro por categoria/tipo
   if(_musicaFiltro==='favoritas')filtradas=filtradas.filter(m=>_musicasFavoritas.includes(m.id+'_'+m.tipo));
   else if(_musicaFiltro==='usuario')filtradas=filtradas.filter(m=>m.tipo==='usuario');
+  else if(_musicaFiltro==='sistema')filtradas=filtradas.filter(m=>m.tipo==='sistema');
   else if(_musicaFiltro)filtradas=filtradas.filter(m=>(m.categoria||'').includes(_musicaFiltro));
+  // Filtro por nome
+  if(buscaNome)filtradas=filtradas.filter(m=>(m.nome||'').toLowerCase().includes(buscaNome)||(m.categoria||'').toLowerCase().includes(buscaNome));
 
   if(filtradas.length===0){container.innerHTML='<div style="padding:10px;text-align:center;color:var(--text3);font-size:.8rem">Nenhuma música nesta categoria</div>';return;}
 

@@ -2708,11 +2708,85 @@ def admin_upload_banco():
     destino = os.path.join(BANCO_IMG_FOLDER, nome)
     arquivo.save(destino)
     tipo = "video" if ext == "mp4" else "imagem"
+    # Auto-categorizar com GPT (mesma lógica das músicas)
+    categoria = "admin_upload"
+    descricao = "Upload manual pelo admin"
+    tags = "upload admin"
+    try:
+        api_key = current_user.get_api_key()
+        if api_key:
+            import base64 as b64mod
+            headers_ai = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            categorias_banco = ["paisagem","pessoa","animal","tecnologia","fantasia","urbano","natureza","comida","esporte","negocio","educacao","saude","musica_arte","transporte","abstrato","geral"]
+            if tipo == "video":
+                # Extrair frame do vídeo pra analisar
+                frame_path = os.path.join(UPLOAD_FOLDER, f"frame_cat_{uuid.uuid4().hex[:6]}.png")
+                try:
+                    subprocess.run(["ffmpeg", "-y", "-i", destino, "-vframes", "1", "-q:v", "2", frame_path],
+                                   capture_output=True, text=True, timeout=10)
+                    if os.path.exists(frame_path):
+                        with open(frame_path, "rb") as fimg:
+                            b64data = b64mod.b64encode(fimg.read()).decode()
+                        body = {"model": "gpt-4o-mini", "messages": [
+                            {"role": "system", "content": f"""Analise este frame de vídeo e retorne:
+1. CATEGORIAS: todas que se encaixam, separadas por vírgula. Opções: {', '.join(categorias_banco)}
+2. DESCRICAO: descrição curta em português (max 80 chars)
+3. TAGS: 5-8 palavras-chave de busca em português, separadas por vírgula
+
+Formato:
+CATEGORIAS: ...
+DESCRICAO: ...
+TAGS: ..."""},
+                            {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64data}"}}]}
+                        ], "max_tokens": 200}
+                        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_ai, json=body, timeout=20)
+                        if r.ok:
+                            texto = r.json()["choices"][0]["message"]["content"].strip()
+                            for linha in texto.split("\n"):
+                                if linha.upper().startswith("CATEGORIAS:") or linha.upper().startswith("CATEGORIA:"):
+                                    cats = [c.strip() for c in linha.split(":", 1)[1].split(",") if c.strip() in categorias_banco]
+                                    if cats: categoria = ",".join(cats)
+                                elif linha.upper().startswith("DESCRICAO:") or linha.upper().startswith("DESCRIÇÃO:"):
+                                    descricao = linha.split(":", 1)[1].strip() or descricao
+                                elif linha.upper().startswith("TAGS:"):
+                                    tags = linha.split(":", 1)[1].strip().lower() or tags
+                        os.remove(frame_path)
+                except: pass
+            else:
+                # Analisar imagem diretamente
+                try:
+                    with open(destino, "rb") as fimg:
+                        b64data = b64mod.b64encode(fimg.read()).decode()
+                    body = {"model": "gpt-4o-mini", "messages": [
+                        {"role": "system", "content": f"""Analise esta imagem e retorne:
+1. CATEGORIAS: todas que se encaixam, separadas por vírgula. Opções: {', '.join(categorias_banco)}
+2. DESCRICAO: descrição curta em português (max 80 chars)
+3. TAGS: 5-8 palavras-chave de busca em português, separadas por vírgula
+
+Formato:
+CATEGORIAS: ...
+DESCRICAO: ...
+TAGS: ..."""},
+                        {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64data}"}}]}
+                    ], "max_tokens": 200}
+                    r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_ai, json=body, timeout=20)
+                    if r.ok:
+                        texto = r.json()["choices"][0]["message"]["content"].strip()
+                        for linha in texto.split("\n"):
+                            if linha.upper().startswith("CATEGORIAS:") or linha.upper().startswith("CATEGORIA:"):
+                                cats = [c.strip() for c in linha.split(":", 1)[1].split(",") if c.strip() in categorias_banco]
+                                if cats: categoria = ",".join(cats)
+                            elif linha.upper().startswith("DESCRICAO:") or linha.upper().startswith("DESCRIÇÃO:"):
+                                descricao = linha.split(":", 1)[1].strip() or descricao
+                            elif linha.upper().startswith("TAGS:"):
+                                tags = linha.split(":", 1)[1].strip().lower() or tags
+                except: pass
+    except: pass
     conn = sqlite3.connect('instance/veo3.db')
     conn.execute("INSERT INTO banco_imagens (prompt, estilo, tags, path, tipo, categoria, descricao) VALUES (?,?,?,?,?,?,?)",
-                 ("Upload admin", "", "upload admin", destino, tipo, "admin_upload", "Upload manual pelo admin"))
+                 (descricao, "", tags, destino, tipo, categoria, descricao))
     conn.commit(); conn.close()
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "categoria": categoria, "descricao": descricao})
 
 @app.route("/admin/renomear_banco_ia", methods=["POST"])
 @login_required
@@ -2727,6 +2801,26 @@ def admin_renomear_banco_ia():
         conn = sqlite3.connect('instance/veo3.db')
         rows = conn.execute("SELECT id, path, tipo FROM banco_imagens ORDER BY id DESC LIMIT 200").fetchall()
         total = 0
+        categorias_banco = ["paisagem","pessoa","animal","tecnologia","fantasia","urbano","natureza","comida","esporte","negocio","educacao","saude","musica_arte","transporte","abstrato","geral"]
+        cat_list_str = ", ".join(categorias_banco)
+        sys_prompt_video = f"""Este é um frame de um vídeo animado. Retorne:
+1. CATEGORIAS: todas que se encaixam, separadas por vírgula. Opções: {cat_list_str}
+2. DESCRICAO: descrição curta em português (max 80 chars)
+3. TAGS: 5-8 palavras-chave de busca em português, separadas por vírgula
+
+Formato:
+CATEGORIAS: ...
+DESCRICAO: ...
+TAGS: ..."""
+        sys_prompt_img = f"""Analise esta imagem e retorne:
+1. CATEGORIAS: todas que se encaixam, separadas por vírgula. Opções: {cat_list_str}
+2. DESCRICAO: descrição curta em português (max 80 chars)
+3. TAGS: 5-8 palavras-chave de busca em português, separadas por vírgula
+
+Formato:
+CATEGORIAS: ...
+DESCRICAO: ...
+TAGS: ..."""
         for row in rows:
             img_id, img_path, tipo = row[0], row[1], row[2] if len(row) > 2 else "imagem"
             if not os.path.exists(img_path):
@@ -2742,32 +2836,36 @@ def admin_renomear_banco_ia():
                             b64 = base64.b64encode(f.read()).decode()
                         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
                         body = {"model": "gpt-4o-mini", "messages": [
-                            {"role": "system", "content": "Este é um frame de um vídeo animado. Descreva a cena em português em 1 frase curta (max 80 chars). Depois liste 5-8 tags de busca separadas por vírgula. Formato:\nDESCRICAO: ...\nTAGS: ..."},
+                            {"role": "system", "content": sys_prompt_video},
                             {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}]}
-                        ], "max_tokens": 150}
+                        ], "max_tokens": 200}
                         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=20)
                         if r.ok:
                             texto = r.json()["choices"][0]["message"]["content"].strip()
                             descricao = ""
                             tags = ""
+                            categoria = ""
                             for linha in texto.split("\n"):
-                                if linha.upper().startswith("DESCRICAO:") or linha.upper().startswith("DESCRIÇÃO:"):
+                                if linha.upper().startswith("CATEGORIAS:") or linha.upper().startswith("CATEGORIA:"):
+                                    cats = [c.strip() for c in linha.split(":", 1)[1].split(",") if c.strip() in categorias_banco]
+                                    if cats: categoria = ",".join(cats)
+                                elif linha.upper().startswith("DESCRICAO:") or linha.upper().startswith("DESCRIÇÃO:"):
                                     descricao = linha.split(":", 1)[1].strip()
                                 elif linha.upper().startswith("TAGS:"):
                                     tags = linha.split(":", 1)[1].strip().lower()
-                            if descricao or tags:
-                                conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
-                                             (descricao or "Vídeo animado", tags or "video,animacao", img_id))
+                            if descricao or tags or categoria:
+                                conn.execute("UPDATE banco_imagens SET descricao=?, tags=?, categoria=? WHERE id=?",
+                                             (descricao or "Vídeo animado", tags or "video,animacao", categoria or "geral", img_id))
                                 total += 1
-                                sys.stderr.write(f"[RENOMEAR] Video #{img_id}: {descricao}\n"); sys.stderr.flush()
+                                sys.stderr.write(f"[RENOMEAR] Video #{img_id}: {descricao} [{categoria}]\n"); sys.stderr.flush()
                         os.remove(frame_path)
                     else:
-                        conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
-                                     ("Vídeo animado", "video,animacao,cena", img_id))
+                        conn.execute("UPDATE banco_imagens SET descricao=?, tags=?, categoria=? WHERE id=?",
+                                     ("Vídeo animado", "video,animacao,cena", "geral", img_id))
                         total += 1
                 except:
-                    conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
-                                 ("Vídeo animado", "video,animacao,cena", img_id))
+                    conn.execute("UPDATE banco_imagens SET descricao=?, tags=?, categoria=? WHERE id=?",
+                                 ("Vídeo animado", "video,animacao,cena", "geral", img_id))
                     total += 1
                 continue
             # Analisar imagem com GPT-4o-mini visão
@@ -2776,24 +2874,28 @@ def admin_renomear_banco_ia():
                     b64 = base64.b64encode(f.read()).decode()
                 headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
                 body = {"model": "gpt-4o-mini", "messages": [
-                    {"role": "system", "content": "Descreva esta imagem em português em 1 frase curta (max 80 chars). Depois liste 5-8 tags de busca separadas por vírgula. Formato:\nDESCRICAO: ...\nTAGS: ..."},
+                    {"role": "system", "content": sys_prompt_img},
                     {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}]}
-                ], "max_tokens": 150}
+                ], "max_tokens": 200}
                 r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=20)
                 if r.ok:
                     texto = r.json()["choices"][0]["message"]["content"].strip()
                     descricao = ""
                     tags = ""
+                    categoria = ""
                     for linha in texto.split("\n"):
-                        if linha.upper().startswith("DESCRICAO:") or linha.upper().startswith("DESCRIÇÃO:"):
+                        if linha.upper().startswith("CATEGORIAS:") or linha.upper().startswith("CATEGORIA:"):
+                            cats = [c.strip() for c in linha.split(":", 1)[1].split(",") if c.strip() in categorias_banco]
+                            if cats: categoria = ",".join(cats)
+                        elif linha.upper().startswith("DESCRICAO:") or linha.upper().startswith("DESCRIÇÃO:"):
                             descricao = linha.split(":", 1)[1].strip()
                         elif linha.upper().startswith("TAGS:"):
                             tags = linha.split(":", 1)[1].strip().lower()
-                    if descricao or tags:
-                        conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
-                                     (descricao or "Imagem", tags or "", img_id))
+                    if descricao or tags or categoria:
+                        conn.execute("UPDATE banco_imagens SET descricao=?, tags=?, categoria=? WHERE id=?",
+                                     (descricao or "Imagem", tags or "", categoria or "geral", img_id))
                         total += 1
-                        sys.stderr.write(f"[RENOMEAR] #{img_id}: {descricao}\n"); sys.stderr.flush()
+                        sys.stderr.write(f"[RENOMEAR] #{img_id}: {descricao} [{categoria}]\n"); sys.stderr.flush()
             except Exception as e:
                 sys.stderr.write(f"[RENOMEAR] #{img_id} erro: {e}\n"); sys.stderr.flush()
                 continue
@@ -2850,6 +2952,7 @@ def buscar_banco():
     termo = request.json.get("termo", "").lower().strip()
     tipo_filtro = request.json.get("tipo", "")
     estilo = request.json.get("estilo", "")
+    categoria_filtro = request.json.get("categoria", "")
     pagina = int(request.json.get("pagina", 1))
     por_pagina = 20
     offset = (pagina - 1) * por_pagina
@@ -2859,10 +2962,10 @@ def buscar_banco():
     count_query = "SELECT COUNT(*) FROM banco_imagens WHERE 1=1"
     params = []
     if termo:
-        filtro = " AND (tags LIKE ? OR prompt LIKE ? OR descricao LIKE ?)"
+        filtro = " AND (tags LIKE ? OR prompt LIKE ? OR descricao LIKE ? OR categoria LIKE ?)"
         query += filtro
         count_query += filtro
-        params += [f"%{termo}%", f"%{termo}%", f"%{termo}%"]
+        params += [f"%{termo}%", f"%{termo}%", f"%{termo}%", f"%{termo}%"]
     if tipo_filtro:
         query += " AND tipo = ?"
         count_query += " AND tipo = ?"
@@ -2871,6 +2974,10 @@ def buscar_banco():
         query += " AND estilo = ?"
         count_query += " AND estilo = ?"
         params.append(estilo)
+    if categoria_filtro:
+        query += " AND categoria LIKE ?"
+        count_query += " AND categoria LIKE ?"
+        params.append(f"%{categoria_filtro}%")
 
     try:
         total = conn.execute(count_query, params).fetchone()[0]
