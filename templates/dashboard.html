@@ -1308,7 +1308,9 @@ document.getElementById('btnGerarFaltantes').addEventListener('click',async()=>{
   }
 });
 
-function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();
+function pollSB(jobId){
+  localStorage.setItem('klyonclaw_job_sb',jobId);
+  const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();
   const stEl=document.getElementById('statusTextPreview')||document.getElementById('statusTextSB');
   const pfEl=document.getElementById('progressFillPreview')||document.getElementById('progressFillSB');
   const etapaEl=document.getElementById('statusEtapa');
@@ -1325,7 +1327,7 @@ function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/st
     else if(prog.includes('Otimizando'))etapaEl.textContent='🧠 Etapa 2/3 — Otimizando prompts';
     else etapaEl.textContent='';
   }
-  if(d.status==='storyboard_pronto'){clearInterval(iv);
+  if(d.status==='storyboard_pronto'){clearInterval(iv);localStorage.removeItem('klyonclaw_job_sb');
     document.getElementById('statusSB').style.display='none';document.getElementById('statusPreview').style.display='none';
     document.getElementById('btnGerarSB').disabled=false;document.getElementById('btnGerarFaltantes').disabled=false;
     document.getElementById('etapaPreview').style.display='none';
@@ -1333,7 +1335,7 @@ function pollSB(jobId){const iv=setInterval(async()=>{const res=await fetch(`/st
   if(d.status==='erro'){clearInterval(iv);
     document.getElementById('statusSB').style.display='none';document.getElementById('statusPreview').style.display='none';
     document.getElementById('btnGerarSB').disabled=false;document.getElementById('btnGerarFaltantes').disabled=false;
-    mostrarErroSB(d.progresso);}
+    localStorage.removeItem('klyonclaw_job_sb');mostrarErroSB(d.progresso);}
 },3000);}
 
 function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaPreview').style.display='none';document.getElementById('etapaStoryboard').style.display='block';
@@ -1427,7 +1429,9 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}
 });
 
-function pollFinal(jobId){const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();const prog=d.progresso||'';
+function pollFinal(jobId){
+  localStorage.setItem('klyonclaw_job_final',jobId);
+  const iv=setInterval(async()=>{const res=await fetch(`/status/${jobId}`);const d=await res.json();const prog=d.progresso||'';
   const pct=d.total>0?Math.round((d.atual/d.total)*100):0;
   if(prog)document.getElementById('statusTextFinal').textContent=d.total>0?`${prog} (${pct}%)`:prog;
   if(d.total>0)document.getElementById('progressFillFinal').style.width=pct+'%';
@@ -1441,9 +1445,29 @@ function pollFinal(jobId){const iv=setInterval(async()=>{const res=await fetch(`
     else if(prog.includes('Juntando'))etapaEl.textContent='🔗 Juntando clipes animados';
     else etapaEl.textContent='';
   }
-  if(d.status==='pronto'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('resultadoInfo').textContent=`${d.total} imagens + vídeo gerados`;document.getElementById('btnDownload').href=`/download/${jobId}`;document.getElementById('btnVideo').href=`/download_video/${jobId}`;document.getElementById('videoPreview').src=`/ver_video/${jobId}`;document.getElementById('resultado').style.display='block';atualizarCreditos();}
-  if(d.status==='erro'){clearInterval(iv);document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;if(d.progresso&&d.progresso.toLowerCase().includes('insuficiente')){document.getElementById('creditosRestantes').textContent=document.getElementById('creditosNum').textContent;document.getElementById('creditosModal').style.display='block';}else{document.getElementById('erroFinal').textContent='❌ '+d.progresso;document.getElementById('erroFinal').style.display='block';}}
+  if(d.status==='pronto'){clearInterval(iv);localStorage.removeItem('klyonclaw_job_final');document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('resultadoInfo').textContent=`${d.total} imagens + vídeo gerados`;document.getElementById('btnDownload').href=`/download/${jobId}`;document.getElementById('btnVideo').href=`/download_video/${jobId}`;document.getElementById('videoPreview').src=`/ver_video/${jobId}`;document.getElementById('resultado').style.display='block';atualizarCreditos();}
+  if(d.status==='erro'){clearInterval(iv);localStorage.removeItem('klyonclaw_job_final');document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;if(d.progresso&&d.progresso.toLowerCase().includes('insuficiente')){document.getElementById('creditosRestantes').textContent=document.getElementById('creditosNum').textContent;document.getElementById('creditosModal').style.display='block';}else{document.getElementById('erroFinal').textContent='❌ '+d.progresso;document.getElementById('erroFinal').style.display='block';}}
 },3000);}
+
+// Restaurar jobs ativos ao carregar a página
+(function(){
+  const sbJob=localStorage.getItem('klyonclaw_job_sb');
+  if(sbJob){
+    document.getElementById('etapaRoteiro').style.display='none';
+    document.getElementById('statusPreview').style.display='block';
+    document.getElementById('etapaPreview').style.display='block';
+    document.getElementById('statusTextPreview').textContent='Retomando geração...';
+    pollSB(sbJob);
+  }
+  const finalJob=localStorage.getItem('klyonclaw_job_final');
+  if(finalJob){
+    document.getElementById('etapaRoteiro').style.display='none';
+    document.getElementById('etapaStoryboard').style.display='block';
+    document.getElementById('statusFinal').style.display='block';
+    document.getElementById('statusTextFinal').textContent='Retomando geração do vídeo...';
+    pollFinal(finalJob);
+  }
+})();
 
 function mostrarErroSB(msg){
   document.getElementById('statusSB').style.display='none';
