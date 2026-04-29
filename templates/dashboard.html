@@ -311,9 +311,23 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         {% endif %}
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
           <label>🎵 Música de fundo</label>
-          <select id="musicaId" style="margin-bottom:10px">
-            <option value="">— Sem música —</option>
-          </select>
+          <div id="musicaSeletor" style="margin-bottom:10px">
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+              <button class="modo-btn active" onclick="filtrarMusicas('')" id="filtMusicaTodas" style="font-size:.72rem;padding:6px 10px">Todas</button>
+              <button class="modo-btn" onclick="filtrarMusicas('favoritas')" id="filtMusicaFav" style="font-size:.72rem;padding:6px 10px">⭐ Favoritas</button>
+              <button class="modo-btn" onclick="filtrarMusicas('epico')" style="font-size:.72rem;padding:6px 10px">⚔️ Épico</button>
+              <button class="modo-btn" onclick="filtrarMusicas('motivacional')" style="font-size:.72rem;padding:6px 10px">💪 Motiv.</button>
+              <button class="modo-btn" onclick="filtrarMusicas('suspense')" style="font-size:.72rem;padding:6px 10px">🔮 Suspense</button>
+              <button class="modo-btn" onclick="filtrarMusicas('infantil')" style="font-size:.72rem;padding:6px 10px">🧸 Kids</button>
+              <button class="modo-btn" onclick="filtrarMusicas('calmo')" style="font-size:.72rem;padding:6px 10px">🌿 Calmo</button>
+              <button class="modo-btn" onclick="filtrarMusicas('usuario')" style="font-size:.72rem;padding:6px 10px">📤 Minhas</button>
+            </div>
+            <div id="listaMusSeletor" style="max-height:200px;overflow-y:auto;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+              <div style="padding:10px;text-align:center;color:var(--text3);font-size:.8rem">Carregando músicas...</div>
+            </div>
+            <input type="hidden" id="musicaId" value=""/>
+            <div id="musicaSelecionada" style="display:none;margin-top:6px;font-size:.78rem;color:var(--accent)"></div>
+          </div>
           <p class="tip">Faça upload de músicas na aba 🎙️ Áudio</p>
           <div class="toggle-row">
             <label>💬 Legendas</label>
@@ -1176,16 +1190,74 @@ document.getElementById('btnUploadMusica').addEventListener('click',async()=>{
   try{const res=await fetch('/upload_musica',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);alert('Música enviada!');carregarMusicas();document.getElementById('nomeMusica').value='';fileNameMusica.textContent='';arquivoMusica=null;}
   catch(e){document.getElementById('erroMusica').textContent='❌ '+e.message;document.getElementById('erroMusica').style.display='block';}
 });
+let _todasMusicas=[], _musicaFiltro='', _musicasFavoritas=JSON.parse(localStorage.getItem('klyonclaw_fav_musicas')||'[]');
+
 async function carregarMusicas(){
   const res=await fetch('/minhas_musicas');const d=await res.json();
+  const resS=await fetch('/musicas_sistema');const dS=await resS.json();
   const lista=document.getElementById('listaMusicas');
-  const select=document.getElementById('musicaId');
-  lista.innerHTML='';select.innerHTML='<option value="">— Sem música —</option>';
+  lista.innerHTML='';
+  // Lista na aba Áudio (só do usuário)
   d.musicas.forEach(m=>{
     lista.innerHTML+=`<div class="voz-item"><div><div class="voz-nome">🎵 ${m.nome}</div><audio src="/musica_file/${m.path}" controls preload="metadata" style="height:28px;margin-top:4px"></audio></div><button class="btn-danger" onclick="deletarMusica(${m.id})">Remover</button></div>`;
-    select.innerHTML+=`<option value="${m.id}">${m.nome}</option>`;
   });
+  // Combinar sistema + usuário pra seletor
+  _todasMusicas=[];
+  (dS.musicas||[]).forEach(m=>{_todasMusicas.push({...m,tipo:'sistema'});});
+  d.musicas.forEach(m=>{_todasMusicas.push({...m,tipo:'usuario'});});
+  renderizarMusicaSeletor();
 }
+
+function filtrarMusicas(cat){
+  _musicaFiltro=cat;
+  document.querySelectorAll('#musicaSeletor .modo-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderizarMusicaSeletor();
+}
+
+function renderizarMusicaSeletor(){
+  const container=document.getElementById('listaMusSeletor');
+  let filtradas=_todasMusicas;
+  if(_musicaFiltro==='favoritas')filtradas=filtradas.filter(m=>_musicasFavoritas.includes(m.id+'_'+m.tipo));
+  else if(_musicaFiltro==='usuario')filtradas=filtradas.filter(m=>m.tipo==='usuario');
+  else if(_musicaFiltro)filtradas=filtradas.filter(m=>(m.categoria||'').includes(_musicaFiltro));
+
+  if(filtradas.length===0){container.innerHTML='<div style="padding:10px;text-align:center;color:var(--text3);font-size:.8rem">Nenhuma música nesta categoria</div>';return;}
+
+  let html='<div style="padding:4px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.8rem;color:var(--text2)" onclick="selecionarMusica(\'\',\'\')">— Sem música —</div>';
+  filtradas.forEach(m=>{
+    const favKey=m.id+'_'+m.tipo;
+    const isFav=_musicasFavoritas.includes(favKey);
+    const src=m.tipo==='sistema'?`/musica_sistema/${m.path}`:`/musica_file/${m.path}`;
+    const selected=document.getElementById('musicaId').value==m.id?'background:rgba(74,158,255,0.15);':'';
+    html+=`<div style="padding:8px;border-bottom:1px solid var(--border);${selected}display:flex;align-items:center;gap:8px">
+      <button onclick="toggleFavMusica('${favKey}')" style="background:none;border:none;cursor:pointer;font-size:.9rem">${isFav?'⭐':'☆'}</button>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.8rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.nome}</div>
+        <div style="font-size:.65rem;color:var(--text3)">${m.categoria||m.tipo}</div>
+      </div>
+      <audio src="${src}" preload="none" style="height:24px;width:100px" controls></audio>
+      <button onclick="selecionarMusica('${m.id}','${m.nome}')" style="background:var(--accent);color:#fff;border:none;padding:4px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;white-space:nowrap">Usar</button>
+    </div>`;
+  });
+  container.innerHTML=html;
+}
+
+function selecionarMusica(id,nome){
+  document.getElementById('musicaId').value=id;
+  const info=document.getElementById('musicaSelecionada');
+  if(id){info.textContent='🎵 '+nome;info.style.display='block';}
+  else{info.style.display='none';}
+  renderizarMusicaSeletor();
+}
+
+function toggleFavMusica(key){
+  const idx=_musicasFavoritas.indexOf(key);
+  if(idx>=0)_musicasFavoritas.splice(idx,1);else _musicasFavoritas.push(key);
+  localStorage.setItem('klyonclaw_fav_musicas',JSON.stringify(_musicasFavoritas));
+  renderizarMusicaSeletor();
+}
+
 async function deletarMusica(mid){if(!confirm('Remover?'))return;await fetch('/deletar_musica',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:mid})});carregarMusicas();}
 carregarMusicas();
 </script>

@@ -356,7 +356,9 @@ class BancoImagens(db.Model):
 
 
 MUSICAS_FOLDER = "musicas"
+MUSICAS_SISTEMA_FOLDER = "musicas_sistema"
 os.makedirs(MUSICAS_FOLDER, exist_ok=True)
+os.makedirs(MUSICAS_SISTEMA_FOLDER, exist_ok=True)
 
 
 @login_manager.user_loader
@@ -3036,6 +3038,59 @@ def musica_file(filename):
     except:
         return jsonify({"erro": "Acesso negado"}), 403
     return send_file(filepath)
+
+@app.route("/musicas_sistema")
+@login_required
+def musicas_sistema():
+    """Lista músicas do sistema organizadas por categoria"""
+    musicas = []
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("""CREATE TABLE IF NOT EXISTS musicas_sistema (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, categoria TEXT, path TEXT,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        rows = conn.execute("SELECT id, nome, categoria, path FROM musicas_sistema ORDER BY categoria, nome").fetchall()
+        conn.close()
+        for r in rows:
+            if os.path.exists(os.path.join(MUSICAS_SISTEMA_FOLDER, r[3])):
+                musicas.append({"id": f"sys_{r[0]}", "nome": r[1], "categoria": r[2], "path": r[3]})
+    except: pass
+    return jsonify({"musicas": musicas})
+
+@app.route("/musica_sistema/<path:filename>")
+@login_required
+def musica_sistema_file(filename):
+    if ".." in filename or filename.startswith("/"):
+        return jsonify({"erro": "Acesso negado"}), 403
+    filepath = os.path.normpath(os.path.join(MUSICAS_SISTEMA_FOLDER, filename))
+    if not filepath.startswith(os.path.normpath(MUSICAS_SISTEMA_FOLDER)):
+        return jsonify({"erro": "Acesso negado"}), 403
+    if not os.path.exists(filepath):
+        return jsonify({"erro": "Não encontrado"}), 404
+    return send_file(filepath)
+
+@app.route("/admin/upload_musica_sistema", methods=["POST"])
+@login_required
+def admin_upload_musica_sistema():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    if "arquivo" not in request.files:
+        return jsonify({"erro": "Envie um arquivo"}), 400
+    arquivo = request.files["arquivo"]
+    nome = request.form.get("nome", "").strip() or arquivo.filename
+    categoria = request.form.get("categoria", "geral").strip()
+    if not arquivo.filename.lower().endswith((".mp3", ".wav", ".m4a", ".ogg")):
+        return jsonify({"erro": "Formato inválido"}), 400
+    filename = f"{uuid.uuid4().hex[:8]}_{arquivo.filename}"
+    filepath = os.path.join(MUSICAS_SISTEMA_FOLDER, filename)
+    arquivo.save(filepath)
+    conn = sqlite3.connect('instance/veo3.db')
+    conn.execute("""CREATE TABLE IF NOT EXISTS musicas_sistema (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, categoria TEXT, path TEXT,
+        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    conn.execute("INSERT INTO musicas_sistema (nome, categoria, path) VALUES (?,?,?)", (nome, categoria, filename))
+    conn.commit(); conn.close()
+    return jsonify({"ok": True})
 
 # ── Rotas Storyboard ─────────────────────────────────────
 @app.route("/dividir_roteiro", methods=["POST"])

@@ -302,6 +302,28 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
       <div id="bancoGridAdm" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
       <button class="btn-outline-sm" id="btnMaisBancoAdm" style="display:none;width:100%;margin-top:10px" onclick="bancoPagAdm++;carregarBancoAdm(true)">Carregar mais</button>
     </div>
+    <div class="card">
+      <h2>🎵 Músicas do Sistema</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:14px">Upload de músicas instrumentais que ficam disponíveis pra todos os usuários.</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <input type="text" id="nomeMusicaSys" placeholder="Nome da música" style="flex:1;min-width:150px"/>
+        <select id="catMusicaSys" style="width:auto">
+          <option value="epico">⚔️ Épico</option>
+          <option value="motivacional">💪 Motivacional</option>
+          <option value="suspense">🔮 Suspense</option>
+          <option value="infantil">🧸 Infantil</option>
+          <option value="calmo">🌿 Calmo</option>
+          <option value="alegre">🎉 Alegre</option>
+          <option value="triste">😢 Triste</option>
+          <option value="romantico">❤️ Romântico</option>
+          <option value="tecnologia">🤖 Tecnologia</option>
+          <option value="geral">🎵 Geral</option>
+        </select>
+      </div>
+      <label class="btn-sm btn-green" style="cursor:pointer;padding:10px 16px;font-size:.85rem;display:inline-block">📤 Upload Músicas<input type="file" accept=".mp3,.wav,.m4a,.ogg" style="display:none" multiple onchange="uploadMusicaSistema(this)"/></label>
+      <div id="progMusicaSys" style="display:none;margin-top:10px;font-size:.82rem;color:var(--text2)"></div>
+      <div id="listaMusicaSys" style="margin-top:14px"></div>
+    </div>
   </div>
 
   <!-- SUPORTE ADMIN -->
@@ -647,6 +669,41 @@ async function renomearBancoIA(){
     carregarBancoAdm();
   }catch(e){prog.textContent='❌ Erro: '+e.message;setTimeout(()=>{prog.style.display='none';},5000);}
 }
+
+// Músicas do sistema
+async function uploadMusicaSistema(input){
+  if(!input.files||!input.files.length)return;
+  const nome=document.getElementById('nomeMusicaSys').value.trim();
+  const cat=document.getElementById('catMusicaSys').value;
+  const prog=document.getElementById('progMusicaSys');
+  prog.style.display='block';
+  let ok=0;
+  for(let i=0;i<input.files.length;i++){
+    const fd=new FormData();fd.append('arquivo',input.files[i]);
+    fd.append('nome',nome||(input.files[i].name.replace(/\.[^.]+$/,'')));
+    fd.append('categoria',cat);
+    prog.textContent=`Enviando ${i+1}/${input.files.length}...`;
+    try{const res=await fetch('/admin/upload_musica_sistema',{method:'POST',body:fd});const d=await res.json();if(d.ok)ok++;}catch(e){}
+  }
+  prog.textContent=`✅ ${ok} música(s) enviada(s)!`;
+  setTimeout(()=>{prog.style.display='none';},3000);
+  carregarMusicasSistema();input.value='';
+}
+async function carregarMusicasSistema(){
+  try{
+    const res=await fetch('/musicas_sistema');const d=await res.json();
+    const lista=document.getElementById('listaMusicaSys');
+    if(!d.musicas||!d.musicas.length){lista.innerHTML='<div style="color:var(--text3);font-size:.82rem">Nenhuma música do sistema.</div>';return;}
+    lista.innerHTML='';
+    d.musicas.forEach(m=>{
+      lista.innerHTML+=`<div class="user-row" style="padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0"><div style="font-size:.82rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.nome}</div><div style="font-size:.68rem;color:var(--text3)">${m.categoria}</div></div>
+        <audio src="/musica_sistema/${m.path}" preload="none" controls style="height:28px;width:120px"></audio>
+      </div>`;
+    });
+  }catch(e){}
+}
+carregarMusicasSistema();
 
 // Carregar branding atual
 fetch('/admin/branding').then(r=>r.json()).then(d=>{
