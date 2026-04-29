@@ -3165,10 +3165,35 @@ def admin_upload_musica_sistema():
     if "arquivo" not in request.files:
         return jsonify({"erro": "Envie um arquivo"}), 400
     arquivo = request.files["arquivo"]
-    nome = request.form.get("nome", "").strip() or arquivo.filename
-    categoria = request.form.get("categoria", "geral").strip()
+    nome = request.form.get("nome", "").strip() or arquivo.filename.rsplit(".", 1)[0].replace("-", " ").replace("_", " ")
+    categoria = request.form.get("categoria", "").strip()
     if not arquivo.filename.lower().endswith((".mp3", ".wav", ".m4a", ".ogg")):
         return jsonify({"erro": "Formato inválido"}), 400
+    # Auto-categorizar se não especificou
+    if not categoria or categoria == "auto":
+        nome_lower = nome.lower() + " " + arquivo.filename.lower()
+        if any(w in nome_lower for w in ["epic", "epico", "battle", "war", "heroic", "cinematic", "trailer", "orchestra"]):
+            categoria = "epico"
+        elif any(w in nome_lower for w in ["motivat", "inspir", "uplift", "triumph", "victory", "power"]):
+            categoria = "motivacional"
+        elif any(w in nome_lower for w in ["suspense", "tension", "thriller", "mystery", "dark", "horror", "creepy", "scary"]):
+            categoria = "suspense"
+        elif any(w in nome_lower for w in ["kids", "child", "infant", "cartoon", "fun", "playful", "cute"]):
+            categoria = "infantil"
+        elif any(w in nome_lower for w in ["calm", "relax", "peace", "ambient", "meditation", "nature", "soft", "gentle"]):
+            categoria = "calmo"
+        elif any(w in nome_lower for w in ["happy", "alegr", "joy", "cheerful", "upbeat", "party", "celebrat"]):
+            categoria = "alegre"
+        elif any(w in nome_lower for w in ["sad", "trist", "melanchol", "emotional", "sorrow", "cry", "piano sad"]):
+            categoria = "triste"
+        elif any(w in nome_lower for w in ["love", "roman", "wedding", "heart", "passion", "tender"]):
+            categoria = "romantico"
+        elif any(w in nome_lower for w in ["tech", "electro", "digital", "cyber", "synth", "futur", "sci-fi", "robot"]):
+            categoria = "tecnologia"
+        elif any(w in nome_lower for w in ["sfx", "effect", "efeito", "sound effect", "whoosh", "boom", "click", "transition"]):
+            categoria = "efeito"
+        else:
+            categoria = "geral"
     filename = f"{uuid.uuid4().hex[:8]}_{arquivo.filename}"
     filepath = os.path.join(MUSICAS_SISTEMA_FOLDER, filename)
     arquivo.save(filepath)
@@ -3178,7 +3203,7 @@ def admin_upload_musica_sistema():
         criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
     conn.execute("INSERT INTO musicas_sistema (nome, categoria, path) VALUES (?,?,?)", (nome, categoria, filename))
     conn.commit(); conn.close()
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "categoria": categoria})
 
 # ── Rotas Storyboard ─────────────────────────────────────
 @app.route("/dividir_roteiro", methods=["POST"])
