@@ -94,8 +94,8 @@ BANCO_ADDON_PRICE_ID = "price_1TPFcuLW3ZSF3MIlECdLofvd"
 BANCO_ADDON_VALOR = "R$14,97/mês"
 
 # Add-on Banco de Áudio
-AUDIO_ADDON_PRICE_ID = "price_1TReAmLW3ZSF3MIlNH81ggsU"
-AUDIO_ADDON_VALOR = "R$9,97/mês"
+AUDIO_ADDON_PRICE_ID = os.environ.get("AUDIO_ADDON_PRICE_ID", "price_1TReAmLW3ZSF3MIlNH81ggsU")
+AUDIO_ADDON_VALOR = "R$4,99/mês"
 
 PLANOS_STRIPE = {
     "api_propria": {
@@ -2358,6 +2358,7 @@ def planos():
 def checkout():
     data = request.json
     price_id = data.get("price_id")
+    cupom = data.get("cupom", "").strip()
 
     if price_id not in PRICE_MAP:
         return jsonify({"erro": "Plano invalido"}), 400
@@ -2394,17 +2395,38 @@ def checkout():
         }
     }
 
-    if plano_info["tipo"] == "assinatura":
+    # Assinaturas e add-ons são recorrentes
+    if plano_info["tipo"] in ("assinatura", "addon"):
         checkout_params["mode"] = "subscription"
         checkout_params["subscription_data"] = {
             "metadata": {
                 "user_id": str(current_user.id),
                 "plano_key": plano_info.get("key", ""),
                 "creditos": str(plano_info.get("creditos", 0)),
+                "tipo": plano_info.get("tipo", ""),
             }
         }
     else:
         checkout_params["mode"] = "payment"
+
+    # Cupom de desconto
+    if cupom:
+        try:
+            # Tentar como promotion code (código público tipo "DESCONTO10")
+            promos = stripe.PromotionCode.list(code=cupom, active=True, limit=1)
+            if promos.data:
+                checkout_params["discounts"] = [{"promotion_code": promos.data[0].id}]
+            else:
+                # Tentar como coupon ID direto
+                try:
+                    stripe.Coupon.retrieve(cupom)
+                    checkout_params["discounts"] = [{"coupon": cupom}]
+                except:
+                    return jsonify({"erro": "Cupom inválido ou expirado"}), 400
+        except:
+            return jsonify({"erro": "Cupom inválido ou expirado"}), 400
+        # Remover allow_promotion_codes se tiver discounts
+        checkout_params.pop("allow_promotion_codes", None)
 
     session = stripe.checkout.Session.create(**checkout_params)
     return jsonify({"checkout_url": session.url})

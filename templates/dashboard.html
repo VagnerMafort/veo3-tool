@@ -336,9 +336,12 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           </div>
           <p class="tip">Faça upload de músicas na aba 🎙️ Áudio</p>
           <div class="toggle-row">
-            <label>🔊 Efeitos sonoros automáticos</label>
-            <label class="toggle"><input type="checkbox" id="efeitosSonoros"><span class="slider"></span></label>
+            <label>🔊 Efeitos sonoros automáticos {% if not user.audio_ativo and not user.is_admin %}<span style="font-size:.7rem;color:var(--text3)">(requer Banco de Áudio)</span>{% endif %}</label>
+            <label class="toggle"><input type="checkbox" id="efeitosSonoros" {% if not user.audio_ativo and not user.is_admin %}disabled{% endif %}><span class="slider" {% if not user.audio_ativo and not user.is_admin %}style="opacity:0.4;cursor:not-allowed"{% endif %}></span></label>
           </div>
+          {% if not user.audio_ativo and not user.is_admin %}
+          <p class="tip" style="margin-top:4px"><a href="#" onclick="trocarAba('planos');return false" style="color:var(--accent)">🎵 Assinar Banco de Áudio — {{ audio_addon_valor }}</a> para desbloquear efeitos sonoros automáticos.</p>
+          {% endif %}
           <p class="tip" id="tipEfeitos" style="display:none;margin-top:4px">A IA analisa cada cena e adiciona efeitos de impacto, transição e ambiente nos momentos certos.</p>
           <div class="toggle-row">
             <label>💬 Legendas</label>
@@ -585,6 +588,15 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <span class="cancelar-link" onclick="cancelarAssinatura()" style="flex:1;display:flex;align-items:center;justify-content:center">Cancelar</span>
       </div>
       {% endif %}
+
+      <!-- Cupom de desconto -->
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <label style="font-size:.82rem;color:var(--text2);margin-bottom:6px">🏷️ Cupom de desconto</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="cupomDesconto" placeholder="Digite o código do cupom" style="flex:1;text-transform:uppercase"/>
+        </div>
+        <p class="tip" style="margin-top:4px">O desconto será aplicado automaticamente no checkout.</p>
+      </div>
     </div>
 
     <div class="card">
@@ -635,6 +647,38 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         </p>
       </div>
       <button class="btn" onclick="comprarPlano('{{ banco_addon_price }}')" style="background:var(--accent)">🗃️ Assinar Banco — {{ banco_addon_valor }}</button>
+      {% endif %}
+    </div>
+
+    <!-- UPSELL BANCO DE ÁUDIO -->
+    <div class="card" style="border-color:var(--accent);background:linear-gradient(135deg,var(--bg3),var(--bg2))">
+      {% if user.audio_ativo %}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:1.5rem">🎵</span>
+        <div>
+          <h2 style="margin:0;color:var(--green)">Banco de Músicas e Efeitos ✓ Ativo</h2>
+          <p style="font-size:.78rem;color:var(--text2);margin-top:2px">Músicas e efeitos sonoros disponíveis no seletor de áudio</p>
+        </div>
+      </div>
+      {% else %}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="font-size:2rem">🎵</span>
+        <div>
+          <h2 style="margin:0">Banco de Músicas e Efeitos Sonoros</h2>
+          <p style="font-size:.78rem;color:var(--text2);margin-top:2px">{{ audio_addon_valor }}</p>
+        </div>
+      </div>
+      <p style="font-size:.85rem;color:var(--text);margin-bottom:12px">Acesse músicas instrumentais e efeitos sonoros profissionais para seus vídeos.</p>
+      <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:14px">
+        <p style="font-size:.82rem;color:var(--accent);font-weight:600;margin-bottom:8px">🎵 O que está incluso:</p>
+        <p style="font-size:.8rem;color:var(--text2);line-height:1.6">
+          • Músicas instrumentais por categoria (épico, calmo, suspense...)<br>
+          • Efeitos sonoros (impacto, transição, whoosh, ambiente...)<br>
+          • Efeitos automáticos com IA — a IA escolhe e posiciona os efeitos<br>
+          • Novas músicas e efeitos adicionados regularmente
+        </p>
+      </div>
+      <button class="btn" onclick="comprarPlano('{{ audio_addon_price }}')" style="background:var(--accent)">🎵 Assinar Banco de Áudio — {{ audio_addon_valor }}</button>
       {% endif %}
     </div>
     {% endif %}
@@ -1126,8 +1170,12 @@ if(efeitosSonorosEl)efeitosSonorosEl.addEventListener('change',()=>{if(tipEfeito
 
 // Stripe - Comprar plano
 async function comprarPlano(priceId){
+  const cupomEl=document.getElementById('cupomDesconto');
+  const cupom=cupomEl?cupomEl.value.trim():'';
   try{
-    const res=await fetch('/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({price_id:priceId})});
+    const body={price_id:priceId};
+    if(cupom)body.cupom=cupom;
+    const res=await fetch('/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await res.json();
     if(d.erro){alert('❌ '+d.erro);return;}
     if(d.checkout_url){window.location.href=d.checkout_url;}
