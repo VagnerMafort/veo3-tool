@@ -72,7 +72,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 .btns-resultado{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .btn-download{display:inline-block;padding:11px 20px;background:var(--green);color:#fff;border-radius:10px;font-weight:600;text-decoration:none;font-size:.88rem}
 .btn-video{display:inline-block;padding:11px 20px;background:var(--accent);color:#fff;border-radius:10px;font-weight:600;text-decoration:none;font-size:.88rem}
-.erro-box{display:none;margin-top:14px;background:#2a0a0a;border:1px solid var(--red);border-radius:10px;padding:12px;color:var(--red2);font-size:.83rem;text-align:center}
+.erro-box{display:none;margin-top:14px;background:rgba(127,29,29,0.15);border:1px solid rgba(127,29,29,0.4);border-radius:12px;padding:14px 16px;color:#fca5a5;font-size:.83rem;text-align:center;backdrop-filter:blur(4px);position:relative}
+.erro-box::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:#ef4444;border-radius:12px 0 0 12px}
 .historico-item{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
 .historico-info .nome{font-size:.9rem;color:var(--text)}
 .historico-info .meta{font-size:.75rem;color:var(--text3);margin-top:3px}
@@ -1469,6 +1470,14 @@ function pollFinal(jobId){
   }
 })();
 
+function mostrarErro(elementId, msg, autoDismiss=10000){
+  const el=document.getElementById(elementId);
+  if(!el)return;
+  el.innerHTML=`<span style="flex:1">❌ ${msg}</span><button onclick="this.parentElement.style.display='none'" style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:1rem;padding:0 4px;margin-left:8px">✕</button>`;
+  el.style.display='flex';el.style.alignItems='center';
+  if(autoDismiss>0)setTimeout(()=>{el.style.display='none';},autoDismiss);
+}
+
 function mostrarErroSB(msg){
   document.getElementById('statusSB').style.display='none';
   document.getElementById('btnGerarSB').disabled=false;
@@ -1476,7 +1485,7 @@ function mostrarErroSB(msg){
     document.getElementById('creditosRestantes').textContent=document.getElementById('creditosNum').textContent;
     document.getElementById('creditosModal').style.display='block';
   } else {
-    document.getElementById('erroSB').textContent='❌ '+msg;document.getElementById('erroSB').style.display='block';
+    mostrarErro('erroSB', msg);
   }
 }
 
