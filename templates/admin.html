@@ -290,6 +290,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         <label class="btn-sm btn-green" style="cursor:pointer;padding:10px 16px;font-size:.85rem">📤 Upload Imagens<input type="file" accept="image/*" style="display:none" multiple onchange="uploadBancoMultiplo(this)"/></label>
         <label class="btn-sm btn-blue" style="cursor:pointer;padding:10px 16px;font-size:.85rem">📤 Upload Vídeos<input type="file" accept="video/mp4" style="display:none" multiple onchange="uploadBancoMultiplo(this)"/></label>
+        <button class="btn-sm" style="background:#f59e0b;padding:10px 16px;font-size:.85rem" onclick="renomearBancoIA()">🧠 Renomear tudo com IA</button>
       </div>
       <div id="uploadProgressAdm" style="display:none;margin-bottom:14px;background:var(--bg3);border-radius:8px;padding:10px;font-size:.82rem;color:var(--text2)"></div>
       <input type="text" id="bancoBuscaAdm" placeholder="Buscar..." oninput="carregarBancoAdm()" style="margin-bottom:10px"/>
@@ -632,6 +633,20 @@ async function uploadBancoMultiplo(input){
   input.value='';
 }
 carregarBancoAdm();
+
+async function renomearBancoIA(){
+  if(!confirm('Isso vai analisar TODAS as imagens do banco com IA e atualizar descrições/tags. Pode demorar e gastar créditos da API OpenAI. Continuar?'))return;
+  const prog=document.getElementById('uploadProgressAdm');
+  prog.style.display='block';prog.textContent='Iniciando análise com IA...';
+  try{
+    const res=await fetch('/admin/renomear_banco_ia',{method:'POST',headers:{'Content-Type':'application/json'}});
+    const d=await res.json();
+    if(d.ok)prog.textContent=`✅ ${d.total} itens analisados!`;
+    else prog.textContent='❌ '+(d.erro||'Erro');
+    setTimeout(()=>{prog.style.display='none';},5000);
+    carregarBancoAdm();
+  }catch(e){prog.textContent='❌ Erro: '+e.message;setTimeout(()=>{prog.style.display='none';},5000);}
+}
 
 // Carregar branding atual
 fetch('/admin/branding').then(r=>r.json()).then(d=>{

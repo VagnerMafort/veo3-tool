@@ -2690,6 +2690,61 @@ def admin_upload_banco():
     conn.commit(); conn.close()
     return jsonify({"ok": True})
 
+@app.route("/admin/renomear_banco_ia", methods=["POST"])
+@login_required
+def admin_renomear_banco_ia():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    api_key = current_user.get_api_key()
+    if not api_key:
+        return jsonify({"erro": "Sem API key"}), 400
+    import base64, sys
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        rows = conn.execute("SELECT id, path, tipo FROM banco_imagens ORDER BY id DESC LIMIT 200").fetchall()
+        total = 0
+        for row in rows:
+            img_id, img_path, tipo = row[0], row[1], row[2] if len(row) > 2 else "imagem"
+            if not os.path.exists(img_path):
+                continue
+            if tipo == "video":
+                # Pra vídeos, usar o nome do arquivo como descrição
+                conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
+                             (f"Vídeo animado", "video,animacao,cena", img_id))
+                total += 1
+                continue
+            # Analisar imagem com GPT-4o-mini visão
+            try:
+                with open(img_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode()
+                headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                body = {"model": "gpt-4o-mini", "messages": [
+                    {"role": "system", "content": "Descreva esta imagem em português em 1 frase curta (max 80 chars). Depois liste 5-8 tags de busca separadas por vírgula. Formato:\nDESCRICAO: ...\nTAGS: ..."},
+                    {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}]}
+                ], "max_tokens": 150}
+                r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=20)
+                if r.ok:
+                    texto = r.json()["choices"][0]["message"]["content"].strip()
+                    descricao = ""
+                    tags = ""
+                    for linha in texto.split("\n"):
+                        if linha.upper().startswith("DESCRICAO:") or linha.upper().startswith("DESCRIÇÃO:"):
+                            descricao = linha.split(":", 1)[1].strip()
+                        elif linha.upper().startswith("TAGS:"):
+                            tags = linha.split(":", 1)[1].strip().lower()
+                    if descricao or tags:
+                        conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
+                                     (descricao or "Imagem", tags or "", img_id))
+                        total += 1
+                        sys.stderr.write(f"[RENOMEAR] #{img_id}: {descricao}\n"); sys.stderr.flush()
+            except Exception as e:
+                sys.stderr.write(f"[RENOMEAR] #{img_id} erro: {e}\n"); sys.stderr.flush()
+                continue
+        conn.commit(); conn.close()
+        return jsonify({"ok": True, "total": total})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
 @app.route("/admin/dar_creditos", methods=["POST"])
 @login_required
 def admin_dar_creditos():
