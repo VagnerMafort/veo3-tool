@@ -3201,6 +3201,12 @@ epico, motivacional"""},
     conn.execute("""CREATE TABLE IF NOT EXISTS musicas_sistema (
         id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, categoria TEXT, path TEXT,
         criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+    # Verificar duplicata pelo nome
+    existente = conn.execute("SELECT id FROM musicas_sistema WHERE nome=?", (nome,)).fetchone()
+    if existente:
+        os.remove(filepath)
+        conn.close()
+        return jsonify({"ok": False, "erro": "Música já existe", "duplicada": True})
     conn.execute("INSERT INTO musicas_sistema (nome, categoria, path) VALUES (?,?,?)", (nome, categoria, filename))
     conn.commit(); conn.close()
     return jsonify({"ok": True, "categoria": categoria})
