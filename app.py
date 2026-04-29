@@ -2708,10 +2708,43 @@ def admin_renomear_banco_ia():
             if not os.path.exists(img_path):
                 continue
             if tipo == "video":
-                # Pra vídeos, usar o nome do arquivo como descrição
-                conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
-                             (f"Vídeo animado", "video,animacao,cena", img_id))
-                total += 1
+                # Extrair primeiro frame do vídeo pra analisar
+                try:
+                    frame_path = os.path.join(UPLOAD_FOLDER, f"frame_temp_{img_id}.png")
+                    subprocess.run(["ffmpeg", "-y", "-i", img_path, "-vframes", "1", "-q:v", "2", frame_path],
+                                   capture_output=True, text=True, timeout=10)
+                    if os.path.exists(frame_path):
+                        with open(frame_path, "rb") as f:
+                            b64 = base64.b64encode(f.read()).decode()
+                        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                        body = {"model": "gpt-4o-mini", "messages": [
+                            {"role": "system", "content": "Este é um frame de um vídeo animado. Descreva a cena em português em 1 frase curta (max 80 chars). Depois liste 5-8 tags de busca separadas por vírgula. Formato:\nDESCRICAO: ...\nTAGS: ..."},
+                            {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}]}
+                        ], "max_tokens": 150}
+                        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=20)
+                        if r.ok:
+                            texto = r.json()["choices"][0]["message"]["content"].strip()
+                            descricao = ""
+                            tags = ""
+                            for linha in texto.split("\n"):
+                                if linha.upper().startswith("DESCRICAO:") or linha.upper().startswith("DESCRIÇÃO:"):
+                                    descricao = linha.split(":", 1)[1].strip()
+                                elif linha.upper().startswith("TAGS:"):
+                                    tags = linha.split(":", 1)[1].strip().lower()
+                            if descricao or tags:
+                                conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
+                                             (descricao or "Vídeo animado", tags or "video,animacao", img_id))
+                                total += 1
+                                sys.stderr.write(f"[RENOMEAR] Video #{img_id}: {descricao}\n"); sys.stderr.flush()
+                        os.remove(frame_path)
+                    else:
+                        conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
+                                     ("Vídeo animado", "video,animacao,cena", img_id))
+                        total += 1
+                except:
+                    conn.execute("UPDATE banco_imagens SET descricao=?, tags=? WHERE id=?",
+                                 ("Vídeo animado", "video,animacao,cena", img_id))
+                    total += 1
                 continue
             # Analisar imagem com GPT-4o-mini visão
             try:
