@@ -937,7 +937,7 @@ def montar_video(imagens, audio_path, output_path, legenda_cfg=None):
         cmd += ["-i", audio_path]
     cmd += ["-filter_complex", fc, "-map", saida_v]
     if audio_path and os.path.exists(audio_path):
-        cmd += ["-map", f"{len(imagens)}:a", "-c:a", "aac", "-b:a", "192k"]
+        cmd += ["-map", f"{len(imagens)}:a", "-c:a", "aac", "-b:a", "192k", "-shortest"]
     cmd += ["-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p", output_path]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -1017,7 +1017,33 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             ficha = ""
             if melhorar_prompts and user.get_provider() == "openai" and cenas_a_gerar:
                 jobs[job_id]["progresso"] = "Analisando personagens..."
-                ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
+                # Se tem imagem de referência, analisar ela com visão pra extrair ficha visual detalhada
+                if personagem_path and os.path.exists(personagem_path):
+                    try:
+                        import base64 as b64mod
+                        with open(personagem_path, "rb") as fref:
+                            ref_b64 = b64mod.b64encode(fref.read()).decode()
+                        headers_vis = {"Authorization": f"Bearer {user.get_api_key()}", "Content-Type": "application/json"}
+                        body_vis = {"model": "gpt-4o-mini", "messages": [
+                            {"role": "system", "content": """You are a character designer. Analyze this reference image and create an EXTREMELY detailed visual description of the character.
+Include: exact skin tone, exact hair color/style/length, exact eye color/shape/size, exact clothing (colors with hex codes, garment types), body type, age range, distinguishing features, accessories.
+Be so specific that an AI image generator can recreate this EXACT character in any scene.
+Write in ENGLISH. Output ONLY the description, nothing else."""},
+                            {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{ref_b64}"}}]}
+                        ], "max_tokens": 500}
+                        r_vis = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_vis, json=body_vis, timeout=30)
+                        if r_vis.ok:
+                            ficha_visual = r_vis.json()["choices"][0]["message"]["content"].strip()
+                            ficha = f"MAIN CHARACTER (from reference photo - MUST be identical in EVERY scene):\n{ficha_visual}\n\n"
+                            ficha += extrair_personagens(texto_manual, user.get_api_key(), estilo)
+                            import sys
+                            sys.stderr.write(f"[PERSONAGEM] Ficha extraída da foto: {ficha_visual[:200]}\n"); sys.stderr.flush()
+                    except Exception as e:
+                        import sys
+                        sys.stderr.write(f"[PERSONAGEM] Erro ao analisar foto: {e}\n"); sys.stderr.flush()
+                        ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
+                else:
+                    ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
 
             def gerar_bloco(i_linha):
                 linha = linhas[i_linha]
@@ -1026,10 +1052,24 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
-                # Se tem personagem de referência, usar edição com imagem
-                if personagem_path and os.path.exists(personagem_path):
+                # Se tem personagem de referência, usar edição com imagem como fallback
+                # A ficha visual já foi extraída da foto e incluída no prompt via melhorar_prompt
+                if personagem_path and os.path.exists(personagem_path) and ficha:
+                    # Tentar geração normal primeiro (ficha já tem descrição detalhada da foto)
                     try:
-                        ref_prompt = f"Generate an image for this scene: {prompt_final}. CRITICAL: The main character in this scene MUST be IDENTICAL to the character in the reference image. Copy EXACTLY: the same colors (body color, feather color, skin color), the same design, the same style, the same proportions, the same markings/spots/patterns. Do NOT change the character's colors or design in any way. The character must be recognizable as the EXACT same character from the reference. Place this character in the scene described."
+                        gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
+                    except:
+                        # Fallback: usar edits com imagem de referência
+                        try:
+                            ref_prompt = f"Generate this scene: {prompt_final}. The main character MUST look EXACTLY like the person in the reference image - same face, same hair, same skin tone, same clothing."
+                            editar_imagem_openai(ref_prompt, user.get_api_key(), [personagem_path], img_path,
+                                                 size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
+                        except:
+                            gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
+                elif personagem_path and os.path.exists(personagem_path):
+                    # Sem ficha (melhorar_prompts desativado) — usar edits direto
+                    try:
+                        ref_prompt = f"Generate this scene: {prompt_final}. The main character MUST look EXACTLY like the person in the reference image."
                         editar_imagem_openai(ref_prompt, user.get_api_key(), [personagem_path], img_path,
                                              size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
                     except:
