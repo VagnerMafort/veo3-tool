@@ -972,22 +972,21 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
         system = prompts.get("dividir", DEFAULT_PROMPTS["dividir"])
 
         if tipo_video == "animado":
-            cenas_ideal = max(3, round(duracao_estimada / 5))
+            cenas_ideal = max(3, round(duracao_estimada / 6))
             system = f"""You are a film director splitting a narration into scenes for an animated video.
 
-The narration has approximately {n_palavras} words (~{int(duracao_estimada)} seconds when spoken).
-You should create approximately {cenas_ideal} scenes.
+The narration has {n_palavras} words (~{int(duracao_estimada)} seconds when spoken).
+Each animated clip lasts 6 seconds. You MUST create EXACTLY {cenas_ideal} scenes.
 
 RULES:
-1. Each scene MUST last between 3 and 6 seconds when narrated. That means each scene should have between 8 and 15 words approximately.
-2. Create as many scenes as needed — do NOT limit yourself. If the text needs 9 scenes, create 9. If it needs 15, create 15.
+1. Create EXACTLY {cenas_ideal} scenes. Not more, not less. This is critical — each scene = one 6-second video clip.
+2. Each scene should have approximately {max(10, n_palavras // cenas_ideal)} words (~4-6 seconds of narration).
 3. KEEP THE ORIGINAL TEXT EXACTLY AS WRITTEN. Do NOT rewrite, expand, or change any words.
-4. If a single sentence is too short (less than 8 words), merge it with the next sentence into one scene.
-5. If a single sentence is too long (more than 15 words), it can be its own scene.
-6. Keep the SAME LANGUAGE as the input text.
-7. Output each scene on a NEW LINE. Nothing else — no numbers, no labels.
-8. Maintain EXACT chronological order.
-9. You MUST cover the ENTIRE text from beginning to end. Do NOT skip any part."""
+4. Group short sentences together to reach the target word count per scene.
+5. Keep the SAME LANGUAGE as the input text.
+6. Output each scene on a NEW LINE. Nothing else — no numbers, no labels.
+7. Maintain EXACT chronological order.
+8. You MUST cover the ENTIRE text from beginning to end. Do NOT skip any part."""
         else:
             max_cenas = max(2, min(60, len(texto) // 20))
             system += f"""
@@ -1001,7 +1000,12 @@ IMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningf
         if r.ok:
             resultado = r.json()["choices"][0]["message"]["content"].strip()
             linhas = [l.strip() for l in resultado.split("\n") if l.strip()]
-            if tipo_video != "animado" and len(linhas) > max_cenas:
+            if tipo_video == "animado":
+                # Forçar número exato de cenas pra animação
+                cenas_ideal = max(3, round((len(texto.split()) / 2.5) / 6))
+                if len(linhas) > cenas_ideal + 1:
+                    linhas = linhas[:cenas_ideal]
+            elif len(linhas) > max_cenas:
                 linhas = linhas[:max_cenas]
             if len(linhas) >= 1:
                 return linhas
