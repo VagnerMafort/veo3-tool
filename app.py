@@ -565,18 +565,21 @@ You MUST incorporate this creative direction into every image prompt. It defines
         if ficha_personagens:
             system += f"""
 
-CHARACTER REFERENCE SHEET — MANDATORY FOR EVERY IMAGE:
+CHARACTER & SETTING REFERENCE SHEET:
 {ficha_personagens}
 
 Current scene to illustrate: "{texto}"
 
-CRITICAL RULES FOR CHARACTER CONSISTENCY:
-1. You MUST include the FULL character description (face, hair, skin, clothing) in EVERY prompt you generate.
-2. Start every prompt with the character's physical description BEFORE describing the scene action.
-3. Use the EXACT same descriptive words for the character in every prompt — same hair color hex, same eye color, same clothing colors.
-4. ONLY illustrate what THIS SPECIFIC SCENE describes. Do NOT add elements from other scenes.
-5. VARY the composition (wide, medium, close-up) but NEVER vary the character's appearance.
-6. End with: "no text, no letters, no words, no writing, no watermarks"."""
+CRITICAL RULES:
+1. THE SCENE TEXT IS THE PRIORITY. Illustrate EXACTLY what the scene describes — nothing more, nothing less.
+2. Only include characters that are MENTIONED or IMPLIED in this specific scene text.
+3. If the scene mentions the main character, use their exact description from the reference sheet.
+4. If the scene mentions secondary characters, use THEIR descriptions from the reference sheet.
+5. If the scene describes a landscape, city, or setting WITHOUT characters, generate the SETTING — do NOT force any character into it.
+6. If the scene mentions multiple characters interacting, include ALL of them with their correct descriptions.
+7. Use the MAIN SETTING or SECONDARY SETTING from the reference sheet as the background, matching what the scene describes.
+8. VARY the composition: wide shots for landscapes/armies, medium for interactions, close-up for emotions.
+9. End with: "no text, no letters, no words, no writing, no watermarks"."""
         elif contexto_roteiro:
             system += f"""
 
@@ -1048,6 +1051,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             if melhorar_prompts and user.get_provider() == "openai" and cenas_a_gerar:
                 jobs[job_id]["progresso"] = "Analisando personagens..."
                 # Se tem imagem de referência, analisar ela com visão pra extrair ficha visual detalhada
+                nome_protagonista = ""
                 if personagem_path and os.path.exists(personagem_path):
                     try:
                         import base64 as b64mod
@@ -1064,7 +1068,7 @@ Write in ENGLISH. Output ONLY the description, nothing else."""},
                         r_vis = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_vis, json=body_vis, timeout=30)
                         if r_vis.ok:
                             ficha_visual = r_vis.json()["choices"][0]["message"]["content"].strip()
-                            ficha = f"MAIN CHARACTER (from reference photo - MUST be identical in EVERY scene):\n{ficha_visual}\n\n"
+                            ficha = f"MAIN CHARACTER (from reference photo - MUST be identical in EVERY scene where they appear):\n{ficha_visual}\n\n"
                             ficha += extrair_personagens(texto_manual, user.get_api_key(), estilo)
                             import sys
                             sys.stderr.write(f"[PERSONAGEM] Ficha extraída da foto: {ficha_visual[:200]}\n"); sys.stderr.flush()
@@ -1072,6 +1076,21 @@ Write in ENGLISH. Output ONLY the description, nothing else."""},
                         import sys
                         sys.stderr.write(f"[PERSONAGEM] Erro ao analisar foto: {e}\n"); sys.stderr.flush()
                         ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
+
+                    # Identificar o nome do protagonista no roteiro pra saber quando usar a foto
+                    try:
+                        body_nome = {"model": "gpt-4o-mini", "messages": [
+                            {"role": "system", "content": "Given this story, return ONLY the name of the main character (the protagonist). Return just the name, nothing else. If no name, return the word used to refer to them (e.g. 'o servo', 'o rei', 'ele')."},
+                            {"role": "user", "content": texto_manual[:500]}
+                        ], "max_tokens": 20}
+                        r_nome = requests.post("https://api.openai.com/v1/chat/completions",
+                                               headers={"Authorization": f"Bearer {user.get_api_key()}", "Content-Type": "application/json"},
+                                               json=body_nome, timeout=10)
+                        if r_nome.ok:
+                            nome_protagonista = r_nome.json()["choices"][0]["message"]["content"].strip().lower()
+                            import sys
+                            sys.stderr.write(f"[PERSONAGEM] Protagonista identificado: '{nome_protagonista}'\n"); sys.stderr.flush()
+                    except: pass
                 else:
                     ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
 
@@ -1083,11 +1102,21 @@ Write in ENGLISH. Output ONLY the description, nothing else."""},
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
 
-                # Se tem personagem de referência, SEMPRE usar edits com a foto pra manter consistência
+                # Decidir se usa foto de referência: só quando o protagonista aparece na cena
+                usar_ref = False
                 if personagem_path and os.path.exists(personagem_path):
+                    cena_lower = linha.lower()
+                    if nome_protagonista:
+                        # Checar se o nome/referência do protagonista aparece no texto da cena
+                        partes_nome = [p.strip() for p in nome_protagonista.split() if len(p.strip()) > 2]
+                        usar_ref = any(p in cena_lower for p in partes_nome)
+                    else:
+                        # Sem nome identificado, usar em todas (fallback)
+                        usar_ref = True
+
+                if usar_ref:
                     try:
-                        size_edit = "1024x1536" if formato == "vertical" else ("1536x1024" if formato == "horizontal" else "1024x1024")
-                        ref_prompt = f"{prompt_final}. CRITICAL: The main character MUST look EXACTLY like the person in the reference image — same face, same hair color and style, same skin tone, same clothing, same body type. Do NOT change ANY aspect of the character's appearance."
+                        ref_prompt = f"{prompt_final}. The main character MUST look EXACTLY like the person in the reference image — same face, hair, skin tone, clothing, body type."
                         editar_imagem_openai(ref_prompt, user.get_api_key(), [personagem_path], img_path,
                                              size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
                     except Exception as e:
