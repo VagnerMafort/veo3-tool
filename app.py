@@ -976,28 +976,28 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
             system = f"""You are a film director creating scenes for an animated video. Each scene will be a 6-second animated clip.
 
 RULES:
-1. Split the narration into RICH, VISUAL scenes.
-2. Each scene MUST be substantial enough to fill 5-6 seconds of animation.
-3. NEVER create a scene with just one short action. A scene like "O servo acordou em pânico" is UNACCEPTABLE — it's only 1 second of visual content.
-4. Each scene MUST describe: WHO is doing WHAT, WHERE, with what EMOTION, and what the ENVIRONMENT looks like.
-5. MERGE short consecutive moments into one scene. If the original text says "Ele acordou. Olhou ao redor. Ficou com medo." — that is ONE scene, not three.
+1. Split the narration into scenes that group related moments together.
+2. Each scene MUST contain enough narrative content to fill 5-6 seconds of animation.
+3. NEVER create a scene with just one short action. Merge consecutive short moments into one scene.
+4. KEEP THE ORIGINAL TEXT EXACTLY AS WRITTEN. Do NOT rewrite, expand, add details, or change any words. Copy the original sentences word for word.
+5. Simply GROUP multiple original sentences into one scene when they are too short individually.
 6. Keep the SAME LANGUAGE as the input text.
-7. Keep the original meaning — do NOT invent new events, but EXPAND brief moments with visual details from the context.
-8. Output each scene on a NEW LINE. Nothing else — no numbers, no labels.
-9. Maintain EXACT chronological order.
-10. You MUST cover the ENTIRE text from beginning to end. Do NOT skip any part.
-11. Create a MAXIMUM of {max_cenas} scenes.
+7. Output each scene on a NEW LINE. Nothing else — no numbers, no labels.
+8. Maintain EXACT chronological order.
+9. You MUST cover the ENTIRE text from beginning to end. Do NOT skip any part.
+10. Create a MAXIMUM of {max_cenas} scenes.
 
-EXAMPLE of what you should do:
-Original: "Eliseu orou a Deus. O servo acordou em pânico. Ele viu cavalos de fogo."
-BAD output (too fragmented):
+EXAMPLE:
+Original text: "Eliseu orou a Deus. O servo acordou em pânico. Ele viu cavalos de fogo no céu."
+
+BAD (too fragmented, scenes too short):
 Eliseu orou a Deus.
 O servo acordou em pânico.
-Ele viu cavalos de fogo.
+Ele viu cavalos de fogo no céu.
 
-GOOD output (merged into rich scenes):
-Eliseu ajoelhou-se em oração com as mãos erguidas ao céu, enquanto o servo dormia inquieto ao fundo em uma tenda simples no deserto.
-O servo acordou em pânico no meio da noite, suando frio, e correu para fora da tenda onde avistou o horizonte tomado por cavalos e carruagens de fogo descendo do céu."""
+GOOD (grouped into rich scenes using ORIGINAL words):
+Eliseu orou a Deus. O servo acordou em pânico.
+Ele viu cavalos de fogo no céu."""
         else:
             system += f"""
 
