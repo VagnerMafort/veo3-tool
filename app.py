@@ -963,8 +963,9 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
     if len(texto) < 30:
         return [texto.strip()]
 
-    # Suportar vídeos de até 5 min (~60 cenas de 5s)
-    max_cenas = max(2, min(60, len(texto) // 20))
+    # Estimar duração do áudio: ~2.5 palavras/segundo em português
+    n_palavras = len(texto.split())
+    duracao_estimada = n_palavras / 2.5  # segundos
 
     prompts = load_prompts()
     try:
@@ -972,33 +973,24 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
         system = prompts.get("dividir", DEFAULT_PROMPTS["dividir"])
 
         if tipo_video == "animado":
-            # Substituir prompt base por um específico pra animação
-            system = f"""You are a film director creating scenes for an animated video. Each scene will be a 6-second animated clip.
+            cenas_ideal = max(3, round(duracao_estimada / 5))
+            system = f"""You are a film director splitting a narration into scenes for an animated video.
+
+The narration has approximately {n_palavras} words (~{int(duracao_estimada)} seconds when spoken).
+You should create approximately {cenas_ideal} scenes.
 
 RULES:
-1. Split the narration into scenes that group related moments together.
-2. Each scene MUST contain enough narrative content to fill 5-6 seconds of animation.
-3. NEVER create a scene with just one short action. Merge consecutive short moments into one scene.
-4. KEEP THE ORIGINAL TEXT EXACTLY AS WRITTEN. Do NOT rewrite, expand, add details, or change any words. Copy the original sentences word for word.
-5. Simply GROUP multiple original sentences into one scene when they are too short individually.
+1. Each scene MUST last between 3 and 6 seconds when narrated. That means each scene should have between 8 and 15 words approximately.
+2. Create as many scenes as needed — do NOT limit yourself. If the text needs 9 scenes, create 9. If it needs 15, create 15.
+3. KEEP THE ORIGINAL TEXT EXACTLY AS WRITTEN. Do NOT rewrite, expand, or change any words.
+4. If a single sentence is too short (less than 8 words), merge it with the next sentence into one scene.
+5. If a single sentence is too long (more than 15 words), it can be its own scene.
 6. Keep the SAME LANGUAGE as the input text.
 7. Output each scene on a NEW LINE. Nothing else — no numbers, no labels.
 8. Maintain EXACT chronological order.
-9. You MUST cover the ENTIRE text from beginning to end. Do NOT skip any part.
-10. Create a MAXIMUM of {max_cenas} scenes.
-
-EXAMPLE:
-Original text: "Eliseu orou a Deus. O servo acordou em pânico. Ele viu cavalos de fogo no céu."
-
-BAD (too fragmented, scenes too short):
-Eliseu orou a Deus.
-O servo acordou em pânico.
-Ele viu cavalos de fogo no céu.
-
-GOOD (grouped into rich scenes using ORIGINAL words):
-Eliseu orou a Deus. O servo acordou em pânico.
-Ele viu cavalos de fogo no céu."""
+9. You MUST cover the ENTIRE text from beginning to end. Do NOT skip any part."""
         else:
+            max_cenas = max(2, min(60, len(texto) // 20))
             system += f"""
 
 IMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningful story beat. You MUST include ALL parts of the text from beginning to end - do NOT skip, cut, or omit ANY part. The ENTIRE text must be covered. Every sentence of the original text MUST appear in at least one scene."""
@@ -1010,7 +1002,7 @@ IMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningf
         if r.ok:
             resultado = r.json()["choices"][0]["message"]["content"].strip()
             linhas = [l.strip() for l in resultado.split("\n") if l.strip()]
-            if len(linhas) > max_cenas:
+            if tipo_video != "animado" and len(linhas) > max_cenas:
                 linhas = linhas[:max_cenas]
             if len(linhas) >= 1:
                 return linhas
