@@ -1244,7 +1244,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
 
                         inicio = palavras[idx_inicio]["start"]
                         fim = palavras[idx_fim - 1]["end"] if idx_fim > 0 else inicio + 3
-                        dur = max(1.5, fim - inicio)
+                        dur = max(3.0, fim - inicio)
 
                         img_src = os.path.join(sb_dir, bloco["img"])
                         img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
@@ -1257,7 +1257,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     # Fallback: divisão proporcional
                     imagens = []
                     t = 0
-                    dur_por_cena = duracao_total / len(blocos)
+                    dur_por_cena = max(3.0, duracao_total / len(blocos))
                     for i, bloco in enumerate(blocos):
                         img_src = os.path.join(sb_dir, bloco["img"])
                         img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
@@ -1269,17 +1269,18 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
 
                 audio_final_path = audio_completo_path
             else:
-                # Sem narração: 1 imagem por cena, duração = intervalo
+                # Sem narração: 1 imagem por cena, duração = intervalo (mínimo 3s)
                 imagens = []
                 t = 0
+                dur_cena = max(3, intervalo)
                 for i, bloco in enumerate(blocos):
                     img_src = os.path.join(sb_dir, bloco["img"])
                     img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
                     shutil.copy(img_src, img_dst)
-                    imagens.append({"index": i+1, "path": img_dst, "duracao": intervalo,
-                                    "inicio": round(t, 2), "fim": round(t + intervalo, 2),
+                    imagens.append({"index": i+1, "path": img_dst, "duracao": dur_cena,
+                                    "inicio": round(t, 2), "fim": round(t + dur_cena, 2),
                                     "texto": bloco["texto"]})
-                    t += intervalo
+                    t += dur_cena
 
             jobs[job_id]["total"] = len(imagens)
             jobs[job_id]["atual"] = len(imagens)
