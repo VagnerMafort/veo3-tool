@@ -565,22 +565,18 @@ You MUST incorporate this creative direction into every image prompt. It defines
         if ficha_personagens:
             system += f"""
 
-CHARACTER REFERENCE (use ONLY when the character appears in this scene):
+CHARACTER REFERENCE SHEET — MANDATORY FOR EVERY IMAGE:
 {ficha_personagens}
 
 Current scene to illustrate: "{texto}"
 
-CRITICAL RULES:
-1. ONLY illustrate what THIS SPECIFIC SCENE describes. Do NOT add elements from other scenes or future events.
-2. If this scene does NOT mention fire, horses of fire, or supernatural events — do NOT include them.
-3. BRIGHT LIGHTING: ALL images must have bright, well-lit scenes. Use golden sunlight, clear blue sky, warm daylight. NEVER use dark/moody lighting unless the scene explicitly says "night". Even dawn scenes should be bright with orange-pink sky.
-4. If the scene says "madrugada/dawn", use bright early morning light with colorful sky, NOT dark.
-5. THE SCENE IS THE PRIORITY. Show what the text describes, not just the main character.
-6. If the scene describes an ARMY, show THOUSANDS of soldiers in a massive wide panoramic shot. The army must look overwhelming in scale.
-7. If the scene describes supernatural events (fire horses, chariots of fire, celestial army) — make it SPECTACULAR and MASSIVE. Show HUNDREDS of flaming horses and chariots filling the ENTIRE sky and mountains. It must look like the most epic scene ever painted. Bright golden-white fire, not dark orange.
-8. VARY the composition: wide shots for armies/landscapes, medium for dialogue, close-up only for intense emotions.
-9. When characters appear, use their description from the reference above.
-10. NEVER add elements that are NOT mentioned in the current scene text."""
+CRITICAL RULES FOR CHARACTER CONSISTENCY:
+1. You MUST include the FULL character description (face, hair, skin, clothing) in EVERY prompt you generate.
+2. Start every prompt with the character's physical description BEFORE describing the scene action.
+3. Use the EXACT same descriptive words for the character in every prompt — same hair color hex, same eye color, same clothing colors.
+4. ONLY illustrate what THIS SPECIFIC SCENE describes. Do NOT add elements from other scenes.
+5. VARY the composition (wide, medium, close-up) but NEVER vary the character's appearance.
+6. End with: "no text, no letters, no words, no writing, no watermarks"."""
         elif contexto_roteiro:
             system += f"""
 
@@ -1086,27 +1082,17 @@ Write in ENGLISH. Output ONLY the description, nothing else."""},
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
-                # Se tem personagem de referência, usar edição com imagem como fallback
-                # A ficha visual já foi extraída da foto e incluída no prompt via melhorar_prompt
-                if personagem_path and os.path.exists(personagem_path) and ficha:
-                    # Tentar geração normal primeiro (ficha já tem descrição detalhada da foto)
+
+                # Se tem personagem de referência, SEMPRE usar edits com a foto pra manter consistência
+                if personagem_path and os.path.exists(personagem_path):
                     try:
-                        gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
-                    except:
-                        # Fallback: usar edits com imagem de referência
-                        try:
-                            ref_prompt = f"Generate this scene: {prompt_final}. The main character MUST look EXACTLY like the person in the reference image - same face, same hair, same skin tone, same clothing."
-                            editar_imagem_openai(ref_prompt, user.get_api_key(), [personagem_path], img_path,
-                                                 size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
-                        except:
-                            gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
-                elif personagem_path and os.path.exists(personagem_path):
-                    # Sem ficha (melhorar_prompts desativado) — usar edits direto
-                    try:
-                        ref_prompt = f"Generate this scene: {prompt_final}. The main character MUST look EXACTLY like the person in the reference image."
+                        size_edit = "1024x1536" if formato == "vertical" else ("1536x1024" if formato == "horizontal" else "1024x1024")
+                        ref_prompt = f"{prompt_final}. CRITICAL: The main character MUST look EXACTLY like the person in the reference image — same face, same hair color and style, same skin tone, same clothing, same body type. Do NOT change ANY aspect of the character's appearance."
                         editar_imagem_openai(ref_prompt, user.get_api_key(), [personagem_path], img_path,
                                              size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
-                    except:
+                    except Exception as e:
+                        import sys
+                        sys.stderr.write(f"[PERSONAGEM] Edits falhou cena {i_linha+1}: {e}, usando geração normal\n"); sys.stderr.flush()
                         gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
                 else:
                     gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
