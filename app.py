@@ -977,13 +977,17 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
 IMPORTANT — ANIMATED VIDEO MODE:
 - Create a MAXIMUM of {max_cenas} scenes.
 - Each scene will become a 6-second animated video clip.
-- Each scene MUST have enough visual action/content to fill 3 to 6 seconds of animation.
-- Do NOT create scenes that are too short (just a word or a quick mention). Combine short moments into one scene.
-- Do NOT create scenes that are too long (multiple actions). Split complex moments into separate scenes.
-- Each scene should describe ONE clear visual moment: a character doing something, a landscape, an emotion, a movement.
-- Think like a film director: each scene = one camera shot lasting 3-6 seconds.
+- Each scene MUST describe a RICH visual moment with enough detail to fill 5-6 seconds of animation.
+- MINIMUM per scene: at least 2 sentences describing what is visually happening (action + setting + emotion).
+- NEVER create a scene with just one short action like "he woke up" or "she ran". That is TOO SHORT.
+- ALWAYS combine quick moments into one richer scene. Example:
+  BAD: "O servo acordou em pânico." (too short, 1 second of action)
+  GOOD: "O servo acordou em pânico no meio da noite, suando frio, olhando ao redor do quarto escuro enquanto tentava entender o que havia acontecido." (rich, 5-6 seconds)
+- Each scene must paint a COMPLETE visual picture: WHO is doing WHAT, WHERE, with what EMOTION and ATMOSPHERE.
+- Think like a film director: each scene = one camera shot lasting 5-6 seconds with continuous visual action.
 - You MUST include ALL parts of the text from beginning to end - do NOT skip or omit ANY part.
-- Every sentence of the original text MUST appear in at least one scene."""
+- Every sentence of the original text MUST appear in at least one scene.
+- If a moment in the story is very brief, MERGE it with the previous or next moment into one scene."""
         else:
             system += f"""
 
