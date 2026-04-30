@@ -599,33 +599,43 @@ Keep ALL characters visually identical across scenes. NEVER change species, colo
     return f"{estilo_det} of {texto}, no text no words"
 
 def extrair_personagens(roteiro, api_key, estilo=""):
-    """Extrai ficha de personagens ultra-detalhada pra consistência visual"""
+    """Extrai ficha de personagens organizada por hierarquia"""
     estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "default style"
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         system = f"""You are a character designer creating a STRICT visual reference sheet for an AI image generator.
 The art style is: {estilo_det}
-Given a story, create an EXTREMELY detailed and FIXED description for each character and important object.
 
-OUTPUT FORMAT (one per line):
-CHARACTER_NAME: [complete visual description]
-ART_STYLE: [exact art style rules for ALL images]
-BACKGROUND: [consistent background for ALL scenes]
+Analyze the story and create a hierarchical reference sheet. ONLY include elements that actually exist in the story.
 
-CRITICAL RULES:
-1. ART STYLE CONSISTENCY: Define the EXACT art style once (line thickness, color palette, shading type, eye style) and it MUST be identical in every scene. For cartoon: specify "thick black outlines, flat colors, simple shapes". For anime: specify "cel shading, large expressive eyes, thin lines".
-2. FACE: Describe exact eye shape, eye SIZE (small/medium/large), eye COLOR, eyebrow shape, nose shape, mouth expression. For cartoon/anime: describe the EXACT eye style (dot eyes, round eyes, anime eyes with highlights, etc.)
-3. HAIR: Exact color (use hex if possible), length, style
-4. CLOTHING: Exact colors with specific names (e.g. "bright orange #FF8C00 t-shirt"), exact garment types. These MUST NOT change between scenes.
-5. SKIN: Exact skin tone that stays consistent
-6. BACKGROUND: Define ONE consistent background color or setting for ALL scenes (e.g. "solid light blue #87CEEB background" or "solid yellow #FFD700 background")
-7. ANATOMY: "peito do pé" = "top of the foot / instep" (NOT sole). "sola do pé" = "sole / bottom of the foot"
-8. Write in ENGLISH
-9. Be so specific that the same character looks IDENTICAL in every single frame"""
+OUTPUT FORMAT (use ONLY the sections that apply):
+
+1. MAIN CHARACTER: [name] — [ultra-detailed visual description: face, eyes, hair, skin, clothing with hex colors, body type, age, distinguishing features]
+
+2. MAIN SETTING: [description of the primary location/background that appears most often, with colors and atmosphere]
+
+3. SECONDARY CHARACTER 1: [name] — [detailed visual description] (ONLY if the story has a second character)
+
+4. SECONDARY CHARACTER 2: [name] — [detailed visual description] (ONLY if the story has a third character)
+
+5. SECONDARY SETTING: [description of secondary location] (ONLY if the story changes location)
+
+ART_STYLE: [exact art style rules for ALL images — line thickness, color palette, shading, lighting]
+
+RULES:
+- If the story has ONLY ONE character, do NOT invent secondary characters. Skip sections 3 and 4.
+- If the story happens in ONE location, do NOT invent secondary settings. Skip section 5.
+- FACE: exact eye shape, size, color, eyebrow shape, nose, mouth. For cartoon: specify exact eye style.
+- HAIR: exact color (hex), length, style
+- CLOTHING: exact colors with hex codes, exact garment types. MUST NOT change between scenes.
+- SKIN: exact skin tone that stays consistent
+- Write in ENGLISH
+- Be so specific that the same character looks IDENTICAL in every single frame
+- Max 800 tokens total"""
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": roteiro}
-        ], "max_tokens": 600}
+        ], "max_tokens": 800}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
         if r.ok:
             return r.json()["choices"][0]["message"]["content"].strip()
@@ -948,7 +958,7 @@ def limpar_job(job_dir):
         if os.path.exists(job_dir): shutil.rmtree(job_dir)
     except: pass
 
-def dividir_roteiro(texto, api_key):
+def dividir_roteiro(texto, api_key, tipo_video="estatico"):
     # Texto muito curto (1 frase simples) = não divide
     if len(texto) < 30:
         return [texto.strip()]
@@ -960,7 +970,25 @@ def dividir_roteiro(texto, api_key):
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         system = prompts.get("dividir", DEFAULT_PROMPTS["dividir"])
-        system += f"\n\nIMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningful story beat. You MUST include ALL parts of the text from beginning to end - do NOT skip, cut, or omit ANY part. The ENTIRE text must be covered. Every sentence of the original text MUST appear in at least one scene."
+
+        if tipo_video == "animado":
+            system += f"""
+
+IMPORTANT — ANIMATED VIDEO MODE:
+- Create a MAXIMUM of {max_cenas} scenes.
+- Each scene will become a 6-second animated video clip.
+- Each scene MUST have enough visual action/content to fill 3 to 6 seconds of animation.
+- Do NOT create scenes that are too short (just a word or a quick mention). Combine short moments into one scene.
+- Do NOT create scenes that are too long (multiple actions). Split complex moments into separate scenes.
+- Each scene should describe ONE clear visual moment: a character doing something, a landscape, an emotion, a movement.
+- Think like a film director: each scene = one camera shot lasting 3-6 seconds.
+- You MUST include ALL parts of the text from beginning to end - do NOT skip or omit ANY part.
+- Every sentence of the original text MUST appear in at least one scene."""
+        else:
+            system += f"""
+
+IMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningful story beat. You MUST include ALL parts of the text from beginning to end - do NOT skip, cut, or omit ANY part. The ENTIRE text must be covered. Every sentence of the original text MUST appear in at least one scene."""
+
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system}, {"role": "user", "content": texto}
         ], "max_tokens": 8000}
@@ -975,7 +1003,7 @@ def dividir_roteiro(texto, api_key):
     except: pass
     return [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()] or [texto.strip()]
 
-def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco=False, cenas_preenchidas=None, direcao_criativa="", formato="vertical", personagem_path=""):
+def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, usar_banco=False, cenas_preenchidas=None, direcao_criativa="", formato="vertical", personagem_path="", tipo_video="estatico"):
     if cenas_preenchidas is None:
         cenas_preenchidas = {}
     with app.app_context():
@@ -986,7 +1014,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             sb_dir = os.path.join(STORYBOARD_FOLDER, job_id)
             os.makedirs(sb_dir, exist_ok=True)
             if user.get_provider() == "openai":
-                linhas = dividir_roteiro(texto_manual, user.get_api_key())
+                linhas = dividir_roteiro(texto_manual, user.get_api_key(), tipo_video)
             else:
                 linhas = [l.strip() for l in texto_manual.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()]
 
@@ -3403,6 +3431,53 @@ def musicas_sistema():
     except: pass
     return jsonify({"musicas": musicas})
 
+@app.route("/sugerir_musica", methods=["POST"])
+@login_required
+def sugerir_musica():
+    """GPT analisa o roteiro e sugere a melhor categoria de música do banco"""
+    roteiro = request.json.get("roteiro", "").strip()
+    if not roteiro:
+        return jsonify({"erro": "Sem roteiro"}), 400
+    api_key = current_user.get_api_key()
+    if not api_key:
+        return jsonify({"sugestao": "geral"})
+    try:
+        # Buscar categorias disponíveis no banco
+        conn = sqlite3.connect('instance/veo3.db')
+        try: conn.execute("ALTER TABLE musicas_sistema ADD COLUMN tipo TEXT DEFAULT 'musica'")
+        except: pass
+        rows = conn.execute("SELECT DISTINCT categoria FROM musicas_sistema WHERE tipo='musica' OR tipo IS NULL").fetchall()
+        conn.close()
+        categorias_disponiveis = []
+        for r in rows:
+            for c in (r[0] or "").split(","):
+                c = c.strip()
+                if c and c not in categorias_disponiveis:
+                    categorias_disponiveis.append(c)
+        if not categorias_disponiveis:
+            return jsonify({"sugestao": "geral"})
+
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        body = {"model": "gpt-4o-mini", "messages": [
+            {"role": "system", "content": f"""Analise este roteiro de vídeo e escolha a MELHOR categoria de música de fundo.
+Categorias disponíveis: {', '.join(categorias_disponiveis)}
+
+Retorne APENAS o nome da categoria, nada mais. Exemplo: epico"""},
+            {"role": "user", "content": roteiro[:500]}
+        ], "max_tokens": 10}
+        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=10)
+        if r.ok:
+            cat = r.json()["choices"][0]["message"]["content"].strip().lower()
+            if cat in categorias_disponiveis:
+                conn2 = sqlite3.connect('instance/veo3.db')
+                mus = conn2.execute("SELECT id, nome, categoria FROM musicas_sistema WHERE (tipo='musica' OR tipo IS NULL) AND categoria LIKE ? ORDER BY RANDOM() LIMIT 1", (f"%{cat}%",)).fetchone()
+                conn2.close()
+                if mus:
+                    return jsonify({"sugestao": cat, "musica_id": f"sys_{mus[0]}", "musica_nome": mus[1]})
+            return jsonify({"sugestao": cat})
+    except: pass
+    return jsonify({"sugestao": "geral"})
+
 @app.route("/musica_sistema/<path:filename>")
 @login_required
 def musica_sistema_file(filename):
@@ -3595,9 +3670,10 @@ def dividir_roteiro_route():
 
     estilo = request.form.get("estilo", "").strip()
     melhorar = request.form.get("melhorar_prompts", "false") == "true"
+    tipo_video = request.form.get("tipo_video", "estatico").strip()
 
     if melhorar and current_user.get_provider() == "openai" and current_user.get_api_key():
-        linhas = dividir_roteiro(texto, current_user.get_api_key())
+        linhas = dividir_roteiro(texto, current_user.get_api_key(), tipo_video)
     else:
         linhas = [l.strip() for l in texto.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()] or [texto.strip()]
 
@@ -3644,9 +3720,11 @@ def gerar_storyboard_route():
         personagem_path = os.path.join(UPLOAD_FOLDER, f"personagem_{current_user.id}_{uuid.uuid4().hex[:8]}.png")
         personagem_file.save(personagem_path)
 
+    tipo_video = request.form.get("tipo_video", "estatico").strip()
+
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, False, cenas_preenchidas, direcao_criativa, formato, personagem_path))
+    thread = threading.Thread(target=gerar_storyboard, args=(job_id, current_user.id, texto, estilo, melhorar, False, cenas_preenchidas, direcao_criativa, formato, personagem_path, tipo_video))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})

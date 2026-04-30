@@ -311,6 +311,19 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         {% endif %}
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
           <label>🎵 Música de fundo</label>
+          <div class="toggle-row" style="margin-top:6px;margin-bottom:10px">
+            <label style="margin:0;flex:1;font-size:.82rem">🤖 Escolher música automaticamente</label>
+            <label class="toggle"><input type="checkbox" id="musicaAuto" onchange="toggleMusicaAuto()"><span class="slider"></span></label>
+          </div>
+          <div id="musicaAutoInfo" style="display:none;margin-bottom:10px;background:var(--bg3);border:1px solid var(--accent);border-radius:8px;padding:10px">
+            <div style="font-size:.82rem;color:var(--accent);margin-bottom:4px">🎵 Música sugerida pela IA:</div>
+            <div id="musicaAutoNome" style="font-size:.88rem;color:var(--text);font-weight:600"></div>
+            <div id="musicaAutoCat" style="font-size:.72rem;color:var(--text3);margin-top:2px"></div>
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <audio id="musicaAutoPreview" preload="none" controls style="height:28px;flex:1"></audio>
+              <button class="btn-sm" style="background:var(--accent)" onclick="document.getElementById('musicaAuto').checked=false;toggleMusicaAuto()">✏️ Trocar</button>
+            </div>
+          </div>
           <div id="musicaSeletor" style="margin-bottom:10px">
             <input type="text" id="buscaMusicaNome" placeholder="🔍 Buscar por nome..." oninput="renderizarMusicaSeletor()" style="margin-bottom:8px;font-size:.82rem;padding:8px 10px"/>
             <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
@@ -1168,6 +1181,43 @@ if(legendaAtivo)legendaAtivo.addEventListener('change',()=>{secaoLegenda.style.d
 const efeitosSonorosEl=document.getElementById('efeitosSonoros'),tipEfeitos=document.getElementById('tipEfeitos');
 if(efeitosSonorosEl)efeitosSonorosEl.addEventListener('change',()=>{if(tipEfeitos)tipEfeitos.style.display=efeitosSonorosEl.checked?'block':'none';});
 
+async function toggleMusicaAuto(){
+  const check=document.getElementById('musicaAuto');
+  const info=document.getElementById('musicaAutoInfo');
+  const seletor=document.getElementById('musicaSeletor');
+  if(check&&check.checked){
+    // Esconder seletor manual, mostrar sugestão
+    if(seletor)seletor.style.display='none';
+    if(info)info.style.display='block';
+    // Pedir sugestão ao GPT
+    const roteiro=document.getElementById('textoRoteiro')?document.getElementById('textoRoteiro').value:'';
+    if(!roteiro){check.checked=false;if(seletor)seletor.style.display='block';if(info)info.style.display='none';alert('Escreva o roteiro primeiro');return;}
+    document.getElementById('musicaAutoNome').textContent='Analisando roteiro...';
+    document.getElementById('musicaAutoCat').textContent='';
+    try{
+      const res=await fetch('/sugerir_musica',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roteiro})});
+      const d=await res.json();
+      if(d.musica_id&&d.musica_nome){
+        document.getElementById('musicaAutoNome').textContent=d.musica_nome;
+        document.getElementById('musicaAutoCat').textContent='Categoria: '+d.sugestao;
+        document.getElementById('musicaId').value=d.musica_id;
+        const audioEl=document.getElementById('musicaAutoPreview');
+        if(audioEl)audioEl.src='/musica_sistema/'+(_todasMusicas.find(m=>m.id===d.musica_id)||{}).path||'';
+      }else{
+        document.getElementById('musicaAutoNome').textContent='Nenhuma música encontrada na categoria "'+d.sugestao+'"';
+        document.getElementById('musicaAutoCat').textContent='Adicione músicas no banco ou escolha manualmente.';
+      }
+    }catch(e){
+      document.getElementById('musicaAutoNome').textContent='Erro ao sugerir';
+      document.getElementById('musicaAutoCat').textContent=e.message;
+    }
+  }else{
+    // Mostrar seletor manual
+    if(seletor)seletor.style.display='block';
+    if(info)info.style.display='none';
+  }
+}
+
 // Stripe - Comprar plano
 async function comprarPlano(priceId){
   const cupomEl=document.getElementById('cupomDesconto');
@@ -1393,7 +1443,7 @@ document.getElementById('btnGerarSB').addEventListener('click',async()=>{
   pbar.style.width='0%';
   const animBar=setInterval(()=>{progresso=Math.min(progresso+Math.random()*15,90);pbar.style.width=progresso+'%';},500);
   sbEstilo=document.getElementById('estilo').value;
-  const fd=new FormData();fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');fd.append('direcao_criativa',document.getElementById('direcaoCriativa').value.trim());fd.append('formato',document.getElementById('formatoVideo').value);
+  const fd=new FormData();fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');fd.append('direcao_criativa',document.getElementById('direcaoCriativa').value.trim());fd.append('formato',document.getElementById('formatoVideo').value);fd.append('tipo_video',document.getElementById('tipoVideo').value||'estatico');
   try{
     const res=await fetch('/dividir_roteiro',{method:'POST',body:fd});
     clearInterval(animBar);pbar.style.width='100%';
@@ -1480,6 +1530,7 @@ document.getElementById('btnGerarFaltantes').addEventListener('click',async()=>{
   fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');
   fd.append('direcao_criativa',document.getElementById('direcaoCriativa').value.trim());
   fd.append('formato',document.getElementById('formatoVideo').value);
+  fd.append('tipo_video',document.getElementById('tipoVideo').value||'estatico');
   fd.append('cenas_preenchidas',JSON.stringify(cenasPreenchidas));
   if(_personagemFile)fd.append('personagem',_personagemFile);
   try{
