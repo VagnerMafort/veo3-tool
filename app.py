@@ -1000,13 +1000,24 @@ IMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningf
         if r.ok:
             resultado = r.json()["choices"][0]["message"]["content"].strip()
             linhas = [l.strip() for l in resultado.split("\n") if l.strip()]
+            import sys
+            sys.stderr.write(f"[DIVIDIR] tipo={tipo_video}, palavras={n_palavras}, dur_est={int(duracao_estimada)}s, GPT retornou {len(linhas)} cenas\n"); sys.stderr.flush()
             if tipo_video == "animado":
-                # Forçar número exato de cenas pra animação
-                cenas_ideal = max(3, round((len(texto.split()) / 2.5) / 6))
-                if len(linhas) > cenas_ideal + 1:
-                    linhas = linhas[:cenas_ideal]
-            elif len(linhas) > max_cenas:
-                linhas = linhas[:max_cenas]
+                # Forçar número exato: duração / 6
+                cenas_alvo = max(3, round(duracao_estimada / 6))
+                sys.stderr.write(f"[DIVIDIR] Alvo animado: {cenas_alvo} cenas\n"); sys.stderr.flush()
+                if len(linhas) > cenas_alvo:
+                    # Mesclar cenas excedentes com as anteriores
+                    while len(linhas) > cenas_alvo:
+                        # Encontrar a cena mais curta e mesclar com a próxima
+                        menor_idx = min(range(len(linhas) - 1), key=lambda i: len(linhas[i]))
+                        linhas[menor_idx] = linhas[menor_idx] + " " + linhas[menor_idx + 1]
+                        linhas.pop(menor_idx + 1)
+                    sys.stderr.write(f"[DIVIDIR] Mesclado pra {len(linhas)} cenas\n"); sys.stderr.flush()
+            else:
+                max_cenas = max(2, min(60, len(texto) // 20))
+                if len(linhas) > max_cenas:
+                    linhas = linhas[:max_cenas]
             if len(linhas) >= 1:
                 return linhas
     except: pass
