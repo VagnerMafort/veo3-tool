@@ -972,22 +972,32 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
         system = prompts.get("dividir", DEFAULT_PROMPTS["dividir"])
 
         if tipo_video == "animado":
-            system += f"""
+            # Substituir prompt base por um específico pra animação
+            system = f"""You are a film director creating scenes for an animated video. Each scene will be a 6-second animated clip.
 
-IMPORTANT — ANIMATED VIDEO MODE:
-- Create a MAXIMUM of {max_cenas} scenes.
-- Each scene will become a 6-second animated video clip.
-- Each scene MUST describe a RICH visual moment with enough detail to fill 5-6 seconds of animation.
-- MINIMUM per scene: at least 2 sentences describing what is visually happening (action + setting + emotion).
-- NEVER create a scene with just one short action like "he woke up" or "she ran". That is TOO SHORT.
-- ALWAYS combine quick moments into one richer scene. Example:
-  BAD: "O servo acordou em pânico." (too short, 1 second of action)
-  GOOD: "O servo acordou em pânico no meio da noite, suando frio, olhando ao redor do quarto escuro enquanto tentava entender o que havia acontecido." (rich, 5-6 seconds)
-- Each scene must paint a COMPLETE visual picture: WHO is doing WHAT, WHERE, with what EMOTION and ATMOSPHERE.
-- Think like a film director: each scene = one camera shot lasting 5-6 seconds with continuous visual action.
-- You MUST include ALL parts of the text from beginning to end - do NOT skip or omit ANY part.
-- Every sentence of the original text MUST appear in at least one scene.
-- If a moment in the story is very brief, MERGE it with the previous or next moment into one scene."""
+RULES:
+1. Split the narration into RICH, VISUAL scenes.
+2. Each scene MUST be substantial enough to fill 5-6 seconds of animation.
+3. NEVER create a scene with just one short action. A scene like "O servo acordou em pânico" is UNACCEPTABLE — it's only 1 second of visual content.
+4. Each scene MUST describe: WHO is doing WHAT, WHERE, with what EMOTION, and what the ENVIRONMENT looks like.
+5. MERGE short consecutive moments into one scene. If the original text says "Ele acordou. Olhou ao redor. Ficou com medo." — that is ONE scene, not three.
+6. Keep the SAME LANGUAGE as the input text.
+7. Keep the original meaning — do NOT invent new events, but EXPAND brief moments with visual details from the context.
+8. Output each scene on a NEW LINE. Nothing else — no numbers, no labels.
+9. Maintain EXACT chronological order.
+10. You MUST cover the ENTIRE text from beginning to end. Do NOT skip any part.
+11. Create a MAXIMUM of {max_cenas} scenes.
+
+EXAMPLE of what you should do:
+Original: "Eliseu orou a Deus. O servo acordou em pânico. Ele viu cavalos de fogo."
+BAD output (too fragmented):
+Eliseu orou a Deus.
+O servo acordou em pânico.
+Ele viu cavalos de fogo.
+
+GOOD output (merged into rich scenes):
+Eliseu ajoelhou-se em oração com as mãos erguidas ao céu, enquanto o servo dormia inquieto ao fundo em uma tenda simples no deserto.
+O servo acordou em pânico no meio da noite, suando frio, e correu para fora da tenda onde avistou o horizonte tomado por cavalos e carruagens de fogo descendo do céu."""
         else:
             system += f"""
 
