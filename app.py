@@ -1202,14 +1202,15 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                         shutil.copy(src, img_path)
                         blocos.append({"index": idx+1, "texto": linhas[idx], "img": f"{idx+1:03d}.png"})
 
-            # ── ETAPA 0: Extrair ficha de personagens ──
+            # ── ETAPA 0: Preparação em PARALELO (ficha + referência + planos) ──
             ficha = ""
             ref_img_path = ""
             planos_camera = []
             if melhorar_prompts and user.get_provider() == "openai" and cenas_a_gerar:
-                jobs[job_id]["progresso"] = "Analisando personagens..."
+                jobs[job_id]["progresso"] = "Preparando referências visuais..."
+                import sys
 
-                # Se tem foto de referência do usuário, analisar com visão
+                # Se tem foto de referência do usuário
                 if personagem_path and os.path.exists(personagem_path):
                     try:
                         import base64 as b64mod
@@ -1217,8 +1218,8 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                             ref_b64 = b64mod.b64encode(fref.read()).decode()
                         headers_vis = {"Authorization": f"Bearer {user.get_api_key()}", "Content-Type": "application/json"}
                         body_vis = {"model": "gpt-4o-mini", "messages": [
-                            {"role": "system", "content": """Analyze this reference image and create an EXTREMELY detailed visual description of the character.
-Include: exact skin tone, exact hair color/style/length, exact eye color/shape/size, exact clothing (colors with hex codes, garment types), body type, age range, distinguishing features.
+                            {"role": "system", "content": """Analyze this reference image. Describe EACH character with extreme detail.
+Include: skin tone, hair (color hex, style, length), eyes (color, shape), clothing (colors with hex, garment types), body type, age, features.
 Write in ENGLISH. Output ONLY the description."""},
                             {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{ref_b64}"}}]}
                         ], "max_tokens": 500}
@@ -1227,63 +1228,80 @@ Write in ENGLISH. Output ONLY the description."""},
                             ficha_visual = r_vis.json()["choices"][0]["message"]["content"].strip()
                             ficha = f"MAIN CHARACTER (from reference photo):\n{ficha_visual}\n\n"
                             ficha += extrair_personagens(texto_manual, user.get_api_key(), estilo)
-                            ref_img_path = personagem_path
                     except:
                         ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
                 else:
-                    ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
+                    # Rodar ficha + referência + planos em PARALELO
+                    ficha_resultado = [None]
+                    ref_resultado = [None]
+                    planos_resultado = [None]
 
-                # ── ETAPA 0.5: Gerar imagem de referência ("foto de elenco") ──
-                if ficha and not ref_img_path:
-                    jobs[job_id]["progresso"] = "Gerando referência visual..."
-                    ref_img_path = os.path.join(sb_dir, "_reference.png")
-                    if not gerar_imagem_referencia(ficha, estilo, user.get_api_key(), ref_img_path, formato):
-                        ref_img_path = ""  # Falhou, segue sem referência
+                    def _extrair_ficha():
+                        ficha_resultado[0] = extrair_personagens(texto_manual, user.get_api_key(), estilo)
 
-                # ── ETAPA 0.7: Analisar imagem de referência com visão pra complementar ficha ──
-                if ref_img_path and os.path.exists(ref_img_path) and not personagem_path:
-                    try:
-                        import base64 as b64mod
-                        with open(ref_img_path, "rb") as fref:
-                            ref_b64 = b64mod.b64encode(fref.read()).decode()
-                        headers_vis = {"Authorization": f"Bearer {user.get_api_key()}", "Content-Type": "application/json"}
-                        body_vis = {"model": "gpt-4o-mini", "messages": [
-                            {"role": "system", "content": """This is a character reference sheet. Describe EACH character visible in the image with extreme detail.
-For each character: exact skin tone, hair (color hex, style, length), eyes (color, shape), clothing (colors with hex, garment types), body type, age, distinguishing features.
+                    def _planejar_planos():
+                        planos_resultado[0] = planejar_planos_camera(linhas, user.get_api_key())
+
+                    # Ficha e planos em paralelo
+                    with ThreadPoolExecutor(max_workers=2) as prep_exec:
+                        prep_exec.submit(_extrair_ficha)
+                        prep_exec.submit(_planejar_planos)
+
+                    ficha = ficha_resultado[0] or ""
+                    planos_camera = planos_resultado[0] or []
+
+                    # Gerar imagem de referência (precisa da ficha pronta)
+                    if ficha:
+                        jobs[job_id]["progresso"] = "Gerando referência visual..."
+                        ref_img_path = os.path.join(sb_dir, "_reference.png")
+                        if not gerar_imagem_referencia(ficha, estilo, user.get_api_key(), ref_img_path, formato):
+                            ref_img_path = ""
+
+                    # Analisar referência com visão pra complementar ficha
+                    if ref_img_path and os.path.exists(ref_img_path):
+                        try:
+                            import base64 as b64mod
+                            with open(ref_img_path, "rb") as fref:
+                                ref_b64 = b64mod.b64encode(fref.read()).decode()
+                            headers_vis = {"Authorization": f"Bearer {user.get_api_key()}", "Content-Type": "application/json"}
+                            body_vis = {"model": "gpt-4o-mini", "messages": [
+                                {"role": "system", "content": """This is a character reference sheet. Describe EACH character with extreme detail.
+For each: skin tone, hair (color hex, style), eyes (color, shape), clothing (colors hex, garments), body type, age, features.
 Format: CHARACTER 1: [description] | CHARACTER 2: [description]
 Write in ENGLISH."""},
-                            {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{ref_b64}"}}]}
-                        ], "max_tokens": 600}
-                        r_vis = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_vis, json=body_vis, timeout=30)
-                        if r_vis.ok:
-                            ficha_visual = r_vis.json()["choices"][0]["message"]["content"].strip()
-                            ficha += f"\n\nVISUAL REFERENCE (from generated reference image — use these EXACT visual details):\n{ficha_visual}"
-                            import sys
-                            sys.stderr.write(f"[REF] Ficha visual complementada: {ficha_visual[:200]}\n"); sys.stderr.flush()
-                    except: pass
+                                {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{ref_b64}"}}]}
+                            ], "max_tokens": 600}
+                            r_vis = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_vis, json=body_vis, timeout=30)
+                            if r_vis.ok:
+                                ficha_visual = r_vis.json()["choices"][0]["message"]["content"].strip()
+                                ficha += f"\n\nVISUAL REFERENCE (use these EXACT details for consistency):\n{ficha_visual}"
+                                sys.stderr.write(f"[REF] Ficha complementada\n"); sys.stderr.flush()
+                        except: pass
 
-                # ── ETAPA 1: Planejar planos de câmera ──
-                jobs[job_id]["progresso"] = "Planejando composição visual..."
-                planos_camera = planejar_planos_camera(linhas, user.get_api_key())
+                # Planos de câmera (se não foram gerados em paralelo)
+                if not planos_camera:
+                    planos_camera = planejar_planos_camera(linhas, user.get_api_key())
 
-            # ── ETAPA 2: Gerar imagens em paralelo com referência ──
+            # ── ETAPA 2: Gerar imagens em paralelo (geração NORMAL, não edits) ──
             def gerar_bloco(i_linha):
                 import sys
                 linha = linhas[i_linha]
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
 
-                # Detectar cena não-visual (CTA)
+                # Detectar cena não-visual (CTA: comenta, compartilha, etc.)
                 if eh_cena_nao_visual(linha):
                     estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "cinematic"
-                    fallback_prompt = f"{estilo_det}, inspirational landscape, golden sunrise over mountains, warm light rays through clouds, hope and faith atmosphere, epic wide panoramic shot, bright colors, no text, no letters, no words, no writing, no watermarks"
+                    fallback_prompt = f"{estilo_det}, inspirational landscape, golden sunrise over mountains, warm light rays through clouds, hope and faith, epic wide panoramic shot, bright colors, no text, no letters, no words, no watermarks"
                     try:
                         gerar_imagem_openai(fallback_prompt, user.get_api_key(),
                                             "1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"),
                                             "standard", img_path, modelo="gpt-image-1")
                     except:
-                        gerar_imagem_openai(fallback_prompt, user.get_api_key(),
-                                            "1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"),
-                                            "standard", img_path, modelo="dall-e-3")
+                        try:
+                            gerar_imagem_openai(fallback_prompt, user.get_api_key(),
+                                                "1024x1792" if formato == "vertical" else "1024x1024",
+                                                "standard", img_path, modelo="dall-e-3")
+                        except: pass
                     blocos.append({"index": i_linha+1, "texto": linha, "img": f"{i_linha+1:03d}.png"})
                     jobs[job_id]["atual"] = len(blocos)
                     jobs[job_id]["progresso"] = f"Gerando imagem {len(blocos)} de {total}..."
@@ -1296,26 +1314,15 @@ Write in ENGLISH."""},
                 else:
                     prompt_final = f"{linha}, {estilo}" if estilo else linha
 
-                # Tentar gerar com imagem de referência via edits
+                # Geração normal (rápida, respeita planos de câmera)
                 gerado = False
-                if ref_img_path and os.path.exists(ref_img_path):
-                    try:
-                        ref_prompt = f"{prompt_final}. Characters MUST look EXACTLY like in the reference image — same faces, same hair, same clothing, same skin tone."
-                        editar_imagem_openai(ref_prompt, user.get_api_key(), [ref_img_path], img_path,
-                                             size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
-                        gerado = True
-                    except Exception as e:
-                        sys.stderr.write(f"[IMG] Edits falhou cena {i_linha+1}: {e}\n"); sys.stderr.flush()
+                try:
+                    gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
+                    gerado = True
+                except Exception as e:
+                    sys.stderr.write(f"[IMG] Geração falhou cena {i_linha+1}: {e}\n"); sys.stderr.flush()
 
-                # Fallback: geração normal
-                if not gerado:
-                    try:
-                        gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
-                        gerado = True
-                    except Exception as e:
-                        sys.stderr.write(f"[IMG] Geração falhou cena {i_linha+1}: {e}\n"); sys.stderr.flush()
-
-                # Fallback 2: suavizar e tentar
+                # Fallback: suavizar e tentar
                 if not gerado:
                     try:
                         prompt_suave = suavizar_prompt(prompt_final, user.get_api_key())
@@ -1323,30 +1330,28 @@ Write in ENGLISH."""},
                                             "1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"),
                                             "standard", img_path, modelo="gpt-image-1")
                         gerado = True
-                    except:
-                        pass
+                    except: pass
 
-                # Fallback 3: imagem genérica do cenário
+                # Fallback 2: imagem genérica
                 if not gerado:
                     try:
                         estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "cinematic"
                         gerar_imagem_openai(f"{estilo_det}, ancient Middle Eastern city at dawn, warm golden light, dramatic sky, no text, no words, no watermarks",
                                             user.get_api_key(),
-                                            "1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"),
+                                            "1024x1792" if formato == "vertical" else "1024x1024",
                                             "standard", img_path, modelo="dall-e-3")
                     except:
                         sys.stderr.write(f"[IMG] TODOS os fallbacks falharam cena {i_linha+1}\n"); sys.stderr.flush()
 
-                # Verificar se a imagem gerada é uma recusa (muito pequena ou padrão)
+                # Verificar recusa (imagem muito pequena)
                 if os.path.exists(img_path):
                     file_size = os.path.getsize(img_path)
-                    if file_size < 20000:  # Menos de 20KB = provavelmente recusa ou erro
-                        sys.stderr.write(f"[IMG] Cena {i_linha+1}: imagem suspeita ({file_size} bytes), regenerando...\n"); sys.stderr.flush()
+                    if file_size < 20000:
+                        sys.stderr.write(f"[IMG] Cena {i_linha+1}: imagem suspeita ({file_size}B), regenerando\n"); sys.stderr.flush()
                         try:
                             estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "cinematic"
                             gerar_imagem_openai(f"{estilo_det}, dramatic ancient scene, warm golden light, epic atmosphere, no text, no words",
-                                                user.get_api_key(),
-                                                "1024x1792" if formato == "vertical" else "1024x1024",
+                                                user.get_api_key(), "1024x1792" if formato == "vertical" else "1024x1024",
                                                 "standard", img_path, modelo="dall-e-3")
                         except: pass
 
