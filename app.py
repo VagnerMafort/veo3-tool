@@ -1442,14 +1442,15 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     duracao_total = len(audio_completo_seg) / 1000
                     audio_completo_path = audio_limpo_path
 
-                # Sincronizar cenas com áudio usando Whisper (word-level)
+                # ── Sincronizar cenas com áudio usando Whisper (word-level) ──
+                # Modo LONGO: transcreve o áudio original (com pausas naturais entre cenas)
+                # Modo SHORTS: transcreve o áudio já limpo (sem pausas), timestamps compactados
+                # Em ambos: distribui palavras do Whisper proporcionalmente ao nº de palavras de cada cena
                 jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
+                import sys
                 try:
-                    from difflib import SequenceMatcher
-                    import unicodedata, sys
                     model = get_whisper_model()
                     resultado_whisper = model.transcribe(audio_completo_path, word_timestamps=True, fp16=False)
-                    # Extrair todas as palavras com timestamps
                     palavras = []
                     for seg in resultado_whisper.get("segments", []):
                         for w in seg.get("words", []):
@@ -1457,57 +1458,40 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                             if word_text:
                                 palavras.append({"word": word_text, "start": w["start"], "end": w["end"]})
                     if not palavras:
-                        raise Exception("fallback")
+                        raise Exception("fallback - sem palavras")
 
-                    def normalizar(txt):
-                        """Remove acentos, pontuação e normaliza pra comparação"""
-                        txt = unicodedata.normalize('NFKD', txt.lower())
-                        txt = ''.join(c for c in txt if not unicodedata.combining(c))
-                        txt = re.sub(r'[^\w\s]', '', txt)
-                        return txt.strip()
+                    # Contar palavras de cada cena no roteiro original
+                    palavras_por_cena = [len(b["texto"].split()) for b in blocos]
+                    total_palavras_roteiro = sum(palavras_por_cena)
+                    total_palavras_whisper = len(palavras)
 
-                    # Mapear palavras às cenas usando o texto original
-                    textos_cenas = [b["texto"].strip() for b in blocos]
-                    palavra_cursor = 0
+                    sys.stderr.write(f"[SYNC] Modo: {modo_video} | Palavras roteiro: {total_palavras_roteiro} | Whisper: {total_palavras_whisper} | Audio: {duracao_total:.2f}s\n"); sys.stderr.flush()
 
+                    # Distribuir palavras do Whisper proporcionalmente
+                    cursor = 0
                     for i, bloco in enumerate(blocos):
-                        cena_texto_norm = normalizar(textos_cenas[i])
-                        cena_palavras = cena_texto_norm.split()
-                        n_palavras_cena = len(cena_palavras)
-
-                        idx_inicio = palavra_cursor
-
                         if i < len(blocos) - 1:
-                            # Busca flexível com janela maior pra compensar diferenças Whisper
-                            melhor_fim = min(palavra_cursor + n_palavras_cena, len(palavras))
-                            melhor_score = -1
-                            for offset in range(-5, 10):
-                                candidato = palavra_cursor + n_palavras_cena + offset
-                                if candidato <= palavra_cursor or candidato > len(palavras):
-                                    continue
-                                trecho = normalizar(" ".join([palavras[j]["word"] for j in range(palavra_cursor, candidato)]))
-                                score = SequenceMatcher(None, cena_texto_norm, trecho).ratio()
-                                if score > melhor_score:
-                                    melhor_score = score
-                                    melhor_fim = candidato
+                            proporcao = palavras_por_cena[i] / total_palavras_roteiro
+                            n_palavras_whisper = max(1, round(proporcao * total_palavras_whisper))
+                            idx_fim = min(cursor + n_palavras_whisper, total_palavras_whisper)
                         else:
-                            # Última cena: pega tudo que sobrou
-                            melhor_fim = len(palavras)
+                            # Última cena: pega TUDO que sobrou
+                            idx_fim = total_palavras_whisper
 
-                        idx_inicio = min(idx_inicio, len(palavras) - 1)
-                        idx_fim = min(melhor_fim, len(palavras))
+                        idx_inicio = min(cursor, total_palavras_whisper - 1)
+                        idx_fim = max(idx_fim, idx_inicio + 1)
 
-                        inicio = palavras[idx_inicio]["start"]
-                        fim = palavras[idx_fim - 1]["end"] if idx_fim > 0 else inicio + 3
+                        inicio = palavras[idx_inicio]["start"] if idx_inicio < total_palavras_whisper else 0
+                        fim = palavras[min(idx_fim, total_palavras_whisper) - 1]["end"]
 
-                        # Primeira cena começa em 0 (inclui silêncio inicial)
+                        # Primeira cena começa em 0
                         if i == 0:
                             inicio = 0.0
                         # Última cena vai até o fim real do áudio
                         if i == len(blocos) - 1:
-                            fim = max(fim, duracao_total)
+                            fim = duracao_total
 
-                        dur = max(2.0, fim - inicio)
+                        dur = max(1.5, fim - inicio)
 
                         img_src = os.path.join(sb_dir, bloco["img"])
                         img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
@@ -1515,44 +1499,35 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur, 2),
                                         "inicio": round(inicio, 2), "fim": round(fim, 2),
                                         "texto": bloco["texto"]})
-                        palavra_cursor = idx_fim
 
-                    # Garantir que as cenas cobrem o áudio inteiro sem gaps
-                    # Ajustar: fim de cada cena = início da próxima (sem buracos)
+                        sys.stderr.write(f"[SYNC]   Cena {i+1}: palavras[{cursor}:{idx_fim}] | {inicio:.2f}s - {fim:.2f}s ({dur:.2f}s)\n"); sys.stderr.flush()
+                        cursor = idx_fim
+
+                    # Garantir continuidade: fim de cada cena = início da próxima
                     for j in range(len(imagens) - 1):
-                        prox_inicio = imagens[j + 1]["inicio"]
-                        if imagens[j]["fim"] < prox_inicio:
-                            # Há um gap — estender a cena atual até o início da próxima
-                            imagens[j]["fim"] = prox_inicio
-                            imagens[j]["duracao"] = round(imagens[j]["fim"] - imagens[j]["inicio"], 2)
-                        elif imagens[j]["fim"] > prox_inicio:
-                            # Overlap — ajustar pra não sobrepor
-                            imagens[j + 1]["inicio"] = imagens[j]["fim"]
-                            imagens[j + 1]["duracao"] = round(imagens[j + 1]["fim"] - imagens[j + 1]["inicio"], 2)
+                        imagens[j]["fim"] = imagens[j + 1]["inicio"]
+                        imagens[j]["duracao"] = round(max(1.0, imagens[j]["fim"] - imagens[j]["inicio"]), 2)
 
-                    # Recalcular duração da última cena até o fim do áudio
-                    if imagens:
-                        imagens[-1]["fim"] = round(duracao_total, 2)
-                        imagens[-1]["duracao"] = round(max(2.0, imagens[-1]["fim"] - imagens[-1]["inicio"]), 2)
-
-                    # Log de debug
                     soma_dur = sum(img["duracao"] for img in imagens)
-                    sys.stderr.write(f"[SYNC] Cenas: {len(imagens)} | Soma duracoes: {soma_dur:.2f}s | Audio: {duracao_total:.2f}s\n"); sys.stderr.flush()
-                    for img in imagens:
-                        sys.stderr.write(f"[SYNC]   Cena {img['index']}: {img['inicio']:.2f}s - {img['fim']:.2f}s ({img['duracao']:.2f}s)\n"); sys.stderr.flush()
-                except Exception:
-                    # Fallback: divisão proporcional
+                    sys.stderr.write(f"[SYNC] Total: {len(imagens)} cenas | Soma: {soma_dur:.2f}s | Audio: {duracao_total:.2f}s\n"); sys.stderr.flush()
+
+                except Exception as sync_err:
+                    sys.stderr.write(f"[SYNC] Whisper falhou ({sync_err}), usando divisao proporcional por palavras\n"); sys.stderr.flush()
+                    # Fallback: distribuir tempo proporcionalmente ao nº de palavras
                     imagens = []
                     t = 0
-                    dur_por_cena = max(3.0, duracao_total / len(blocos))
+                    palavras_por_cena = [len(b["texto"].split()) for b in blocos]
+                    total_palavras_roteiro = sum(palavras_por_cena) or 1
                     for i, bloco in enumerate(blocos):
+                        proporcao = palavras_por_cena[i] / total_palavras_roteiro
+                        dur = max(2.0, duracao_total * proporcao)
                         img_src = os.path.join(sb_dir, bloco["img"])
                         img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
                         shutil.copy(img_src, img_dst)
-                        imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur_por_cena, 2),
-                                        "inicio": round(t, 2), "fim": round(t + dur_por_cena, 2),
+                        imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur, 2),
+                                        "inicio": round(t, 2), "fim": round(t + dur, 2),
                                         "texto": bloco["texto"]})
-                        t += dur_por_cena
+                        t += dur
 
                 audio_final_path = audio_completo_path
             else:
