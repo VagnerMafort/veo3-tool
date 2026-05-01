@@ -3820,38 +3820,39 @@ def storyboard_img(sb_id, filename):
 @app.route("/rascunhos")
 @login_required
 def listar_rascunhos():
-    """Lista storyboards salvos do usuário"""
+    """Lista storyboards salvos do usuário — otimizado"""
     rascunhos = []
     if os.path.exists(STORYBOARD_FOLDER):
-        for sb_id in os.listdir(STORYBOARD_FOLDER):
+        # Listar diretórios e ordenar por data de modificação (mais recentes primeiro)
+        dirs = []
+        try:
+            for sb_id in os.listdir(STORYBOARD_FOLDER):
+                sb_path = os.path.join(STORYBOARD_FOLDER, sb_id, "storyboard.json")
+                if os.path.exists(sb_path):
+                    dirs.append((sb_id, os.path.getmtime(sb_path)))
+        except: pass
+        dirs.sort(key=lambda x: x[1], reverse=True)
+        # Só ler os 20 mais recentes
+        for sb_id, mtime in dirs[:20]:
             sb_path = os.path.join(STORYBOARD_FOLDER, sb_id, "storyboard.json")
-            if os.path.exists(sb_path):
-                try:
-                    with open(sb_path) as f:
-                        sb_data = json.load(f)
-                    blocos = sb_data.get("blocos", [])
-                    if not blocos:
-                        continue
-                    # Verificar se tem pelo menos 1 imagem
-                    primeira_img = os.path.join(STORYBOARD_FOLDER, sb_id, blocos[0].get("img", ""))
-                    if not os.path.exists(primeira_img):
-                        continue
-                    # Pegar data de modificação
-                    mtime = os.path.getmtime(sb_path)
-                    data = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M')
-                    texto_preview = blocos[0].get("texto", "")[:60]
-                    rascunhos.append({
-                        "sb_id": sb_id,
-                        "total_cenas": len(blocos),
-                        "estilo": sb_data.get("estilo", ""),
-                        "tipo_video": sb_data.get("tipo_video", "animado"),
-                        "data": data,
-                        "preview": texto_preview,
-                        "thumb": blocos[0].get("img", "")
-                    })
-                except: continue
-    rascunhos.sort(key=lambda x: x["data"], reverse=True)
-    return jsonify({"rascunhos": rascunhos[:20]})
+            try:
+                with open(sb_path) as f:
+                    sb_data = json.load(f)
+                blocos = sb_data.get("blocos", [])
+                if not blocos:
+                    continue
+                data = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M')
+                rascunhos.append({
+                    "sb_id": sb_id,
+                    "total_cenas": len(blocos),
+                    "estilo": sb_data.get("estilo", ""),
+                    "tipo_video": sb_data.get("tipo_video", "animado"),
+                    "data": data,
+                    "preview": blocos[0].get("texto", "")[:60],
+                    "thumb": blocos[0].get("img", "")
+                })
+            except: continue
+    return jsonify({"rascunhos": rascunhos})
 
 @app.route("/carregar_rascunho/<sb_id>")
 @login_required
