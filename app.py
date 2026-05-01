@@ -712,7 +712,16 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
         if r.status_code == 429 or "rate" in r.text.lower():
             raise Exception("RATE_LIMIT:Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde.")
         raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
-    data = r.json()
+    try:
+        data = json.loads(r.text.split('\n')[0]) if '\n' in r.text else r.json()
+    except:
+        # Tentar extrair JSON válido do início da resposta
+        try:
+            import re as _re
+            match = _re.search(r'\{.*?\}', r.text, _re.DOTALL)
+            data = json.loads(match.group()) if match else r.json()
+        except:
+            data = r.json()
     task_id = data.get("task_id")
     if not task_id:
         resp_str = str(data)
@@ -732,7 +741,15 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
                               headers=headers, params={"task_id": task_id}, timeout=15)
             if not r2.ok:
                 continue
-            status_data = r2.json()
+            try:
+                status_data = json.loads(r2.text.split('\n')[0]) if '\n' in r2.text else r2.json()
+            except:
+                try:
+                    import re as _re
+                    match = _re.search(r'\{.*\}', r2.text, _re.DOTALL)
+                    status_data = json.loads(match.group()) if match else r2.json()
+                except:
+                    continue
             status = status_data.get("status", "")
             if status == "Success":
                 file_id = status_data.get("file_id")
@@ -742,7 +759,11 @@ def gerar_video_minimax(img_path, prompt, api_key, output_path, duracao=6):
                                   headers=headers, params={"file_id": file_id}, timeout=15)
                 if not r3.ok:
                     raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
-                download_url = r3.json().get("file", {}).get("download_url")
+                try:
+                    r3_data = json.loads(r3.text.split('\n')[0]) if '\n' in r3.text else r3.json()
+                except:
+                    r3_data = r3.json()
+                download_url = r3_data.get("file", {}).get("download_url")
                 if not download_url:
                     raise Exception("Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde.")
                 video_r = requests.get(download_url, timeout=120)
