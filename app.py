@@ -1588,7 +1588,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     # Mixar: narração em volume normal + música audível
                     if audio_final_path and os.path.exists(audio_final_path):
                         cmd = ["ffmpeg", "-y", "-i", video_path, "-i", musica_path,
-                               "-filter_complex", "[1:a]volume=0.35[bg];[0:a][bg]amix=inputs=2:duration=first[aout]",
+                               "-filter_complex", "[1:a]volume=0.30[bg];[0:a][bg]amix=inputs=2:duration=first[aout]",
                                "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", video_com_musica]
                     else:
                         # Sem narração: música como áudio principal (volume 70%)
