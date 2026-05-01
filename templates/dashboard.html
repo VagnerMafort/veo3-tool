@@ -331,7 +331,6 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
               <button class="modo-btn" onclick="filtrarMusicas('favoritas')" id="filtMusicaFav" style="font-size:.72rem;padding:6px 10px">⭐ Favoritas</button>
               <button class="modo-btn" onclick="filtrarMusicas('usuario')" style="font-size:.72rem;padding:6px 10px">📤 Minhas</button>
               <button class="modo-btn" onclick="filtrarMusicas('musicas')" style="font-size:.72rem;padding:6px 10px">🎵 Músicas</button>
-              <button class="modo-btn" onclick="filtrarMusicas('efeitos')" style="font-size:.72rem;padding:6px 10px">🔊 Efeitos</button>
               <button class="modo-btn" onclick="filtrarMusicas('epico')" style="font-size:.72rem;padding:6px 10px">⚔️ Épico</button>
               <button class="modo-btn" onclick="filtrarMusicas('motivacional')" style="font-size:.72rem;padding:6px 10px">💪 Motiv.</button>
               <button class="modo-btn" onclick="filtrarMusicas('suspense')" style="font-size:.72rem;padding:6px 10px">🔮 Suspense</button>
@@ -348,14 +347,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
             <div id="musicaSelecionada" style="display:none;margin-top:6px;font-size:.78rem;color:var(--accent)"></div>
           </div>
           <p class="tip">Faça upload de músicas na aba 🎙️ Áudio</p>
-          <div class="toggle-row">
-            <label>🔊 Efeitos sonoros automáticos {% if not user.audio_ativo and not user.is_admin %}<span style="font-size:.7rem;color:var(--text3)">(requer Banco de Áudio)</span>{% endif %}</label>
-            <label class="toggle"><input type="checkbox" id="efeitosSonoros" {% if not user.audio_ativo and not user.is_admin %}disabled{% endif %}><span class="slider" {% if not user.audio_ativo and not user.is_admin %}style="opacity:0.4;cursor:not-allowed"{% endif %}></span></label>
-          </div>
-          {% if not user.audio_ativo and not user.is_admin %}
-          <p class="tip" style="margin-top:4px"><a href="#" onclick="trocarAba('planos');return false" style="color:var(--accent)">🎵 Assinar Banco de Áudio — {{ audio_addon_valor }}</a> para desbloquear efeitos sonoros automáticos.</p>
-          {% endif %}
-          <p class="tip" id="tipEfeitos" style="display:none;margin-top:4px">A IA analisa cada cena e adiciona efeitos de impacto, transição e ambiente nos momentos certos.</p>
+          <!-- Efeitos sonoros ocultos por enquanto -->
+          <input type="hidden" id="efeitosSonoros" value="false"/>
           <div class="toggle-row">
             <label>💬 Legendas</label>
             <label class="toggle"><input type="checkbox" id="legendaAtivo"><span class="slider"></span></label>
@@ -669,26 +662,24 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <span style="font-size:1.5rem">🎵</span>
         <div>
-          <h2 style="margin:0;color:var(--green)">Banco de Músicas e Efeitos ✓ Ativo</h2>
-          <p style="font-size:.78rem;color:var(--text2);margin-top:2px">Músicas e efeitos sonoros disponíveis no seletor de áudio</p>
+          <h2 style="margin:0;color:var(--green)">Banco de Músicas ✓ Ativo</h2>
+          <p style="font-size:.78rem;color:var(--text2);margin-top:2px">Músicas disponíveis no seletor de áudio</p>
         </div>
       </div>
       {% else %}
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
         <span style="font-size:2rem">🎵</span>
         <div>
-          <h2 style="margin:0">Banco de Músicas e Efeitos Sonoros</h2>
+          <h2 style="margin:0">Banco de Músicas</h2>
           <p style="font-size:.78rem;color:var(--text2);margin-top:2px">{{ audio_addon_valor }}</p>
         </div>
       </div>
-      <p style="font-size:.85rem;color:var(--text);margin-bottom:12px">Acesse músicas instrumentais e efeitos sonoros profissionais para seus vídeos.</p>
+      <p style="font-size:.85rem;color:var(--text);margin-bottom:12px">Acesse músicas instrumentais profissionais para seus vídeos.</p>
       <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:14px">
         <p style="font-size:.82rem;color:var(--accent);font-weight:600;margin-bottom:8px">🎵 O que está incluso:</p>
         <p style="font-size:.8rem;color:var(--text2);line-height:1.6">
           • Músicas instrumentais por categoria (épico, calmo, suspense...)<br>
-          • Efeitos sonoros (impacto, transição, whoosh, ambiente...)<br>
-          • Efeitos automáticos com IA — a IA escolhe e posiciona os efeitos<br>
-          • Novas músicas e efeitos adicionados regularmente
+          • Novas músicas adicionadas regularmente
         </p>
       </div>
       <button class="btn" onclick="comprarPlano('{{ audio_addon_price }}')" style="background:var(--accent)">🎵 Assinar Banco de Áudio — {{ audio_addon_valor }}</button>

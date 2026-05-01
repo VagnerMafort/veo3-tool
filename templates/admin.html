@@ -70,13 +70,12 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     </div>
   </div>
 
-  <div class="stats" style="grid-template-columns:repeat(6,1fr)">
+  <div class="stats" style="grid-template-columns:repeat(5,1fr)">
     <div class="stat-box"><div class="stat-num">{{ users|length }}</div><div class="stat-label">Usuários</div></div>
     <div class="stat-box"><div class="stat-num">{{ users_com_plano }}</div><div class="stat-label">Assinantes</div></div>
     <div class="stat-box"><div class="stat-num">{{ total_criacoes }}</div><div class="stat-label">Criações</div></div>
     <div class="stat-box"><div class="stat-num">{{ total_imgs + total_videos }}</div><div class="stat-label">Banco</div></div>
     <div class="stat-box"><div class="stat-num">{{ total_musicas }}</div><div class="stat-label">Músicas</div></div>
-    <div class="stat-box"><div class="stat-num">{{ total_efeitos }}</div><div class="stat-label">Efeitos</div></div>
   </div>
 
   <div class="tabs">
@@ -260,10 +259,10 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
       </div>
       <div style="font-size:.75rem;color:var(--text3);padding:4px 0 10px">Acesso a imagens e vídeos reutilizáveis no storyboard. Economiza créditos de geração.</div>
       <div class="metric-row">
-        <span class="metric-label">🎵 Banco de Músicas e Efeitos — R$4,99/mês</span>
+        <span class="metric-label">🎵 Banco de Músicas — R$4,99/mês</span>
         <span class="metric-value">{{ users|selectattr('audio_ativo')|list|length }} assinantes</span>
       </div>
-      <div style="font-size:.75rem;color:var(--text3);padding:4px 0 0">Músicas instrumentais, efeitos sonoros e efeitos automáticos com IA nos vídeos.</div>
+      <div style="font-size:.75rem;color:var(--text3);padding:4px 0 0">Músicas instrumentais para os vídeos.</div>
     </div>
 
     <div class="card">
