@@ -1200,13 +1200,14 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                         shutil.copy(src, img_path)
                         blocos.append({"index": idx+1, "texto": linhas[idx], "img": f"{idx+1:03d}.png"})
 
-            # ── ETAPA 0: Preparação em PARALELO (ficha + referência + planos) ──
+            # ── ETAPA 0: Preparação (sequencial pra evitar deadlock) ──
             ficha = ""
             ref_img_path = ""
             planos_camera = []
             if melhorar_prompts and user.get_provider() == "openai" and cenas_a_gerar:
-                jobs[job_id]["progresso"] = "Preparando referências visuais..."
                 import sys
+                sys.stderr.write(f"[PREP] Iniciando preparação...\n"); sys.stderr.flush()
+                jobs[job_id]["progresso"] = "Analisando personagens..."
 
                 # Se tem foto de referência do usuário
                 if personagem_path and os.path.exists(personagem_path):
@@ -1226,36 +1227,25 @@ Write in ENGLISH. Output ONLY the description."""},
                             ficha_visual = r_vis.json()["choices"][0]["message"]["content"].strip()
                             ficha = f"MAIN CHARACTER (from reference photo):\n{ficha_visual}\n\n"
                             ficha += extrair_personagens(texto_manual, user.get_api_key(), estilo)
-                    except:
+                    except Exception as e:
+                        sys.stderr.write(f"[PREP] Erro foto ref: {e}\n"); sys.stderr.flush()
                         ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
                 else:
-                    # Rodar ficha + referência + planos em PARALELO
-                    ficha_resultado = [None]
-                    ref_resultado = [None]
-                    planos_resultado = [None]
+                    # Extrair ficha textual
+                    sys.stderr.write(f"[PREP] Extraindo ficha...\n"); sys.stderr.flush()
+                    ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
+                    sys.stderr.write(f"[PREP] Ficha OK: {len(ficha)} chars\n"); sys.stderr.flush()
 
-                    def _extrair_ficha():
-                        ficha_resultado[0] = extrair_personagens(texto_manual, user.get_api_key(), estilo)
-
-                    def _planejar_planos():
-                        planos_resultado[0] = planejar_planos_camera(linhas, user.get_api_key())
-
-                    # Ficha e planos em paralelo
-                    with ThreadPoolExecutor(max_workers=2) as prep_exec:
-                        prep_exec.submit(_extrair_ficha)
-                        prep_exec.submit(_planejar_planos)
-
-                    ficha = ficha_resultado[0] or ""
-                    planos_camera = planos_resultado[0] or []
-
-                    # Gerar imagem de referência (precisa da ficha pronta)
+                    # Gerar imagem de referência
                     if ficha:
                         jobs[job_id]["progresso"] = "Gerando referência visual..."
                         ref_img_path = os.path.join(sb_dir, "_reference.png")
+                        sys.stderr.write(f"[PREP] Gerando imagem referência...\n"); sys.stderr.flush()
                         if not gerar_imagem_referencia(ficha, estilo, user.get_api_key(), ref_img_path, formato):
                             ref_img_path = ""
+                            sys.stderr.write(f"[PREP] Referência falhou\n"); sys.stderr.flush()
 
-                    # Analisar referência com visão pra complementar ficha
+                    # Analisar referência com visão
                     if ref_img_path and os.path.exists(ref_img_path):
                         try:
                             import base64 as b64mod
@@ -1272,13 +1262,15 @@ Write in ENGLISH."""},
                             r_vis = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_vis, json=body_vis, timeout=30)
                             if r_vis.ok:
                                 ficha_visual = r_vis.json()["choices"][0]["message"]["content"].strip()
-                                ficha += f"\n\nVISUAL REFERENCE (use these EXACT details for consistency):\n{ficha_visual}"
-                                sys.stderr.write(f"[REF] Ficha complementada\n"); sys.stderr.flush()
-                        except: pass
+                                ficha += f"\n\nVISUAL REFERENCE (use these EXACT details):\n{ficha_visual}"
+                                sys.stderr.write(f"[PREP] Ficha complementada\n"); sys.stderr.flush()
+                        except Exception as e:
+                            sys.stderr.write(f"[PREP] Erro análise ref: {e}\n"); sys.stderr.flush()
 
-                # Planos de câmera (se não foram gerados em paralelo)
-                if not planos_camera:
-                    planos_camera = planejar_planos_camera(linhas, user.get_api_key())
+                # Planos de câmera
+                sys.stderr.write(f"[PREP] Planejando planos de câmera...\n"); sys.stderr.flush()
+                planos_camera = planejar_planos_camera(linhas, user.get_api_key())
+                sys.stderr.write(f"[PREP] Planos OK: {planos_camera}\n"); sys.stderr.flush()
 
             # ── ETAPA 2: Gerar imagens em paralelo (geração NORMAL, não edits) ──
             def gerar_bloco(i_linha):
