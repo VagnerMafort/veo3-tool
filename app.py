@@ -972,21 +972,56 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
         system = prompts.get("dividir", DEFAULT_PROMPTS["dividir"])
 
         if tipo_video == "animado":
-            cenas_ideal = max(3, round(duracao_estimada / 6))
-            system = f"""You are a film director splitting a narration into scenes for an animated video.
+            cenas_alvo = max(3, round(duracao_estimada / 6))
+            # Dividir no código — não confiar no GPT pra manter texto completo
+            # Separar por frases (pontuação)
+            import re
+            frases = re.split(r'(?<=[.!?;])\s+', texto.strip())
+            frases = [f.strip() for f in frases if f.strip()]
 
-The narration has {n_palavras} words (~{int(duracao_estimada)} seconds when spoken).
-Each animated clip lasts 6 seconds. You MUST create EXACTLY {cenas_ideal} scenes.
+            if len(frases) <= cenas_alvo:
+                # Poucas frases — cada frase é uma cena, dividir as longas se precisar
+                linhas_resultado = frases[:]
+            else:
+                # Agrupar frases pra ter ~cenas_alvo cenas
+                palavras_por_cena = max(10, n_palavras // cenas_alvo)
+                linhas_resultado = []
+                cena_atual = ""
+                for frase in frases:
+                    if cena_atual and len((cena_atual + " " + frase).split()) > palavras_por_cena * 1.3:
+                        linhas_resultado.append(cena_atual.strip())
+                        cena_atual = frase
+                    else:
+                        cena_atual = (cena_atual + " " + frase).strip() if cena_atual else frase
+                if cena_atual:
+                    linhas_resultado.append(cena_atual.strip())
 
-RULES:
-1. Create EXACTLY {cenas_ideal} scenes. Not more, not less. This is critical — each scene = one 6-second video clip.
-2. Each scene should have approximately {max(10, n_palavras // cenas_ideal)} words (~4-6 seconds of narration).
-3. KEEP THE ORIGINAL TEXT EXACTLY AS WRITTEN. Do NOT rewrite, expand, or change any words.
-4. Group short sentences together to reach the target word count per scene.
-5. Keep the SAME LANGUAGE as the input text.
-6. Output each scene on a NEW LINE. Nothing else — no numbers, no labels.
-7. Maintain EXACT chronological order.
-8. You MUST cover the ENTIRE text from beginning to end. Do NOT skip any part."""
+            # Ajustar pro número exato
+            while len(linhas_resultado) > cenas_alvo and len(linhas_resultado) > 1:
+                menor_idx = min(range(len(linhas_resultado) - 1), key=lambda i: len(linhas_resultado[i].split()))
+                linhas_resultado[menor_idx] = linhas_resultado[menor_idx] + " " + linhas_resultado[menor_idx + 1]
+                linhas_resultado.pop(menor_idx + 1)
+
+            while len(linhas_resultado) < cenas_alvo:
+                maior_idx = max(range(len(linhas_resultado)), key=lambda i: len(linhas_resultado[i].split()))
+                palavras_cena = linhas_resultado[maior_idx].split()
+                if len(palavras_cena) < 6:
+                    break
+                # Dividir num ponto natural
+                meio = len(palavras_cena) // 2
+                melhor_corte = meio
+                for j in range(max(3, meio - 5), min(len(palavras_cena) - 2, meio + 6)):
+                    if palavras_cena[j].endswith(('.', ',', ';', '!', '?')):
+                        melhor_corte = j + 1
+                        break
+                parte1 = " ".join(palavras_cena[:melhor_corte])
+                parte2 = " ".join(palavras_cena[melhor_corte:])
+                linhas_resultado[maior_idx] = parte1
+                linhas_resultado.insert(maior_idx + 1, parte2)
+
+            import sys
+            sys.stderr.write(f"[DIVIDIR] Animado: {n_palavras} palavras, {int(duracao_estimada)}s, alvo {cenas_alvo} cenas, resultado {len(linhas_resultado)} cenas\n"); sys.stderr.flush()
+            return linhas_resultado
         else:
             max_cenas = max(2, min(60, len(texto) // 20))
             system += f"""
@@ -1001,42 +1036,9 @@ IMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningf
             resultado = r.json()["choices"][0]["message"]["content"].strip()
             linhas = [l.strip() for l in resultado.split("\n") if l.strip()]
             import sys
-            sys.stderr.write(f"[DIVIDIR] tipo={tipo_video}, palavras={n_palavras}, dur_est={int(duracao_estimada)}s, GPT retornou {len(linhas)} cenas\n"); sys.stderr.flush()
-            if tipo_video == "animado":
-                # Forçar número exato: duração / 6
-                cenas_alvo = max(3, round(duracao_estimada / 6))
-                sys.stderr.write(f"[DIVIDIR] Alvo animado: {cenas_alvo} cenas\n"); sys.stderr.flush()
-                if len(linhas) > cenas_alvo:
-                    # Mesclar cenas excedentes com as anteriores
-                    while len(linhas) > cenas_alvo:
-                        menor_idx = min(range(len(linhas) - 1), key=lambda i: len(linhas[i]))
-                        linhas[menor_idx] = linhas[menor_idx] + " " + linhas[menor_idx + 1]
-                        linhas.pop(menor_idx + 1)
-                    sys.stderr.write(f"[DIVIDIR] Mesclado pra {len(linhas)} cenas\n"); sys.stderr.flush()
-                elif len(linhas) < cenas_alvo:
-                    # Dividir cenas longas pra atingir o alvo
-                    while len(linhas) < cenas_alvo:
-                        # Encontrar a cena mais longa (em palavras) e dividir ao meio
-                        maior_idx = max(range(len(linhas)), key=lambda i: len(linhas[i].split()))
-                        palavras_cena = linhas[maior_idx].split()
-                        if len(palavras_cena) < 6:
-                            break  # Não dá pra dividir mais
-                        meio = len(palavras_cena) // 2
-                        # Tentar dividir num ponto natural (. , ;)
-                        melhor_corte = meio
-                        for j in range(max(3, meio - 5), min(len(palavras_cena) - 3, meio + 5)):
-                            if palavras_cena[j].endswith(('.', ',', ';', '!', '?')):
-                                melhor_corte = j + 1
-                                break
-                        parte1 = " ".join(palavras_cena[:melhor_corte])
-                        parte2 = " ".join(palavras_cena[melhor_corte:])
-                        linhas[maior_idx] = parte1
-                        linhas.insert(maior_idx + 1, parte2)
-                    sys.stderr.write(f"[DIVIDIR] Expandido pra {len(linhas)} cenas\n"); sys.stderr.flush()
-            else:
-                max_cenas = max(2, min(60, len(texto) // 20))
-                if len(linhas) > max_cenas:
-                    linhas = linhas[:max_cenas]
+            sys.stderr.write(f"[DIVIDIR] tipo={tipo_video}, palavras={n_palavras}, GPT retornou {len(linhas)} cenas\n"); sys.stderr.flush()
+            if len(linhas) > max_cenas:
+                linhas = linhas[:max_cenas]
             if len(linhas) >= 1:
                 return linhas
     except: pass
