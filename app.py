@@ -18,6 +18,14 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///veo3.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024
 
+# Cloudflare/proxy: confiar nos headers de IP real
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+def get_real_ip():
+    """Pega IP real do usuário (Cloudflare → X-Forwarded-For → remote_addr)"""
+    return request.headers.get('CF-Connecting-IP') or request.headers.get('X-Real-IP') or request.remote_addr
+
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
@@ -1783,7 +1791,7 @@ def privacidade():
 def login():
     if request.method == "POST":
         # Rate limit: max 5 tentativas por IP por minuto
-        ip = request.remote_addr
+        ip = get_real_ip()
         if rate_limit_check(f"login_{ip}", max_requests=5, window=60):
             return jsonify({"erro": "Muitas tentativas. Aguarde 1 minuto."}), 429
         data = request.json
@@ -1798,7 +1806,7 @@ def login():
 def cadastro():
     if request.method == "POST":
         # Rate limit: max 3 cadastros por IP por minuto
-        ip = request.remote_addr
+        ip = get_real_ip()
         if rate_limit_check(f"cadastro_{ip}", max_requests=3, window=60):
             return jsonify({"erro": "Muitas tentativas. Aguarde 1 minuto."}), 429
         data = request.json
@@ -1836,7 +1844,7 @@ def esqueci_senha():
     data = request.json
     email = data.get("email", "").strip()
     # Rate limit: max 2 por IP a cada 5 minutos
-    ip = request.remote_addr
+    ip = get_real_ip()
     if rate_limit_check(f"senha_{ip}", max_requests=2, window=300):
         return jsonify({"erro": "Muitas tentativas. Aguarde 5 minutos."}), 429
     user = User.query.filter_by(email=email).first()
