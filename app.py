@@ -1064,7 +1064,19 @@ def montar_video(imagens, audio_path, output_path, legenda_cfg=None):
         cmd += ["-i", audio_path]
     cmd += ["-filter_complex", fc, "-map", saida_v]
     if audio_path and os.path.exists(audio_path):
-        cmd += ["-map", f"{len(imagens)}:a", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+        # Medir duração real do áudio pra usar como referência (evita -shortest que dessincroniza)
+        try:
+            p = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                                "-of", "default=noprint_wrappers=1:nokey=1", audio_path],
+                               capture_output=True, text=True)
+            dur_audio = float(p.stdout.strip()) if p.returncode == 0 else 0
+        except:
+            dur_audio = 0
+        cmd += ["-map", f"{len(imagens)}:a", "-c:a", "aac", "-b:a", "192k"]
+        if dur_audio > 0:
+            cmd += ["-t", str(dur_audio)]
+        else:
+            cmd += ["-shortest"]
     cmd += ["-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p", output_path]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -1434,45 +1446,47 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
                 try:
                     from difflib import SequenceMatcher
+                    import unicodedata, sys
                     model = get_whisper_model()
                     resultado_whisper = model.transcribe(audio_completo_path, word_timestamps=True, fp16=False)
                     # Extrair todas as palavras com timestamps
                     palavras = []
                     for seg in resultado_whisper.get("segments", []):
                         for w in seg.get("words", []):
-                            palavras.append({"word": w.get("word", "").strip(), "start": w["start"], "end": w["end"]})
+                            word_text = w.get("word", "").strip()
+                            if word_text:
+                                palavras.append({"word": word_text, "start": w["start"], "end": w["end"]})
                     if not palavras:
                         raise Exception("fallback")
 
-                    # Mapear palavras às cenas usando o texto original
-                    # Reconstruir o texto narrado e achar onde cada cena começa/termina
-                    textos_cenas = [b["texto"].strip() for b in blocos]
-                    texto_narrado_completo = " ".join([w["word"] for w in palavras]).lower()
+                    def normalizar(txt):
+                        """Remove acentos, pontuação e normaliza pra comparação"""
+                        txt = unicodedata.normalize('NFKD', txt.lower())
+                        txt = ''.join(c for c in txt if not unicodedata.combining(c))
+                        txt = re.sub(r'[^\w\s]', '', txt)
+                        return txt.strip()
 
-                    # Para cada cena, encontrar a posição no texto narrado via busca acumulativa
-                    pos_cursor = 0  # posição em caracteres no texto narrado
-                    palavra_cursor = 0  # índice da palavra atual
+                    # Mapear palavras às cenas usando o texto original
+                    textos_cenas = [b["texto"].strip() for b in blocos]
+                    palavra_cursor = 0
 
                     for i, bloco in enumerate(blocos):
-                        cena_texto = textos_cenas[i].lower()
-                        cena_palavras = cena_texto.split()
+                        cena_texto_norm = normalizar(textos_cenas[i])
+                        cena_palavras = cena_texto_norm.split()
                         n_palavras_cena = len(cena_palavras)
 
-                        # Início: palavra atual do cursor
                         idx_inicio = palavra_cursor
-                        # Fim: avançar pelo número de palavras da cena
-                        # Usar similaridade para encontrar o melhor ponto de corte
-                        melhor_fim = min(palavra_cursor + n_palavras_cena, len(palavras))
 
-                        # Busca flexível: testar janelas ao redor do ponto esperado
                         if i < len(blocos) - 1:
+                            # Busca flexível com janela maior pra compensar diferenças Whisper
+                            melhor_fim = min(palavra_cursor + n_palavras_cena, len(palavras))
                             melhor_score = -1
-                            for offset in range(-3, 6):
+                            for offset in range(-5, 10):
                                 candidato = palavra_cursor + n_palavras_cena + offset
                                 if candidato <= palavra_cursor or candidato > len(palavras):
                                     continue
-                                trecho = " ".join([palavras[j]["word"] for j in range(palavra_cursor, candidato)]).lower()
-                                score = SequenceMatcher(None, cena_texto, trecho).ratio()
+                                trecho = normalizar(" ".join([palavras[j]["word"] for j in range(palavra_cursor, candidato)]))
+                                score = SequenceMatcher(None, cena_texto_norm, trecho).ratio()
                                 if score > melhor_score:
                                     melhor_score = score
                                     melhor_fim = candidato
@@ -1485,7 +1499,15 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
 
                         inicio = palavras[idx_inicio]["start"]
                         fim = palavras[idx_fim - 1]["end"] if idx_fim > 0 else inicio + 3
-                        dur = max(3.0, fim - inicio)
+
+                        # Primeira cena começa em 0 (inclui silêncio inicial)
+                        if i == 0:
+                            inicio = 0.0
+                        # Última cena vai até o fim real do áudio
+                        if i == len(blocos) - 1:
+                            fim = max(fim, duracao_total)
+
+                        dur = max(2.0, fim - inicio)
 
                         img_src = os.path.join(sb_dir, bloco["img"])
                         img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
@@ -1494,6 +1516,30 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                                         "inicio": round(inicio, 2), "fim": round(fim, 2),
                                         "texto": bloco["texto"]})
                         palavra_cursor = idx_fim
+
+                    # Garantir que as cenas cobrem o áudio inteiro sem gaps
+                    # Ajustar: fim de cada cena = início da próxima (sem buracos)
+                    for j in range(len(imagens) - 1):
+                        prox_inicio = imagens[j + 1]["inicio"]
+                        if imagens[j]["fim"] < prox_inicio:
+                            # Há um gap — estender a cena atual até o início da próxima
+                            imagens[j]["fim"] = prox_inicio
+                            imagens[j]["duracao"] = round(imagens[j]["fim"] - imagens[j]["inicio"], 2)
+                        elif imagens[j]["fim"] > prox_inicio:
+                            # Overlap — ajustar pra não sobrepor
+                            imagens[j + 1]["inicio"] = imagens[j]["fim"]
+                            imagens[j + 1]["duracao"] = round(imagens[j + 1]["fim"] - imagens[j + 1]["inicio"], 2)
+
+                    # Recalcular duração da última cena até o fim do áudio
+                    if imagens:
+                        imagens[-1]["fim"] = round(duracao_total, 2)
+                        imagens[-1]["duracao"] = round(max(2.0, imagens[-1]["fim"] - imagens[-1]["inicio"]), 2)
+
+                    # Log de debug
+                    soma_dur = sum(img["duracao"] for img in imagens)
+                    sys.stderr.write(f"[SYNC] Cenas: {len(imagens)} | Soma duracoes: {soma_dur:.2f}s | Audio: {duracao_total:.2f}s\n"); sys.stderr.flush()
+                    for img in imagens:
+                        sys.stderr.write(f"[SYNC]   Cena {img['index']}: {img['inicio']:.2f}s - {img['fim']:.2f}s ({img['duracao']:.2f}s)\n"); sys.stderr.flush()
                 except Exception:
                     # Fallback: divisão proporcional
                     imagens = []
