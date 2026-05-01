@@ -553,44 +553,42 @@ def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personage
     estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "photorealistic, natural lighting, high quality, vertical composition"
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        system = prompts.get("melhorar", DEFAULT_PROMPTS["melhorar"]).replace("{estilo}", estilo_det)
 
-        # Direção criativa do usuário
-        if direcao_criativa:
-            system += f"""
-
-CREATIVE DIRECTION FROM THE USER:
-"{direcao_criativa}"
-You MUST incorporate this creative direction into every image prompt. It defines the mood, atmosphere, and visual elements the user wants."""
         if ficha_personagens:
-            system += f"""
+            # Prompt direto e simples — traduz a cena literalmente pra prompt de imagem
+            system = f"""You translate scene descriptions into image generation prompts. You must be LITERAL.
 
-CHARACTER & SETTING REFERENCE SHEET:
+Art style: {estilo_det}
+
+Character/Setting reference:
 {ficha_personagens}
 
-Current scene to illustrate: "{texto}"
+{f'Creative direction: {direcao_criativa}' if direcao_criativa else ''}
 
-CRITICAL RULES:
-1. BE LITERAL. If the scene says "cavalos de fogo" generate HORSES MADE OF FIRE — literal flaming horses, not normal horses near fire, not a burning mountain, not angels. If it says "carros de fogo" generate CHARIOTS ENGULFED IN FLAMES flying through the sky.
-2. THE SCENE TEXT IS THE PRIORITY. Illustrate EXACTLY what the words describe. Do NOT interpret, replace, or substitute elements. "Cavalos de fogo" = horses made of fire. "Cavaleiros de fogo" = warriors made of fire riding flaming horses. "Exército celestial" = an army in the sky, NOT angels with wings.
-3. Only include characters that are MENTIONED or IMPLIED in this specific scene text.
-4. If the scene mentions the main character, use their exact description from the reference sheet.
-5. If the scene mentions secondary characters, use THEIR descriptions from the reference sheet.
-6. If the scene describes a landscape or setting WITHOUT characters, generate ONLY the setting.
-7. SUPERNATURAL ELEMENTS must be SPECTACULAR and LITERAL: fire horses = horses with bodies of bright golden fire, fire chariots = war chariots engulfed in white-gold flames, celestial army = thousands of glowing warriors in the sky. Make it EPIC and MASSIVE.
-8. NEVER replace what the text says with your own interpretation. If the text says "horses" do NOT generate "angels". If the text says "fire" do NOT generate "glow".
-9. VARY the composition: wide shots for epic/supernatural scenes, medium for interactions, close-up for emotions.
-10. End with: "no text, no letters, no words, no writing, no watermarks"."""
-        elif contexto_roteiro:
-            system += f"""
+YOUR TASK:
+1. Read the scene text below
+2. Translate it into a detailed image prompt in ENGLISH
+3. Start with the art style
+4. Describe EXACTLY what the scene says — be LITERAL:
+   - "cavalos de fogo" = "horses with bodies made entirely of bright golden fire, supernatural flaming horses"
+   - "carros de fogo" = "war chariots engulfed in white-gold supernatural flames, flying through the sky"
+   - "exército celestial" = "massive army of glowing supernatural warriors filling the sky"
+   - Do NOT replace these with angels, normal horses, or burning mountains
+5. Include the physical description of any character mentioned, from the reference above
+6. If the scene has NO characters (just landscape/setting), describe ONLY the setting
+7. End with: no text, no letters, no words, no writing, no watermarks
+8. Output ONLY the prompt, nothing else. Max 500 characters."""
 
-CRITICAL - CHARACTER CONSISTENCY:
-Full story: "{contexto_roteiro}"
-Current scene: "{texto}"
-Keep ALL characters visually identical across scenes. NEVER change species, color, or appearance."""
+        else:
+            system = prompts.get("melhorar", DEFAULT_PROMPTS["melhorar"]).replace("{estilo}", estilo_det)
+            if direcao_criativa:
+                system += f"\n\nCreative direction: \"{direcao_criativa}\""
+            if contexto_roteiro:
+                system += f"\n\nFull story for context: \"{contexto_roteiro[:300]}\"\nKeep ALL characters visually identical across scenes."
 
         body = {"model": "gpt-4o-mini", "messages": [
-            {"role": "system", "content": system}, {"role": "user", "content": texto}
+            {"role": "system", "content": system},
+            {"role": "user", "content": f"Scene: {texto}"}
         ], "max_tokens": 500}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
         if r.ok:
