@@ -560,37 +560,33 @@ def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personage
     prompts = load_prompts()
     estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "photorealistic, natural lighting, high quality, vertical composition"
     try:
+        import sys
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
         if ficha_personagens:
-            plano_instrucao = ""
-            if tipo_plano:
-                plano_instrucao = f"\nCAMERA SHOT: You MUST use a {tipo_plano} shot for this scene."
+            plano_instrucao = f"CAMERA: {tipo_plano} shot." if tipo_plano else ""
 
-            system = f"""You are an image prompt writer for a storyboard. Convert the scene text into a vivid image generation prompt in ENGLISH.
+            system = f"""Convert this scene into an image prompt in ENGLISH. The scene text is the ONLY thing that matters.
 
-Art style: {estilo_det}
+Style: {estilo_det}
+{plano_instrucao}
 
-Character/Setting reference:
+Character reference (use ONLY when that specific character is mentioned in the scene):
 {ficha_personagens}
 
 {f'Creative direction: {direcao_criativa}' if direcao_criativa else ''}
-{plano_instrucao}
 
-INSTRUCTIONS:
-1. Start with the art style tag
-2. Describe the scene as a SINGLE vivid image — what the camera sees
-3. Include: characters (with their FULL physical descriptions from the reference), their actions, expressions, body language, the environment, lighting, atmosphere
-4. Be FAITHFUL to the scene text:
-   - "cavalos de fogo" = horses with bodies made of bright golden supernatural fire
-   - "carros de fogo" = war chariots engulfed in white-gold supernatural flames in the sky
-   - "exército" = massive army with hundreds of soldiers, show the FULL scale
-   - "oração/orou" = person kneeling with hands raised, eyes closed
-5. When a character from the reference appears, include their FULL physical description in the prompt
-6. When the scene is about landscape/setting without characters, describe ONLY the environment
-7. NON-VISUAL scenes (calls to action like "comment", "share", "subscribe"): describe an inspirational landscape with golden light, mountains, sunrise — NO text, NO people
-8. End with: no text, no letters, no words, no writing, no watermarks
-9. Output ONLY the prompt. Max 800 characters."""
+STRICT RULES:
+- ONLY describe what the scene text says. Nothing else.
+- If the scene says "an army surrounded the city" → show the ARMY and the CITY. Do NOT show Eliseu or the servant.
+- If the scene says "the servant woke up in panic" → show the SERVANT panicking. Do NOT show Eliseu unless the scene mentions him.
+- If the scene says "Eliseu prayed" → show Eliseu praying. Do NOT show fire horses unless the scene mentions them.
+- If the scene says "fire horses and chariots" → show HUNDREDS of supernatural fire horses and flaming chariots filling the ENTIRE sky over mountains. Make it MASSIVE and EPIC.
+- If the scene is a call to action (comment, share) → show an inspirational landscape, NO people.
+- Include a character's physical description ONLY if that character is explicitly mentioned or implied in THIS scene.
+- Do NOT add characters or elements from OTHER scenes.
+- End with: no text, no letters, no words, no writing, no watermarks
+- Output ONLY the prompt."""
 
         else:
             system = prompts.get("melhorar", DEFAULT_PROMPTS["melhorar"]).replace("{estilo}", estilo_det)
@@ -605,7 +601,9 @@ INSTRUCTIONS:
         ], "max_tokens": 600}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
         if r.ok:
-            return r.json()["choices"][0]["message"]["content"].strip()
+            resultado = r.json()["choices"][0]["message"]["content"].strip()
+            sys.stderr.write(f"[PROMPT] Cena: {texto[:50]}... → {resultado[:100]}...\n"); sys.stderr.flush()
+            return resultado
     except: pass
     return f"{estilo_det} of {texto}, no text no words"
 
