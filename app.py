@@ -556,14 +556,18 @@ def suavizar_prompt(prompt, api_key):
     except: pass
     return "a dramatic historical scene with warm golden light, ancient setting, photorealistic, 8K, vertical composition"
 
-def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personagens="", direcao_criativa=""):
+def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personagens="", direcao_criativa="", tipo_plano=""):
     prompts = load_prompts()
     estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "photorealistic, natural lighting, high quality, vertical composition"
     try:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
         if ficha_personagens:
-            system = f"""You are an image prompt writer. Convert the scene text into a vivid, detailed image generation prompt in ENGLISH.
+            plano_instrucao = ""
+            if tipo_plano:
+                plano_instrucao = f"\nCAMERA SHOT: You MUST use a {tipo_plano} shot for this scene."
+
+            system = f"""You are an image prompt writer for a storyboard. Convert the scene text into a vivid image generation prompt in ENGLISH.
 
 Art style: {estilo_det}
 
@@ -571,20 +575,22 @@ Character/Setting reference:
 {ficha_personagens}
 
 {f'Creative direction: {direcao_criativa}' if direcao_criativa else ''}
+{plano_instrucao}
 
 INSTRUCTIONS:
 1. Start with the art style tag
 2. Describe the scene as a SINGLE vivid image — what the camera sees
-3. Include: characters (with their physical descriptions from the reference), their actions, expressions, body language, the environment, lighting, atmosphere, camera angle
-4. Be FAITHFUL to the scene text. Describe what the text says, not your interpretation:
-   - If the text says someone is praying, show them praying
-   - If the text says fire horses, show literal horses made of fire — not normal horses
-   - If the text says an army, show a massive army — not 3 soldiers
-   - If the text says a city, show the city — not just a character standing
-5. When a character from the reference appears, include their FULL physical description (hair, skin, clothing) in the prompt
+3. Include: characters (with their FULL physical descriptions from the reference), their actions, expressions, body language, the environment, lighting, atmosphere
+4. Be FAITHFUL to the scene text:
+   - "cavalos de fogo" = horses with bodies made of bright golden supernatural fire
+   - "carros de fogo" = war chariots engulfed in white-gold supernatural flames in the sky
+   - "exército" = massive army with hundreds of soldiers, show the FULL scale
+   - "oração/orou" = person kneeling with hands raised, eyes closed
+5. When a character from the reference appears, include their FULL physical description in the prompt
 6. When the scene is about landscape/setting without characters, describe ONLY the environment
-7. End with: no text, no letters, no words, no writing, no watermarks
-8. Output ONLY the prompt. Be detailed — use up to 800 characters."""
+7. NON-VISUAL scenes (calls to action like "comment", "share", "subscribe"): describe an inspirational landscape with golden light, mountains, sunrise — NO text, NO people
+8. End with: no text, no letters, no words, no writing, no watermarks
+9. Output ONLY the prompt. Max 800 characters."""
 
         else:
             system = prompts.get("melhorar", DEFAULT_PROMPTS["melhorar"]).replace("{estilo}", estilo_det)
@@ -602,6 +608,93 @@ INSTRUCTIONS:
             return r.json()["choices"][0]["message"]["content"].strip()
     except: pass
     return f"{estilo_det} of {texto}, no text no words"
+
+
+def planejar_planos_camera(linhas, api_key):
+    """GPT define o tipo de plano (wide/medium/close) pra cada cena de uma vez, garantindo variedade"""
+    try:
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        cenas_texto = "\n".join([f"{i+1}. {l}" for i, l in enumerate(linhas)])
+        body = {"model": "gpt-4o-mini", "messages": [
+            {"role": "system", "content": """You are a film director planning camera shots for a storyboard.
+For each scene, assign ONE camera shot type. You MUST vary the shots — never use the same type more than 2 times in a row.
+
+Shot types:
+- WIDE PANORAMIC: armies, landscapes, epic supernatural events, establishing shots, large-scale action
+- MEDIUM: dialogue between characters, interactions, walking, normal actions
+- CLOSE-UP: intense emotions, prayers, whispers (use MAX 2 in the entire video)
+- LOW ANGLE: powerful/intimidating subjects, looking up at something massive
+- BIRD'S EYE: showing scale, a city surrounded, overview
+
+Rules:
+- First scene should be WIDE (establishing)
+- Scenes with armies/supernatural = WIDE PANORAMIC
+- Scenes with dialogue = MEDIUM
+- Scenes that are calls to action (comment, share, subscribe) = WIDE PANORAMIC (inspirational landscape)
+- Output ONLY the shot type for each scene, one per line, in order. Example:
+WIDE PANORAMIC
+MEDIUM
+CLOSE-UP
+MEDIUM
+WIDE PANORAMIC"""},
+            {"role": "user", "content": cenas_texto}
+        ], "max_tokens": 200}
+        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=15)
+        if r.ok:
+            resultado = r.json()["choices"][0]["message"]["content"].strip()
+            planos = [l.strip() for l in resultado.split("\n") if l.strip()]
+            # Garantir que tem o mesmo número de planos que cenas
+            while len(planos) < len(linhas):
+                planos.append("MEDIUM")
+            return planos[:len(linhas)]
+    except: pass
+    # Fallback: alternar wide/medium
+    return [("WIDE PANORAMIC" if i % 3 == 0 else "MEDIUM") for i in range(len(linhas))]
+
+
+def gerar_imagem_referencia(ficha, estilo, api_key, output_path, formato="vertical"):
+    """Gera uma imagem de referência com todos os personagens juntos — não entra no vídeo"""
+    import sys
+    estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "photorealistic, natural lighting, high quality"
+    try:
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        body = {"model": "gpt-4o-mini", "messages": [
+            {"role": "system", "content": f"""Create an image prompt for a CHARACTER REFERENCE SHEET showing ALL characters from this story standing side by side.
+
+Art style: {estilo_det}
+
+Character descriptions:
+{ficha}
+
+Rules:
+1. Show ALL characters standing next to each other, facing the camera, full body visible
+2. Well-lit scene with bright warm lighting — NOT dark
+3. Each character in their exact described clothing and appearance
+4. Simple neutral background (stone wall, desert, sky)
+5. This is a reference sheet — characters should be clearly visible and distinguishable
+6. End with: no text, no letters, no words, no writing, no watermarks
+7. Output ONLY the prompt."""},
+            {"role": "user", "content": "Generate the character reference sheet prompt."}
+        ], "max_tokens": 400}
+        r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=15)
+        if r.ok:
+            ref_prompt = r.json()["choices"][0]["message"]["content"].strip()
+            sys.stderr.write(f"[REF] Gerando imagem de referência...\n"); sys.stderr.flush()
+            size = "1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024")
+            gerar_imagem_openai(ref_prompt, api_key, size, "standard", output_path, modelo="gpt-image-1")
+            sys.stderr.write(f"[REF] Imagem de referência gerada\n"); sys.stderr.flush()
+            return True
+    except Exception as e:
+        sys.stderr.write(f"[REF] Erro ao gerar referência: {e}\n"); sys.stderr.flush()
+    return False
+
+
+def eh_cena_nao_visual(texto):
+    """Detecta se a cena é uma call-to-action (não visual) — comenta, compartilha, inscreva-se"""
+    texto_lower = texto.lower()
+    palavras_cta = ["comenta", "compartilha", "inscreva", "subscribe", "comment", "share", "like",
+                    "curta", "siga", "segue", "deixa o like", "ativa o sininho", "se inscreva"]
+    return any(p in texto_lower for p in palavras_cta)
 
 def extrair_personagens(roteiro, api_key, estilo=""):
     """Extrai ficha de personagens organizada por hierarquia"""
@@ -1109,12 +1202,14 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                         shutil.copy(src, img_path)
                         blocos.append({"index": idx+1, "texto": linhas[idx], "img": f"{idx+1:03d}.png"})
 
-            # Extrair ficha de personagens pra consistência visual
+            # ── ETAPA 0: Extrair ficha de personagens ──
             ficha = ""
+            ref_img_path = ""
+            planos_camera = []
             if melhorar_prompts and user.get_provider() == "openai" and cenas_a_gerar:
                 jobs[job_id]["progresso"] = "Analisando personagens..."
-                # Se tem imagem de referência, analisar ela com visão pra extrair ficha visual detalhada
-                nome_protagonista = ""
+
+                # Se tem foto de referência do usuário, analisar com visão
                 if personagem_path and os.path.exists(personagem_path):
                     try:
                         import base64 as b64mod
@@ -1122,72 +1217,139 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                             ref_b64 = b64mod.b64encode(fref.read()).decode()
                         headers_vis = {"Authorization": f"Bearer {user.get_api_key()}", "Content-Type": "application/json"}
                         body_vis = {"model": "gpt-4o-mini", "messages": [
-                            {"role": "system", "content": """You are a character designer. Analyze this reference image and create an EXTREMELY detailed visual description of the character.
-Include: exact skin tone, exact hair color/style/length, exact eye color/shape/size, exact clothing (colors with hex codes, garment types), body type, age range, distinguishing features, accessories.
-Be so specific that an AI image generator can recreate this EXACT character in any scene.
-Write in ENGLISH. Output ONLY the description, nothing else."""},
+                            {"role": "system", "content": """Analyze this reference image and create an EXTREMELY detailed visual description of the character.
+Include: exact skin tone, exact hair color/style/length, exact eye color/shape/size, exact clothing (colors with hex codes, garment types), body type, age range, distinguishing features.
+Write in ENGLISH. Output ONLY the description."""},
                             {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{ref_b64}"}}]}
                         ], "max_tokens": 500}
                         r_vis = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_vis, json=body_vis, timeout=30)
                         if r_vis.ok:
                             ficha_visual = r_vis.json()["choices"][0]["message"]["content"].strip()
-                            ficha = f"MAIN CHARACTER (from reference photo - MUST be identical in EVERY scene where they appear):\n{ficha_visual}\n\n"
+                            ficha = f"MAIN CHARACTER (from reference photo):\n{ficha_visual}\n\n"
                             ficha += extrair_personagens(texto_manual, user.get_api_key(), estilo)
-                            import sys
-                            sys.stderr.write(f"[PERSONAGEM] Ficha extraída da foto: {ficha_visual[:200]}\n"); sys.stderr.flush()
-                    except Exception as e:
-                        import sys
-                        sys.stderr.write(f"[PERSONAGEM] Erro ao analisar foto: {e}\n"); sys.stderr.flush()
+                            ref_img_path = personagem_path
+                    except:
                         ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
-
-                    # Identificar o nome do protagonista no roteiro pra saber quando usar a foto
-                    try:
-                        body_nome = {"model": "gpt-4o-mini", "messages": [
-                            {"role": "system", "content": "Given this story, return ONLY the name of the main character (the protagonist). Return just the name, nothing else. If no name, return the word used to refer to them (e.g. 'o servo', 'o rei', 'ele')."},
-                            {"role": "user", "content": texto_manual[:500]}
-                        ], "max_tokens": 20}
-                        r_nome = requests.post("https://api.openai.com/v1/chat/completions",
-                                               headers={"Authorization": f"Bearer {user.get_api_key()}", "Content-Type": "application/json"},
-                                               json=body_nome, timeout=10)
-                        if r_nome.ok:
-                            nome_protagonista = r_nome.json()["choices"][0]["message"]["content"].strip().lower()
-                            import sys
-                            sys.stderr.write(f"[PERSONAGEM] Protagonista identificado: '{nome_protagonista}'\n"); sys.stderr.flush()
-                    except: pass
                 else:
                     ficha = extrair_personagens(texto_manual, user.get_api_key(), estilo)
 
+                # ── ETAPA 0.5: Gerar imagem de referência ("foto de elenco") ──
+                if ficha and not ref_img_path:
+                    jobs[job_id]["progresso"] = "Gerando referência visual..."
+                    ref_img_path = os.path.join(sb_dir, "_reference.png")
+                    if not gerar_imagem_referencia(ficha, estilo, user.get_api_key(), ref_img_path, formato):
+                        ref_img_path = ""  # Falhou, segue sem referência
+
+                # ── ETAPA 0.7: Analisar imagem de referência com visão pra complementar ficha ──
+                if ref_img_path and os.path.exists(ref_img_path) and not personagem_path:
+                    try:
+                        import base64 as b64mod
+                        with open(ref_img_path, "rb") as fref:
+                            ref_b64 = b64mod.b64encode(fref.read()).decode()
+                        headers_vis = {"Authorization": f"Bearer {user.get_api_key()}", "Content-Type": "application/json"}
+                        body_vis = {"model": "gpt-4o-mini", "messages": [
+                            {"role": "system", "content": """This is a character reference sheet. Describe EACH character visible in the image with extreme detail.
+For each character: exact skin tone, hair (color hex, style, length), eyes (color, shape), clothing (colors with hex, garment types), body type, age, distinguishing features.
+Format: CHARACTER 1: [description] | CHARACTER 2: [description]
+Write in ENGLISH."""},
+                            {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{ref_b64}"}}]}
+                        ], "max_tokens": 600}
+                        r_vis = requests.post("https://api.openai.com/v1/chat/completions", headers=headers_vis, json=body_vis, timeout=30)
+                        if r_vis.ok:
+                            ficha_visual = r_vis.json()["choices"][0]["message"]["content"].strip()
+                            ficha += f"\n\nVISUAL REFERENCE (from generated reference image — use these EXACT visual details):\n{ficha_visual}"
+                            import sys
+                            sys.stderr.write(f"[REF] Ficha visual complementada: {ficha_visual[:200]}\n"); sys.stderr.flush()
+                    except: pass
+
+                # ── ETAPA 1: Planejar planos de câmera ──
+                jobs[job_id]["progresso"] = "Planejando composição visual..."
+                planos_camera = planejar_planos_camera(linhas, user.get_api_key())
+
+            # ── ETAPA 2: Gerar imagens em paralelo com referência ──
             def gerar_bloco(i_linha):
+                import sys
                 linha = linhas[i_linha]
-                if melhorar_prompts and user.get_provider() == "openai":
-                    prompt_final = melhorar_prompt(linha, estilo, user.get_api_key(), roteiro_completo, ficha, direcao_criativa)
-                else:
-                    prompt_final = f"{linha}, {estilo}" if estilo else linha
                 img_path = os.path.join(sb_dir, f"{i_linha+1:03d}.png")
 
-                # Decidir se usa foto de referência: só quando o protagonista aparece na cena
-                usar_ref = False
-                if personagem_path and os.path.exists(personagem_path):
-                    cena_lower = linha.lower()
-                    if nome_protagonista:
-                        # Checar se o nome/referência do protagonista aparece no texto da cena
-                        partes_nome = [p.strip() for p in nome_protagonista.split() if len(p.strip()) > 2]
-                        usar_ref = any(p in cena_lower for p in partes_nome)
-                    else:
-                        # Sem nome identificado, usar em todas (fallback)
-                        usar_ref = True
-
-                if usar_ref:
+                # Detectar cena não-visual (CTA)
+                if eh_cena_nao_visual(linha):
+                    estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "cinematic"
+                    fallback_prompt = f"{estilo_det}, inspirational landscape, golden sunrise over mountains, warm light rays through clouds, hope and faith atmosphere, epic wide panoramic shot, bright colors, no text, no letters, no words, no writing, no watermarks"
                     try:
-                        ref_prompt = f"{prompt_final}. The main character MUST look EXACTLY like the person in the reference image — same face, hair, skin tone, clothing, body type."
-                        editar_imagem_openai(ref_prompt, user.get_api_key(), [personagem_path], img_path,
-                                             size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
-                    except Exception as e:
-                        import sys
-                        sys.stderr.write(f"[PERSONAGEM] Edits falhou cena {i_linha+1}: {e}, usando geração normal\n"); sys.stderr.flush()
-                        gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
+                        gerar_imagem_openai(fallback_prompt, user.get_api_key(),
+                                            "1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"),
+                                            "standard", img_path, modelo="gpt-image-1")
+                    except:
+                        gerar_imagem_openai(fallback_prompt, user.get_api_key(),
+                                            "1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"),
+                                            "standard", img_path, modelo="dall-e-3")
+                    blocos.append({"index": i_linha+1, "texto": linha, "img": f"{i_linha+1:03d}.png"})
+                    jobs[job_id]["atual"] = len(blocos)
+                    jobs[job_id]["progresso"] = f"Gerando imagem {len(blocos)} de {total}..."
+                    return
+
+                # Gerar prompt com plano de câmera específico
+                tipo_plano = planos_camera[i_linha] if i_linha < len(planos_camera) else "MEDIUM"
+                if melhorar_prompts and user.get_provider() == "openai":
+                    prompt_final = melhorar_prompt(linha, estilo, user.get_api_key(), roteiro_completo, ficha, direcao_criativa, tipo_plano)
                 else:
-                    gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
+                    prompt_final = f"{linha}, {estilo}" if estilo else linha
+
+                # Tentar gerar com imagem de referência via edits
+                gerado = False
+                if ref_img_path and os.path.exists(ref_img_path):
+                    try:
+                        ref_prompt = f"{prompt_final}. Characters MUST look EXACTLY like in the reference image — same faces, same hair, same clothing, same skin tone."
+                        editar_imagem_openai(ref_prompt, user.get_api_key(), [ref_img_path], img_path,
+                                             size="1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"))
+                        gerado = True
+                    except Exception as e:
+                        sys.stderr.write(f"[IMG] Edits falhou cena {i_linha+1}: {e}\n"); sys.stderr.flush()
+
+                # Fallback: geração normal
+                if not gerado:
+                    try:
+                        gerar_imagem(prompt_final, user, img_path, estilo, formato=formato)
+                        gerado = True
+                    except Exception as e:
+                        sys.stderr.write(f"[IMG] Geração falhou cena {i_linha+1}: {e}\n"); sys.stderr.flush()
+
+                # Fallback 2: suavizar e tentar
+                if not gerado:
+                    try:
+                        prompt_suave = suavizar_prompt(prompt_final, user.get_api_key())
+                        gerar_imagem_openai(prompt_suave, user.get_api_key(),
+                                            "1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"),
+                                            "standard", img_path, modelo="gpt-image-1")
+                        gerado = True
+                    except:
+                        pass
+
+                # Fallback 3: imagem genérica do cenário
+                if not gerado:
+                    try:
+                        estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "cinematic"
+                        gerar_imagem_openai(f"{estilo_det}, ancient Middle Eastern city at dawn, warm golden light, dramatic sky, no text, no words, no watermarks",
+                                            user.get_api_key(),
+                                            "1024x1792" if formato == "vertical" else ("1792x1024" if formato == "horizontal" else "1024x1024"),
+                                            "standard", img_path, modelo="dall-e-3")
+                    except:
+                        sys.stderr.write(f"[IMG] TODOS os fallbacks falharam cena {i_linha+1}\n"); sys.stderr.flush()
+
+                # Verificar se a imagem gerada é uma recusa (muito pequena ou padrão)
+                if os.path.exists(img_path):
+                    file_size = os.path.getsize(img_path)
+                    if file_size < 20000:  # Menos de 20KB = provavelmente recusa ou erro
+                        sys.stderr.write(f"[IMG] Cena {i_linha+1}: imagem suspeita ({file_size} bytes), regenerando...\n"); sys.stderr.flush()
+                        try:
+                            estilo_det = ESTILOS_DETALHADOS.get(estilo, estilo) if estilo else "cinematic"
+                            gerar_imagem_openai(f"{estilo_det}, dramatic ancient scene, warm golden light, epic atmosphere, no text, no words",
+                                                user.get_api_key(),
+                                                "1024x1792" if formato == "vertical" else "1024x1024",
+                                                "standard", img_path, modelo="dall-e-3")
+                        except: pass
+
                 blocos.append({"index": i_linha+1, "texto": linha, "img": f"{i_linha+1:03d}.png"})
                 jobs[job_id]["atual"] = len(blocos)
                 jobs[job_id]["progresso"] = f"Gerando imagem {len(blocos)} de {total}..."
