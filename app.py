@@ -1200,7 +1200,7 @@ Write in ENGLISH. Output ONLY the description, nothing else."""},
                 db.session.commit()
 
             blocos.sort(key=lambda x: x["index"])
-            sb_data = {"blocos": blocos, "estilo": estilo, "dir": sb_dir, "creditos_gastos": creditos_gastos_sb}
+            sb_data = {"blocos": blocos, "estilo": estilo, "dir": sb_dir, "creditos_gastos": creditos_gastos_sb, "tipo_video": tipo_video}
             with open(os.path.join(sb_dir, "storyboard.json"), "w") as f:
                 json.dump(sb_data, f)
             jobs[job_id] = {"status": "storyboard_pronto", "progresso": "Storyboard pronto", "total": total, "atual": total, "blocos": blocos, "sb_id": job_id}
@@ -3844,6 +3844,7 @@ def listar_rascunhos():
                         "sb_id": sb_id,
                         "total_cenas": len(blocos),
                         "estilo": sb_data.get("estilo", ""),
+                        "tipo_video": sb_data.get("tipo_video", "animado"),
                         "data": data,
                         "preview": texto_preview,
                         "thumb": blocos[0].get("img", "")
@@ -3861,7 +3862,7 @@ def carregar_rascunho(sb_id):
         return jsonify({"erro": "Rascunho não encontrado"}), 404
     with open(sb_path) as f:
         sb_data = json.load(f)
-    return jsonify({"sb_id": sb_id, "blocos": sb_data.get("blocos", []), "estilo": sb_data.get("estilo", "")})
+    return jsonify({"sb_id": sb_id, "blocos": sb_data.get("blocos", []), "estilo": sb_data.get("estilo", ""), "tipo_video": sb_data.get("tipo_video", "animado")})
 
 @app.route("/regerar_cena", methods=["POST"])
 @login_required

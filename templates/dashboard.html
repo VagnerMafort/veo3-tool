@@ -1091,12 +1091,13 @@ async function carregarRascunhos(){
     if(!d.rascunhos||d.rascunhos.length===0){lista.innerHTML='<div class="vazio">Nenhum rascunho salvo.</div>';return;}
     lista.innerHTML='';
     d.rascunhos.forEach(r=>{
+      const tipoIcon=r.tipo_video==='animado'?'🎬 Animado':'🖼️ Estático';
       lista.innerHTML+=`<div class="historico-item" style="cursor:pointer" onclick="abrirRascunho('${r.sb_id}')">
         <div style="display:flex;gap:12px;align-items:center">
           <img src="/storyboard_img/${r.sb_id}/${r.thumb}" style="width:60px;height:60px;border-radius:8px;object-fit:cover" onerror="this.style.display='none'"/>
           <div class="historico-info">
             <div class="nome">${r.preview}...</div>
-            <div class="meta">${r.total_cenas} cenas · ${r.data}</div>
+            <div class="meta">${r.total_cenas} cenas · ${tipoIcon} · ${r.data}</div>
           </div>
         </div>
       </div>`;
@@ -1112,10 +1113,8 @@ async function abrirRascunho(rascunhoId){
     sbId=d.sb_id;
     sbBlocos=d.blocos;
     sbEstilo=d.estilo||'';
-    // Definir tipo de vídeo padrão se não foi escolhido
-    if(!document.getElementById('tipoVideo').value){
-      setTipoVideo('estatico');
-    }
+    // Restaurar tipo de vídeo salvo no rascunho (default: animado)
+    setTipoVideo(d.tipo_video||'animado');
     trocarAba('gerar');
     setTimeout(()=>mostrarStoryboard(),100);
   }catch(e){alert('Erro ao carregar rascunho');}
