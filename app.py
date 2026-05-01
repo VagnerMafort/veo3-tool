@@ -2982,7 +2982,9 @@ def static_files(filename):
         return jsonify({"erro": "Acesso negado"}), 403
     if not os.path.exists(filepath):
         return jsonify({"erro": "Não encontrado"}), 404
-    return send_file(filepath)
+    response = send_file(filepath)
+    response.headers['Cache-Control'] = 'public, max-age=604800'
+    return response
 
 @app.route("/admin/banco_imagens")
 @login_required
@@ -3270,7 +3272,9 @@ def banco_img_file(filename):
         return jsonify({"erro": "Acesso negado"}), 403
     if not os.path.exists(filepath):
         return jsonify({"erro": "Arquivo não encontrado"}), 404
-    return send_file(filepath)
+    response = send_file(filepath)
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    return response
 
 @app.route("/buscar_banco", methods=["POST"])
 @login_required
@@ -3316,12 +3320,11 @@ def buscar_banco():
 
     imgs = []
     for r in rows:
-        if os.path.exists(r[2]):
-            imgs.append({
-                "id": r[0], "prompt": r[1], "path": os.path.basename(r[2]),
-                "estilo": r[3] or "", "tipo": r[4] or "imagem",
-                "categoria": r[5] or "", "descricao": r[6] or r[1]
-            })
+        imgs.append({
+            "id": r[0], "prompt": r[1], "path": os.path.basename(r[2]),
+            "estilo": r[3] or "", "tipo": r[4] or "imagem",
+            "categoria": r[5] or "", "descricao": r[6] or r[1]
+        })
     tem_mais = (pagina * por_pagina) < total
     return jsonify({"imgs": imgs, "total": total, "pagina": pagina, "tem_mais": tem_mais})
 

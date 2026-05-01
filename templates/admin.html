@@ -628,11 +628,15 @@ function toggleTheme(){const themes=['dark','light'];let cur=localStorage.getIte
 function applyTheme(){let t=localStorage.getItem('theme')||'dark';const btn=document.getElementById('themeBtn');if(t==='light'){document.documentElement.setAttribute('data-theme','light');if(btn)btn.textContent='☀️';}else{document.documentElement.removeAttribute('data-theme');if(btn)btn.textContent='🌙';}}
 applyTheme();
 
+let _bancoCarregado=false, _audioCarregado=false;
 function trocarAba(aba){
   const abas=['metricas','usuarios','planos','prompts','banco','audio','suporteAdmin','docs'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
+  // Lazy load
+  if(aba==='banco'&&!_bancoCarregado){_bancoCarregado=true;carregarBancoAdm();}
+  if(aba==='audio'&&!_audioCarregado){_audioCarregado=true;carregarAudioSistema();}
 }
 
 function filtrarUsers(){
@@ -759,7 +763,7 @@ async function uploadBancoMultiplo(input){
   carregarBancoAdm();
   input.value='';
 }
-carregarBancoAdm();
+// Banco carrega sob demanda via trocarAba
 
 async function renomearBancoIA(){
   if(!confirm('Isso vai analisar TODAS as imagens do banco com IA e atualizar descrições/tags. Pode demorar e gastar créditos da API OpenAI. Continuar?'))return;
@@ -832,7 +836,7 @@ async function deletarAudioSys(id){
   await fetch('/admin/deletar_musica_sistema',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
   carregarAudioSistema();
 }
-carregarAudioSistema();
+// Audio carrega sob demanda via trocarAba
 
 // Carregar branding atual
 fetch('/admin/branding').then(r=>r.json()).then(d=>{
