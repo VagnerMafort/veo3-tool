@@ -1009,11 +1009,30 @@ IMPORTANT: Create a MAXIMUM of {max_cenas} scenes. Each scene must be a meaningf
                 if len(linhas) > cenas_alvo:
                     # Mesclar cenas excedentes com as anteriores
                     while len(linhas) > cenas_alvo:
-                        # Encontrar a cena mais curta e mesclar com a próxima
                         menor_idx = min(range(len(linhas) - 1), key=lambda i: len(linhas[i]))
                         linhas[menor_idx] = linhas[menor_idx] + " " + linhas[menor_idx + 1]
                         linhas.pop(menor_idx + 1)
                     sys.stderr.write(f"[DIVIDIR] Mesclado pra {len(linhas)} cenas\n"); sys.stderr.flush()
+                elif len(linhas) < cenas_alvo:
+                    # Dividir cenas longas pra atingir o alvo
+                    while len(linhas) < cenas_alvo:
+                        # Encontrar a cena mais longa (em palavras) e dividir ao meio
+                        maior_idx = max(range(len(linhas)), key=lambda i: len(linhas[i].split()))
+                        palavras_cena = linhas[maior_idx].split()
+                        if len(palavras_cena) < 6:
+                            break  # Não dá pra dividir mais
+                        meio = len(palavras_cena) // 2
+                        # Tentar dividir num ponto natural (. , ;)
+                        melhor_corte = meio
+                        for j in range(max(3, meio - 5), min(len(palavras_cena) - 3, meio + 5)):
+                            if palavras_cena[j].endswith(('.', ',', ';', '!', '?')):
+                                melhor_corte = j + 1
+                                break
+                        parte1 = " ".join(palavras_cena[:melhor_corte])
+                        parte2 = " ".join(palavras_cena[melhor_corte:])
+                        linhas[maior_idx] = parte1
+                        linhas.insert(maior_idx + 1, parte2)
+                    sys.stderr.write(f"[DIVIDIR] Expandido pra {len(linhas)} cenas\n"); sys.stderr.flush()
             else:
                 max_cenas = max(2, min(60, len(texto) // 20))
                 if len(linhas) > max_cenas:
