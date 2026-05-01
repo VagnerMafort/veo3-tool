@@ -555,8 +555,7 @@ def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personage
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
         if ficha_personagens:
-            # Prompt direto e simples — traduz a cena literalmente pra prompt de imagem
-            system = f"""You translate scene descriptions into image generation prompts. You must be LITERAL.
+            system = f"""You are an image prompt writer. Convert the scene text into a vivid, detailed image generation prompt in ENGLISH.
 
 Art style: {estilo_det}
 
@@ -565,31 +564,31 @@ Character/Setting reference:
 
 {f'Creative direction: {direcao_criativa}' if direcao_criativa else ''}
 
-YOUR TASK:
-1. Read the scene text below
-2. Translate it into a detailed image prompt in ENGLISH
-3. Start with the art style
-4. Describe EXACTLY what the scene says — be LITERAL:
-   - "cavalos de fogo" = "horses with bodies made entirely of bright golden fire, supernatural flaming horses"
-   - "carros de fogo" = "war chariots engulfed in white-gold supernatural flames, flying through the sky"
-   - "exército celestial" = "massive army of glowing supernatural warriors filling the sky"
-   - Do NOT replace these with angels, normal horses, or burning mountains
-5. Include the physical description of any character mentioned, from the reference above
-6. If the scene has NO characters (just landscape/setting), describe ONLY the setting
+INSTRUCTIONS:
+1. Start with the art style tag
+2. Describe the scene as a SINGLE vivid image — what the camera sees
+3. Include: characters (with their physical descriptions from the reference), their actions, expressions, body language, the environment, lighting, atmosphere, camera angle
+4. Be FAITHFUL to the scene text. Describe what the text says, not your interpretation:
+   - If the text says someone is praying, show them praying
+   - If the text says fire horses, show literal horses made of fire — not normal horses
+   - If the text says an army, show a massive army — not 3 soldiers
+   - If the text says a city, show the city — not just a character standing
+5. When a character from the reference appears, include their FULL physical description (hair, skin, clothing) in the prompt
+6. When the scene is about landscape/setting without characters, describe ONLY the environment
 7. End with: no text, no letters, no words, no writing, no watermarks
-8. Output ONLY the prompt, nothing else. Max 500 characters."""
+8. Output ONLY the prompt. Be detailed — use up to 800 characters."""
 
         else:
             system = prompts.get("melhorar", DEFAULT_PROMPTS["melhorar"]).replace("{estilo}", estilo_det)
             if direcao_criativa:
                 system += f"\n\nCreative direction: \"{direcao_criativa}\""
             if contexto_roteiro:
-                system += f"\n\nFull story for context: \"{contexto_roteiro[:300]}\"\nKeep ALL characters visually identical across scenes."
+                system += f"\n\nFull story context: \"{contexto_roteiro[:300]}\"\nKeep ALL characters visually identical across scenes."
 
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": f"Scene: {texto}"}
-        ], "max_tokens": 500}
+        ], "max_tokens": 600}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
         if r.ok:
             return r.json()["choices"][0]["message"]["content"].strip()
