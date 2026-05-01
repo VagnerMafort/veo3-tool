@@ -571,15 +571,16 @@ CHARACTER & SETTING REFERENCE SHEET:
 Current scene to illustrate: "{texto}"
 
 CRITICAL RULES:
-1. THE SCENE TEXT IS THE PRIORITY. Illustrate EXACTLY what the scene describes — nothing more, nothing less.
-2. Only include characters that are MENTIONED or IMPLIED in this specific scene text.
-3. If the scene mentions the main character, use their exact description from the reference sheet.
-4. If the scene mentions secondary characters, use THEIR descriptions from the reference sheet.
-5. If the scene describes a landscape, city, or setting WITHOUT characters, generate the SETTING — do NOT force any character into it.
-6. If the scene mentions multiple characters interacting, include ALL of them with their correct descriptions.
-7. Use the MAIN SETTING or SECONDARY SETTING from the reference sheet as the background, matching what the scene describes.
-8. VARY the composition: wide shots for landscapes/armies, medium for interactions, close-up for emotions.
-9. End with: "no text, no letters, no words, no writing, no watermarks"."""
+1. BE LITERAL. If the scene says "cavalos de fogo" generate HORSES MADE OF FIRE — literal flaming horses, not normal horses near fire, not a burning mountain, not angels. If it says "carros de fogo" generate CHARIOTS ENGULFED IN FLAMES flying through the sky.
+2. THE SCENE TEXT IS THE PRIORITY. Illustrate EXACTLY what the words describe. Do NOT interpret, replace, or substitute elements. "Cavalos de fogo" = horses made of fire. "Cavaleiros de fogo" = warriors made of fire riding flaming horses. "Exército celestial" = an army in the sky, NOT angels with wings.
+3. Only include characters that are MENTIONED or IMPLIED in this specific scene text.
+4. If the scene mentions the main character, use their exact description from the reference sheet.
+5. If the scene mentions secondary characters, use THEIR descriptions from the reference sheet.
+6. If the scene describes a landscape or setting WITHOUT characters, generate ONLY the setting.
+7. SUPERNATURAL ELEMENTS must be SPECTACULAR and LITERAL: fire horses = horses with bodies of bright golden fire, fire chariots = war chariots engulfed in white-gold flames, celestial army = thousands of glowing warriors in the sky. Make it EPIC and MASSIVE.
+8. NEVER replace what the text says with your own interpretation. If the text says "horses" do NOT generate "angels". If the text says "fire" do NOT generate "glow".
+9. VARY the composition: wide shots for epic/supernatural scenes, medium for interactions, close-up for emotions.
+10. End with: "no text, no letters, no words, no writing, no watermarks"."""
         elif contexto_roteiro:
             system += f"""
 
@@ -590,7 +591,7 @@ Keep ALL characters visually identical across scenes. NEVER change species, colo
 
         body = {"model": "gpt-4o-mini", "messages": [
             {"role": "system", "content": system}, {"role": "user", "content": texto}
-        ], "max_tokens": 300}
+        ], "max_tokens": 500}
         r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=30)
         if r.ok:
             return r.json()["choices"][0]["message"]["content"].strip()
