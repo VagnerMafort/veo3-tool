@@ -3717,7 +3717,7 @@ def musicas_sistema():
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
         try: conn.execute("ALTER TABLE musicas_sistema ADD COLUMN tipo TEXT DEFAULT 'musica'")
         except: pass
-        rows = conn.execute("SELECT id, nome, categoria, path, tipo FROM musicas_sistema ORDER BY tipo, categoria, nome").fetchall()
+        rows = conn.execute("SELECT id, nome, categoria, path, tipo FROM musicas_sistema WHERE tipo='musica' OR tipo IS NULL ORDER BY categoria, nome").fetchall()
         conn.close()
         for r in rows:
             if os.path.exists(os.path.join(MUSICAS_SISTEMA_FOLDER, r[3])):
