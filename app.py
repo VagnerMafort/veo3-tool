@@ -12,6 +12,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time as _time_module
 
+# Carregar .env antes de tudo
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "veo3-secret-key-mude-isso")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///veo3.db"
