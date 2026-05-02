@@ -3083,31 +3083,40 @@ def admin_verificar_apis():
     resultado = {}
     # Verificar OpenAI
     try:
-        headers = {"Authorization": f"Bearer {SYSTEM_OPENAI_KEY}"}
-        r = requests.get("https://api.openai.com/v1/models", headers=headers, timeout=10)
-        if r.ok:
-            resultado["openai"] = {"status": "ok", "msg": "API funcionando"}
+        if not SYSTEM_OPENAI_KEY:
+            resultado["openai"] = {"status": "erro", "msg": "Chave não configurada (OPENAI_API_KEY)"}
         else:
-            resultado["openai"] = {"status": "erro", "msg": r.json().get("error", {}).get("message", "Erro desconhecido")}
+            headers = {"Authorization": f"Bearer {SYSTEM_OPENAI_KEY}"}
+            r = requests.get("https://api.openai.com/v1/models", headers=headers, timeout=10)
+            if r.ok:
+                resultado["openai"] = {"status": "ok", "msg": "API funcionando"}
+            else:
+                resultado["openai"] = {"status": "erro", "msg": "Chave inválida — verifique OPENAI_API_KEY"}
     except Exception as e:
-        resultado["openai"] = {"status": "erro", "msg": str(e)}
+        resultado["openai"] = {"status": "erro", "msg": "Erro de conexão"}
     # Verificar MiniMax
     try:
-        headers = {"Authorization": f"Bearer {SYSTEM_MINIMAX_KEY}"}
-        r = requests.get("https://api.minimax.io/v1/query/video_generation", headers=headers, params={"task_id": "test"}, timeout=10)
-        if r.status_code != 401:
-            resultado["minimax"] = {"status": "ok", "msg": "API funcionando"}
+        if not SYSTEM_MINIMAX_KEY:
+            resultado["minimax"] = {"status": "erro", "msg": "Chave não configurada (MINIMAX_API_KEY)"}
         else:
-            resultado["minimax"] = {"status": "erro", "msg": "Chave inválida"}
+            headers = {"Authorization": f"Bearer {SYSTEM_MINIMAX_KEY}"}
+            r = requests.get("https://api.minimax.io/v1/query/video_generation", headers=headers, params={"task_id": "test"}, timeout=10)
+            if r.status_code != 401:
+                resultado["minimax"] = {"status": "ok", "msg": "API funcionando"}
+            else:
+                resultado["minimax"] = {"status": "erro", "msg": "Chave inválida"}
     except Exception as e:
-        resultado["minimax"] = {"status": "erro", "msg": str(e)}
+        resultado["minimax"] = {"status": "erro", "msg": "Erro de conexão"}
     # Verificar Stripe
     try:
-        bal = stripe.Balance.retrieve()
-        saldo_brl = sum(b.amount/100 for b in bal.available if b.currency == "brl")
-        resultado["stripe"] = {"status": "ok", "msg": f"Saldo: R${saldo_brl:.2f}"}
+        if not STRIPE_SECRET_KEY:
+            resultado["stripe"] = {"status": "erro", "msg": "Chave não configurada (STRIPE_SECRET_KEY)"}
+        else:
+            bal = stripe.Balance.retrieve()
+            saldo_brl = sum(b.amount/100 for b in bal.available if b.currency == "brl")
+            resultado["stripe"] = {"status": "ok", "msg": f"Saldo: R${saldo_brl:.2f}"}
     except Exception as e:
-        resultado["stripe"] = {"status": "erro", "msg": str(e)}
+        resultado["stripe"] = {"status": "erro", "msg": "Chave inválida — verifique STRIPE_SECRET_KEY"}
     return jsonify(resultado)
 
 BRANDING_FILE = "branding_config.json"
