@@ -4445,4 +4445,7 @@ else:
             conn.commit()
             conn.close()
         except: pass
+    # Atualizar branding na Stripe (fora do try pra garantir execução)
+    try:
         atualizar_branding_stripe()
+    except: pass
