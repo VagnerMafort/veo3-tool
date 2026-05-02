@@ -3176,6 +3176,55 @@ def admin_verificar_apis():
 
 BRANDING_FILE = "branding_config.json"
 
+# ── Atualizar nomes dos produtos na Stripe ──
+def atualizar_branding_stripe():
+    """Atualiza os nomes dos produtos na Stripe para incluir Klyonclaw Studio"""
+    if not STRIPE_SECRET_KEY:
+        return
+    try:
+        import sys
+        # Coletar todos os price_ids usados
+        all_prices = set()
+        for p in PLANOS_STRIPE.values():
+            if p.get("price_id"):
+                all_prices.add(p["price_id"])
+        for p in PACOTES_AVULSO.values():
+            if p.get("price_id"):
+                all_prices.add(p["price_id"])
+        if BANCO_ADDON_PRICE_ID:
+            all_prices.add(BANCO_ADDON_PRICE_ID)
+        if AUDIO_ADDON_PRICE_ID:
+            all_prices.add(AUDIO_ADDON_PRICE_ID)
+
+        # Para cada price, pegar o produto e atualizar o nome
+        produtos_atualizados = set()
+        for pid in all_prices:
+            try:
+                price = stripe.Price.retrieve(pid)
+                product_id = price.product
+                if product_id in produtos_atualizados:
+                    continue
+                product = stripe.Product.retrieve(product_id)
+                nome_atual = product.name or ""
+                # Só atualizar se não tem "Klyonclaw" no nome
+                if "Klyonclaw" not in nome_atual and "klyonclaw" not in nome_atual.lower():
+                    # Buscar nome do plano no nosso mapa
+                    plano_info = PRICE_MAP.get(pid, {})
+                    novo_nome = f"Klyonclaw Studio — {plano_info.get('nome', nome_atual)}"
+                    stripe.Product.modify(product_id, name=novo_nome)
+                    sys.stderr.write(f"[STRIPE] Produto {product_id}: '{nome_atual}' → '{novo_nome}'\n")
+                    sys.stderr.flush()
+                produtos_atualizados.add(product_id)
+            except Exception as e:
+                sys.stderr.write(f"[STRIPE] Erro ao atualizar {pid}: {e}\n")
+                sys.stderr.flush()
+        if produtos_atualizados:
+            sys.stderr.write(f"[STRIPE] {len(produtos_atualizados)} produtos atualizados com branding Klyonclaw Studio\n")
+            sys.stderr.flush()
+    except Exception as e:
+        import sys
+        sys.stderr.write(f"[STRIPE] Erro geral: {e}\n"); sys.stderr.flush()
+
 def load_branding():
     try:
         if os.path.exists(BRANDING_FILE):
@@ -4382,6 +4431,7 @@ if __name__ == "__main__":
             conn.commit()
             conn.close()
         except: pass
+        atualizar_branding_stripe()
     app.run(host="0.0.0.0", port=5000)
 else:
     # Gunicorn: migrate automático
@@ -4395,3 +4445,4 @@ else:
             conn.commit()
             conn.close()
         except: pass
+        atualizar_branding_stripe()
