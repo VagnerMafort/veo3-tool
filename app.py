@@ -1778,16 +1778,27 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 jobs[job_id]["progresso"] = "Adicionando música de fundo..."
                 video_com_musica = video_path.replace(".mp4", "_music.mp4")
                 try:
+                    # Medir duração do vídeo pra cortar a música no tamanho certo
+                    try:
+                        p = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                                            "-of", "default=noprint_wrappers=1:nokey=1", video_path],
+                                           capture_output=True, text=True)
+                        dur_video_final = float(p.stdout.strip()) if p.returncode == 0 else 0
+                    except:
+                        dur_video_final = 0
+
                     # Mixar: narração em volume normal + música audível
                     if audio_final_path and os.path.exists(audio_final_path):
                         cmd = ["ffmpeg", "-y", "-i", video_path, "-i", musica_path,
                                "-filter_complex", "[1:a]volume=0.30[bg];[0:a][bg]amix=inputs=2:duration=first[aout]",
                                "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", video_com_musica]
                     else:
-                        # Sem narração: música como áudio principal (volume 70%)
+                        # Sem narração: música como áudio principal (volume 70%), cortada na duração do vídeo
+                        trim_filter = f"[1:a]volume=0.7,atrim=0:{dur_video_final},asetpts=PTS-STARTPTS[bg]" if dur_video_final > 0 else "[1:a]volume=0.7[bg]"
                         cmd = ["ffmpeg", "-y", "-i", video_path, "-i", musica_path,
-                               "-filter_complex", "[1:a]volume=0.7[bg]",
-                               "-map", "0:v", "-map", "[bg]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", video_com_musica]
+                               "-filter_complex", trim_filter,
+                               "-map", "0:v", "-map", "[bg]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                               "-shortest", video_com_musica]
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
                     if result.returncode == 0 and os.path.exists(video_com_musica):
                         os.replace(video_com_musica, video_path)
