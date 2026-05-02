@@ -1974,6 +1974,24 @@ Regras:
 def index():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
+    # Contar visita na landing
+    try:
+        visitas_file = "landing_visitas.json"
+        import json as _json
+        from datetime import date
+        hoje = date.today().isoformat()
+        try:
+            with open(visitas_file) as f:
+                visitas = _json.load(f)
+        except:
+            visitas = {"total": 0, "por_dia": {}}
+        visitas["total"] = visitas.get("total", 0) + 1
+        visitas.setdefault("por_dia", {})
+        visitas["por_dia"][hoje] = visitas["por_dia"].get(hoje, 0) + 1
+        with open(visitas_file, "w") as f:
+            _json.dump(visitas, f)
+    except:
+        pass
     return render_template("landing.html")
 
 @app.route("/termos")
@@ -3004,11 +3022,29 @@ def admin_panel():
     from datetime import timedelta
     hoje = datetime.utcnow()
     users_recentes = sum(1 for u in users if (hoje - u.criado_em).days <= 7)
+    # Visitas na landing
+    try:
+        with open("landing_visitas.json") as f:
+            visitas_data = json.load(f)
+        total_visitas = visitas_data.get("total", 0)
+        from datetime import date
+        hoje_str = date.today().isoformat()
+        visitas_hoje = visitas_data.get("por_dia", {}).get(hoje_str, 0)
+        # Últimos 7 dias
+        visitas_7d = 0
+        for i in range(7):
+            dia = (date.today() - timedelta(days=i)).isoformat()
+            visitas_7d += visitas_data.get("por_dia", {}).get(dia, 0)
+    except:
+        total_visitas = 0
+        visitas_hoje = 0
+        visitas_7d = 0
     return render_template("admin.html", users=users, prompts=prompts, total_imgs=total_imgs,
                            total_criacoes=total_criacoes, total_videos=total_videos,
                            total_musicas=total_musicas, total_efeitos=total_efeitos,
                            total_creditos=total_creditos, users_com_plano=users_com_plano,
                            users_recentes=users_recentes, planos=PLANOS_STRIPE,
+                           total_visitas=total_visitas, visitas_hoje=visitas_hoje, visitas_7d=visitas_7d,
                            is_master=current_user.email == ADMIN_MASTER_EMAIL)
 
 @app.route("/admin/toggle_admin", methods=["POST"])
