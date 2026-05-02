@@ -3174,7 +3174,6 @@ def admin_branding():
             try:
                 with open(logo_path, "rb") as f:
                     file_upload = stripe.File.create(purpose="business_logo", file=f)
-                    # Não dá pra setar via API em conta própria, mas o arquivo fica disponível
             except: pass
 
         if "icone" in request.files and request.files["icone"].filename:
