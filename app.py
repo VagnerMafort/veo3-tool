@@ -1724,8 +1724,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         if result.returncode == 0 and os.path.exists(video_com_leg):
                             os.replace(video_com_leg, video_path)
                 else:
-                    # Nenhum clipe gerado — verificar causa
-                    jobs[job_id] = {"status": "erro", "progresso": "Não foi possível animar as cenas. Verifique o saldo da conta MiniMax em platform.minimaxi.com ou tente novamente mais tarde.", "total": 0, "atual": 0}
+                    # Nenhum clipe gerado
+                    jobs[job_id] = {"status": "erro", "progresso": "Estamos com problemas técnicos na animação. Por favor, tente novamente mais tarde. Se o erro persistir, entre em contato com o suporte técnico.", "total": 0, "atual": 0}
                     return
             else:
                 # Verificar se alguma cena tem vídeo do banco
