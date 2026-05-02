@@ -3026,20 +3026,27 @@ def admin_panel():
         for i in range(7):
             dia = (date.today() - timedelta(days=i)).isoformat()
             visitas_7d += conn2.execute("SELECT COUNT(*) FROM visitas WHERE data=?", (dia,)).fetchone()[0]
-        # Visitantes únicos (por IP)
         visitas_unicas = conn2.execute("SELECT COUNT(DISTINCT ip) FROM visitas").fetchone()[0]
+        # Data da primeira visita registrada
+        primeira_visita = conn2.execute("SELECT MIN(criado_em) FROM visitas").fetchone()[0]
         conn2.close()
+        # Cadastros feitos DEPOIS do contador começar
+        if primeira_visita:
+            cadastros_pos_contador = sum(1 for u in users if u.criado_em and str(u.criado_em) >= str(primeira_visita))
+        else:
+            cadastros_pos_contador = 0
     except:
         total_visitas = 0
         visitas_hoje = 0
         visitas_7d = 0
         visitas_unicas = 0
+        cadastros_pos_contador = 0
     return render_template("admin.html", users=users, prompts=prompts, total_imgs=total_imgs,
                            total_criacoes=total_criacoes, total_videos=total_videos,
                            total_musicas=total_musicas, total_efeitos=total_efeitos,
                            total_creditos=total_creditos, users_com_plano=users_com_plano,
                            users_recentes=users_recentes, planos=PLANOS_STRIPE,
-                           total_visitas=total_visitas, visitas_hoje=visitas_hoje, visitas_7d=visitas_7d, visitas_unicas=visitas_unicas,
+                           total_visitas=total_visitas, visitas_hoje=visitas_hoje, visitas_7d=visitas_7d, visitas_unicas=visitas_unicas, cadastros_pos_contador=cadastros_pos_contador,
                            is_master=current_user.email == ADMIN_MASTER_EMAIL)
 
 @app.route("/admin/toggle_admin", methods=["POST"])

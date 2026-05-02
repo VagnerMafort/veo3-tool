@@ -132,7 +132,8 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
       <div class="metric-row"><span class="metric-label">Visitantes únicos</span><span class="metric-value">{{ visitas_unicas }}</span></div>
       <div class="metric-row"><span class="metric-label">Hoje</span><span class="metric-value">{{ visitas_hoje }}</span></div>
       <div class="metric-row"><span class="metric-label">Últimos 7 dias</span><span class="metric-value">{{ visitas_7d }}</span></div>
-      <div class="metric-row"><span class="metric-label">Taxa de cadastro</span><span class="metric-value">{{ "%.1f"|format(users_recentes / visitas_7d * 100) if visitas_7d > 0 else 0 }}%</span></div>
+      <div class="metric-row"><span class="metric-label">Novos cadastros</span><span class="metric-value">{{ cadastros_pos_contador }}</span></div>
+      <div class="metric-row"><span class="metric-label">Taxa de cadastro</span><span class="metric-value">{{ "%.1f"|format(cadastros_pos_contador / visitas_unicas * 100) if visitas_unicas > 0 else 0 }}%</span></div>
     </div>
     <div class="card">
       <h2>🎬 Produção</h2>
