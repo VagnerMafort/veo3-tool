@@ -1591,8 +1591,9 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     import time as _t
                     for tentativa in range(3):
                         try:
-                            # Melhorar prompt pra animação dinâmica
-                            anim_prompt = f"[Tracking shot] {img['texto']}. Dynamic motion, cinematic camera movement, characters moving naturally, expressive body language, fluid animation."
+                            # Prompt focado em ANIMAR a imagem existente, não recontar a cena
+                            # O MiniMax recebe a imagem como first_frame — o prompt deve instruir MOVIMENTO, não conteúdo
+                            anim_prompt = "Animate this exact image with subtle natural motion. Gentle camera movement, slight parallax, elements sway softly, atmospheric particles float. Keep all original elements, colors and composition exactly as shown. Cinematic smooth motion."
                             gerar_video_minimax(img["path"], anim_prompt, minimax_key_cache, clipe_path)
                             clipes_video[i] = clipe_path
                             # Salvar no banco imediatamente (path absoluto)
