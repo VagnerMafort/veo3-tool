@@ -129,9 +129,10 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     <div class="card">
       <h2>👁️ Visitas na Landing</h2>
       <div class="metric-row"><span class="metric-label">Total de visitas</span><span class="metric-value">{{ total_visitas }}</span></div>
+      <div class="metric-row"><span class="metric-label">Visitantes únicos</span><span class="metric-value">{{ visitas_unicas }}</span></div>
       <div class="metric-row"><span class="metric-label">Hoje</span><span class="metric-value">{{ visitas_hoje }}</span></div>
       <div class="metric-row"><span class="metric-label">Últimos 7 dias</span><span class="metric-value">{{ visitas_7d }}</span></div>
-      <div class="metric-row"><span class="metric-label">Taxa de cadastro</span><span class="metric-value">{{ "%.1f"|format(users|length / total_visitas * 100) if total_visitas > 0 else 0 }}%</span></div>
+      <div class="metric-row"><span class="metric-label">Taxa de cadastro</span><span class="metric-value">{{ "%.1f"|format(users|length / visitas_unicas * 100) if visitas_unicas > 0 else 0 }}%</span></div>
     </div>
     <div class="card">
       <h2>🎬 Produção</h2>
