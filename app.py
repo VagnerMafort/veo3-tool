@@ -1267,6 +1267,13 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             # Trial: usuário sem plano pode gerar até 2 imagens grátis
             is_trial = not user.plano and not user.is_admin
             TRIAL_MAX_IMAGENS = 2
+            # Registrar ação
+            try:
+                conn_a = sqlite3.connect('instance/veo3.db')
+                conn_a.execute("CREATE TABLE IF NOT EXISTS user_acoes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, acao TEXT, detalhe TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+                conn_a.execute("INSERT INTO user_acoes (user_id, acao, detalhe) VALUES (?, ?, ?)", (user.id, "gerar_imagens", f"{len(cenas_a_gerar)} cenas"))
+                conn_a.commit(); conn_a.close()
+            except: pass
             if is_trial:
                 # Contar imagens já geradas pelo trial (criações anteriores)
                 trial_geradas = Criacao.query.filter_by(user_id=user.id).count()
@@ -1481,6 +1488,13 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             job_dir = os.path.join(OUTPUT_FOLDER, job_id)
             os.makedirs(job_dir, exist_ok=True)
             audio_final_path = None
+            # Registrar ação
+            try:
+                conn_a = sqlite3.connect('instance/veo3.db')
+                conn_a.execute("CREATE TABLE IF NOT EXISTS user_acoes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, acao TEXT, detalhe TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+                conn_a.execute("INSERT INTO user_acoes (user_id, acao, detalhe) VALUES (?, ?, ?)", (user_id, "finalizar_video", f"{len(blocos)} cenas, modo={modo_video}, animar={animar_ia}"))
+                conn_a.commit(); conn_a.close()
+            except: pass
             # Rastrear créditos gastos (inclui geração de imagens/divisão do storyboard)
             creditos_gastos_video = sb_data.get("creditos_gastos", 0)
 
@@ -3712,6 +3726,21 @@ def admin_dar_creditos():
         return jsonify({"ok": True, "creditos": user.creditos})
     return jsonify({"erro": "Usuario nao encontrado"}), 404
 
+@app.route("/admin/user_acoes/<int:user_id>")
+@login_required
+def admin_user_acoes(user_id):
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("CREATE TABLE IF NOT EXISTS user_acoes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, acao TEXT, detalhe TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        rows = conn.execute("SELECT acao, detalhe, criado_em FROM user_acoes WHERE user_id=? ORDER BY id DESC LIMIT 20", (user_id,)).fetchall()
+        conn.close()
+        acoes = [{"acao": r[0], "detalhe": r[1], "data": r[2]} for r in rows]
+        return jsonify({"acoes": acoes})
+    except:
+        return jsonify({"acoes": []})
+
 @app.route("/admin/definir_plano", methods=["POST"])
 @login_required
 def admin_definir_plano():
@@ -4244,6 +4273,13 @@ def dividir_roteiro_route():
         if not current_user.gastar_creditos(1):
             return jsonify({"erro": "Créditos insuficientes. Necessário: 1 crédito."}), 400
         db.session.commit()
+    # Registrar ação
+    try:
+        conn_a = sqlite3.connect('instance/veo3.db')
+        conn_a.execute("CREATE TABLE IF NOT EXISTS user_acoes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, acao TEXT, detalhe TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        conn_a.execute("INSERT INTO user_acoes (user_id, acao, detalhe) VALUES (?, ?, ?)", (current_user.id, "dividir_roteiro", f"{len(texto)} chars"))
+        conn_a.commit(); conn_a.close()
+    except: pass
 
     estilo = request.form.get("estilo", "").strip()
     melhorar = request.form.get("melhorar_prompts", "false") == "true"

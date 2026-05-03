@@ -181,6 +181,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
             <button class="btn-outline-sm" onclick="toggleBanco({{ u.id }})">🗃️ {% if u.banco_ativo %}Banco ✓{% else %}Banco{% endif %}</button>
             <button class="btn-outline-sm" onclick="toggleAudio({{ u.id }})">🎵 {% if u.audio_ativo %}Áudio ✓{% else %}Áudio{% endif %}</button>
             <button class="btn-outline-sm" onclick="mostrarSenha({{ u.id }})">🔑 Senha</button>
+            <button class="btn-outline-sm" onclick="mostrarAcoes({{ u.id }})">📋 Ações</button>
             <button class="btn-sm btn-red" onclick="deletarUser({{ u.id }})">🗑</button>
           </div>
         </div>
@@ -204,6 +205,9 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
             {% endfor %}
           </select>
           <button class="btn-sm btn-blue" onclick="definirPlano({{ u.id }})">Definir</button>
+        </div>
+        <div class="acoes-list" id="acoes-{{ u.id }}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <div style="font-size:.78rem;color:var(--text3)">Carregando...</div>
         </div>
       </div>
       {% endfor %}
@@ -729,8 +733,27 @@ async function toggleBanco(uid){const res=await fetch('/admin/toggle_banco',{met
 
 async function toggleAudio(uid){const res=await fetch('/admin/toggle_audio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})});const d=await res.json();if(d.ok){alert(d.audio_ativo?'Banco de Áudio ativado!':'Banco de Áudio desativado!');location.reload();}}
 
-function mostrarSenha(uid){const el=document.getElementById('senha-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('creditos-'+uid).style.display='none';}
-function mostrarCreditos(uid){const el=document.getElementById('creditos-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('senha-'+uid).style.display='none';}
+function mostrarSenha(uid){const el=document.getElementById('senha-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('creditos-'+uid).style.display='none';document.getElementById('acoes-'+uid).style.display='none';}
+function mostrarCreditos(uid){const el=document.getElementById('creditos-'+uid);el.style.display=el.style.display==='block'?'none':'block';document.getElementById('senha-'+uid).style.display='none';document.getElementById('acoes-'+uid).style.display='none';}
+async function mostrarAcoes(uid){
+  const el=document.getElementById('acoes-'+uid);
+  if(el.style.display==='block'){el.style.display='none';return;}
+  document.getElementById('senha-'+uid).style.display='none';
+  document.getElementById('creditos-'+uid).style.display='none';
+  el.style.display='block';
+  el.innerHTML='<div style="font-size:.78rem;color:var(--text3)">Carregando...</div>';
+  try{
+    const res=await fetch('/admin/user_acoes/'+uid);
+    const d=await res.json();
+    if(!d.acoes||d.acoes.length===0){el.innerHTML='<div style="font-size:.78rem;color:var(--text3)">Nenhuma ação registrada.</div>';return;}
+    const icons={dividir_roteiro:'✂️',gerar_imagens:'🖼️',finalizar_video:'🎬'};
+    el.innerHTML='<div style="font-size:.75rem;font-weight:600;color:var(--text2);margin-bottom:6px">📋 Últimas ações</div>'+
+      d.acoes.map(a=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.75rem;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text2)">${icons[a.acao]||'📌'} ${a.acao.replace('_',' ')}</span>
+        <span style="color:var(--text3)">${a.detalhe||''} · ${a.data||''}</span>
+      </div>`).join('');
+  }catch(e){el.innerHTML='<div style="font-size:.78rem;color:var(--red-text)">Erro ao carregar</div>';}
+}
 
 async function mudarSenha(uid){const senha=document.getElementById('novaSenha-'+uid).value.trim();if(!senha||senha.length<6){alert('Senha deve ter pelo menos 6 caracteres');return;}const res=await fetch('/admin/mudar_senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,nova_senha:senha})});if((await res.json()).ok){alert('Senha alterada');document.getElementById('senha-'+uid).style.display='none';}}
 
