@@ -1413,128 +1413,72 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     return
                 creditos_gastos_video += creditos_narracao
                 db.session.commit()
-                jobs[job_id]["progresso"] = "Gerando narração completa..."
-                audios = []
+                jobs[job_id]["progresso"] = "Gerando narração..."
                 imagens = []
                 t = 0
                 import time as _time
-
-                # Narrar texto completo de uma vez (evita rate limit)
-                texto_completo = ". ".join([b["texto"] for b in blocos])
-                audio_completo_path = os.path.join(job_dir, "narracao.mp3")
-                narracao_ok = False
-                for tentativa in range(3):
-                    try:
-                        gerar_audio_minimax(texto_completo, user.get_minimax_key(), user.get_minimax_group_id(), voice_id, audio_completo_path)
-                        narracao_ok = True
-                        break
-                    except Exception as e:
-                        if "1002" in str(e) or "rate" in str(e).lower():
-                            _time.sleep(15)
-                            continue
-                        raise
-                if not narracao_ok:
-                    jobs[job_id] = {"status": "erro", "progresso": "Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde.", "total": 0, "atual": 0}
-                    return
-
-                # Transcrever pra pegar timestamps de cada frase
-                jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
-                audio_completo_seg = AudioSegment.from_file(audio_completo_path)
-                duracao_total = len(audio_completo_seg) / 1000
-
-                if modo_video == "shorts":
-                    audio_limpo_path = os.path.join(job_dir, "narracao_limpa.mp3")
-                    remover_silencio(audio_completo_path, audio_limpo_path)
-                    audio_completo_seg = AudioSegment.from_file(audio_limpo_path)
-                    duracao_total = len(audio_completo_seg) / 1000
-                    audio_completo_path = audio_limpo_path
-
-                # ── Sincronizar cenas com áudio usando Whisper (word-level) ──
-                # Modo LONGO: transcreve o áudio original (com pausas naturais entre cenas)
-                # Modo SHORTS: transcreve o áudio já limpo (sem pausas), timestamps compactados
-                # Em ambos: distribui palavras do Whisper proporcionalmente ao nº de palavras de cada cena
-                jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
                 import sys
-                try:
-                    model = get_whisper_model()
-                    resultado_whisper = model.transcribe(audio_completo_path, word_timestamps=True, fp16=False)
-                    palavras = []
-                    for seg in resultado_whisper.get("segments", []):
-                        for w in seg.get("words", []):
-                            word_text = w.get("word", "").strip()
-                            if word_text:
-                                palavras.append({"word": word_text, "start": w["start"], "end": w["end"]})
-                    if not palavras:
-                        raise Exception("fallback - sem palavras")
 
-                    # Contar palavras de cada cena no roteiro original
-                    palavras_por_cena = [len(b["texto"].split()) for b in blocos]
-                    total_palavras_roteiro = sum(palavras_por_cena)
-                    total_palavras_whisper = len(palavras)
+                # ── NARRAR CADA CENA SEPARADAMENTE ──
+                # Garante sincronização perfeita: duração da imagem = duração exata do áudio daquela cena
+                audios_cena = []
+                for idx_cena, bloco in enumerate(blocos):
+                    audio_cena_path = os.path.join(job_dir, f"narr_{idx_cena+1:04d}.mp3")
+                    jobs[job_id]["progresso"] = f"Narrando cena {idx_cena+1}/{len(blocos)}..."
+                    narracao_ok = False
+                    for tentativa in range(3):
+                        try:
+                            gerar_audio_minimax(bloco["texto"], user.get_minimax_key(), user.get_minimax_group_id(), voice_id, audio_cena_path)
+                            narracao_ok = True
+                            break
+                        except Exception as e:
+                            if "1002" in str(e) or "rate" in str(e).lower():
+                                _time.sleep(10 + tentativa * 10)
+                                continue
+                            raise
+                    if not narracao_ok:
+                        jobs[job_id] = {"status": "erro", "progresso": "Estamos com uma alta demanda no momento. Por favor, tente novamente mais tarde.", "total": 0, "atual": 0}
+                        return
+                    audios_cena.append(audio_cena_path)
+                    # Pausa entre chamadas pra evitar rate limit
+                    if idx_cena < len(blocos) - 1:
+                        _time.sleep(1)
 
-                    sys.stderr.write(f"[SYNC] Modo: {modo_video} | Palavras roteiro: {total_palavras_roteiro} | Whisper: {total_palavras_whisper} | Audio: {duracao_total:.2f}s\n"); sys.stderr.flush()
+                # ── MEDIR DURAÇÃO REAL + CONCATENAR ──
+                jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
+                audio_completo_seg = AudioSegment.empty()
+                for idx_cena, bloco in enumerate(blocos):
+                    seg = AudioSegment.from_file(audios_cena[idx_cena])
 
-                    # Distribuir palavras do Whisper proporcionalmente
-                    cursor = 0
-                    for i, bloco in enumerate(blocos):
-                        if i < len(blocos) - 1:
-                            proporcao = palavras_por_cena[i] / total_palavras_roteiro
-                            n_palavras_whisper = max(1, round(proporcao * total_palavras_whisper))
-                            idx_fim = min(cursor + n_palavras_whisper, total_palavras_whisper)
-                        else:
-                            # Última cena: pega TUDO que sobrou
-                            idx_fim = total_palavras_whisper
+                    # Shorts: remover silêncio de cada cena
+                    if modo_video == "shorts":
+                        audio_limpo = os.path.join(job_dir, f"narr_limpa_{idx_cena+1:04d}.mp3")
+                        remover_silencio(audios_cena[idx_cena], audio_limpo)
+                        seg = AudioSegment.from_file(audio_limpo)
 
-                        idx_inicio = min(cursor, total_palavras_whisper - 1)
-                        idx_fim = max(idx_fim, idx_inicio + 1)
+                    dur_cena = len(seg) / 1000
+                    dur_cena = max(2.0, dur_cena)
 
-                        inicio = palavras[idx_inicio]["start"] if idx_inicio < total_palavras_whisper else 0
-                        fim = palavras[min(idx_fim, total_palavras_whisper) - 1]["end"]
+                    img_src = os.path.join(sb_dir, bloco["img"])
+                    img_dst = os.path.join(job_dir, f"{idx_cena+1:04d}.png")
+                    shutil.copy(img_src, img_dst)
+                    imagens.append({
+                        "index": idx_cena + 1,
+                        "path": img_dst,
+                        "duracao": round(dur_cena, 2),
+                        "inicio": round(t, 2),
+                        "fim": round(t + dur_cena, 2),
+                        "texto": bloco["texto"]
+                    })
+                    audio_completo_seg += seg
+                    sys.stderr.write(f"[SYNC] Cena {idx_cena+1}: {dur_cena:.2f}s | Acumulado: {t + dur_cena:.2f}s\n"); sys.stderr.flush()
+                    t += dur_cena
 
-                        # Primeira cena começa em 0
-                        if i == 0:
-                            inicio = 0.0
-                        # Última cena vai até o fim real do áudio
-                        if i == len(blocos) - 1:
-                            fim = duracao_total
-
-                        dur = max(1.5, fim - inicio)
-
-                        img_src = os.path.join(sb_dir, bloco["img"])
-                        img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
-                        shutil.copy(img_src, img_dst)
-                        imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur, 2),
-                                        "inicio": round(inicio, 2), "fim": round(fim, 2),
-                                        "texto": bloco["texto"]})
-
-                        sys.stderr.write(f"[SYNC]   Cena {i+1}: palavras[{cursor}:{idx_fim}] | {inicio:.2f}s - {fim:.2f}s ({dur:.2f}s)\n"); sys.stderr.flush()
-                        cursor = idx_fim
-
-                    # Garantir continuidade: fim de cada cena = início da próxima
-                    for j in range(len(imagens) - 1):
-                        imagens[j]["fim"] = imagens[j + 1]["inicio"]
-                        imagens[j]["duracao"] = round(max(1.0, imagens[j]["fim"] - imagens[j]["inicio"]), 2)
-
-                    soma_dur = sum(img["duracao"] for img in imagens)
-                    sys.stderr.write(f"[SYNC] Total: {len(imagens)} cenas | Soma: {soma_dur:.2f}s | Audio: {duracao_total:.2f}s\n"); sys.stderr.flush()
-
-                except Exception as sync_err:
-                    sys.stderr.write(f"[SYNC] Whisper falhou ({sync_err}), usando divisao proporcional por palavras\n"); sys.stderr.flush()
-                    # Fallback: distribuir tempo proporcionalmente ao nº de palavras
-                    imagens = []
-                    t = 0
-                    palavras_por_cena = [len(b["texto"].split()) for b in blocos]
-                    total_palavras_roteiro = sum(palavras_por_cena) or 1
-                    for i, bloco in enumerate(blocos):
-                        proporcao = palavras_por_cena[i] / total_palavras_roteiro
-                        dur = max(2.0, duracao_total * proporcao)
-                        img_src = os.path.join(sb_dir, bloco["img"])
-                        img_dst = os.path.join(job_dir, f"{i+1:04d}.png")
-                        shutil.copy(img_src, img_dst)
-                        imagens.append({"index": i+1, "path": img_dst, "duracao": round(dur, 2),
-                                        "inicio": round(t, 2), "fim": round(t + dur, 2),
-                                        "texto": bloco["texto"]})
-                        t += dur
+                # Exportar áudio concatenado
+                audio_completo_path = os.path.join(job_dir, "narracao.mp3")
+                audio_completo_seg.export(audio_completo_path, format="mp3", bitrate="192k")
+                duracao_total = len(audio_completo_seg) / 1000
+                sys.stderr.write(f"[SYNC] Total: {len(imagens)} cenas | {duracao_total:.2f}s\n"); sys.stderr.flush()
 
                 audio_final_path = audio_completo_path
             else:
@@ -1591,9 +1535,8 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     import time as _t
                     for tentativa in range(3):
                         try:
-                            # Prompt focado em ANIMAR a imagem existente, não recontar a cena
-                            # O MiniMax recebe a imagem como first_frame — o prompt deve instruir MOVIMENTO, não conteúdo
-                            anim_prompt = "Animate this exact image with subtle natural motion. Gentle camera movement, slight parallax, elements sway softly, atmospheric particles float. Keep all original elements, colors and composition exactly as shown. Cinematic smooth motion."
+                            # Prompt que preserva a imagem mas adiciona movimento visível
+                            anim_prompt = "Bring this image to life with cinematic motion. Camera slowly pushes in, characters breathe and move naturally, hair and clothes sway, environment has depth with parallax layers. Dramatic lighting shifts. Keep all original elements exactly as shown."
                             gerar_video_minimax(img["path"], anim_prompt, minimax_key_cache, clipe_path)
                             clipes_video[i] = clipe_path
                             # Salvar no banco imediatamente (path absoluto)
