@@ -1537,9 +1537,9 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     import time as _t
                     for tentativa in range(3):
                         try:
-                            # Prompt com contexto da cena para movimento relevante + instrução de preservar a imagem
-                            cena_texto_en = img.get("texto", "")[:80]
-                            anim_prompt = f"Cinematic motion: {cena_texto_en}. Camera pushes in slowly, characters move and breathe naturally, wind blows through hair and clothes, atmospheric particles, volumetric light shifts. Preserve all original elements, colors and composition."
+                            # Traduzir texto da cena em instrução de movimento para o MiniMax
+                            cena_texto = img.get("texto", "")[:120]
+                            anim_prompt = f"{cena_texto}. Characters perform the described action with full body movement. Dynamic camera tracking shot. Cinematic motion, dramatic lighting."
                             gerar_video_minimax(img["path"], anim_prompt, minimax_key_cache, clipe_path)
                             clipes_video[i] = clipe_path
                             # Salvar no banco imediatamente (path absoluto)
@@ -1598,9 +1598,22 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 if any(clipes_video):
                     jobs[job_id]["progresso"] = "Montando vídeo final..."
 
-                    clipes_validos = [cp for cp in clipes_video if cp and os.path.exists(cp)]
+                    clipes_validos = []
+                    for ci, cp in enumerate(clipes_video):
+                        if cp and os.path.exists(cp) and ci < len(imagens):
+                            # Cortar clipe na duração exata do áudio da cena
+                            dur_cena_audio = imagens[ci]["duracao"]
+                            clipe_cortado = os.path.join(job_dir, f"clipe_cut_{ci+1:04d}.mp4")
+                            cmd_cut = ["ffmpeg", "-y", "-i", cp, "-t", str(dur_cena_audio),
+                                       "-c:v", "copy", "-an", clipe_cortado]
+                            result = subprocess.run(cmd_cut, capture_output=True, text=True)
+                            if result.returncode == 0 and os.path.exists(clipe_cortado):
+                                clipes_validos.append(clipe_cortado)
+                                sys.stderr.write(f"[SYNC] Cena {ci+1}: clipe cortado em {dur_cena_audio:.1f}s\n"); sys.stderr.flush()
+                            else:
+                                clipes_validos.append(cp)
 
-                    # PASSO 1: Concatenar todos os clipes em um vídeo mudo
+                    # PASSO 1: Concatenar clipes cortados
                     concat_path = os.path.join(job_dir, "concat_list.txt")
                     video_mudo = os.path.join(job_dir, "video_mudo.mp4")
                     with open(concat_path, "w") as f:
