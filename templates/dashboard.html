@@ -178,9 +178,9 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
     <div class="card" style="text-align:center;padding:16px 22px">
       <button onclick="document.getElementById('codigoTesteBox').style.display=document.getElementById('codigoTesteBox').style.display==='block'?'none':'block'" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.85rem">🎁 Tenho um código de teste</button>
       <div id="codigoTesteBox" style="display:none;margin-top:12px">
-        <div style="display:flex;gap:8px;max-width:360px;margin:0 auto">
-          <input type="text" id="inputCodigoTeste" placeholder="TESTE-XXXXXX" style="flex:1;text-align:center !important;font-size:1.3rem !important;letter-spacing:4px !important;text-transform:uppercase;font-weight:700 !important;padding:14px !important;background:var(--bg3);border:2px solid var(--accent) !important;border-radius:12px !important;color:var(--accent) !important"/>
-          <button class="btn" onclick="validarCodigoTeste()" id="btnValidarCodigo" style="white-space:nowrap;padding:14px 20px;font-size:1rem;border-radius:12px">✓ Ativar</button>
+        <div style="max-width:360px;margin:0 auto">
+          <input type="text" id="inputCodigoTeste" placeholder="TESTE-XXXXXX" maxlength="12" style="width:100%;text-align:center !important;font-size:1.4rem !important;letter-spacing:6px !important;text-transform:uppercase;font-weight:800 !important;padding:16px !important;background:var(--bg3);border:2px solid var(--accent) !important;border-radius:12px !important;color:var(--accent) !important;margin-bottom:10px"/>
+          <button class="btn" onclick="validarCodigoTeste()" id="btnValidarCodigo" style="padding:14px 20px;font-size:1rem;border-radius:12px;width:100%">✓ Ativar Código</button>
         </div>
         <div id="erroCodigoTeste" style="display:none;margin-top:8px;color:#fca5a5;font-size:.82rem"></div>
         <p class="tip" style="margin-top:8px">Recebeu um código por email? Digite aqui para ativar seus créditos grátis.</p>
