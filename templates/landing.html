@@ -55,6 +55,15 @@ section{padding:80px 24px}
 .section-title h2 span{color:#4a9eff}
 .section-title p{font-size:1rem;color:#94a3b8;max-width:550px;margin:0 auto}
 
+/* Demo videos */
+.demos-grid{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.demo-card{background:#111827;border:1px solid #1e3a5f;border-radius:16px;overflow:hidden;transition:.3s}
+.demo-card:hover{border-color:#4a9eff;transform:translateY(-4px)}
+.demo-card video{width:100%;display:block;aspect-ratio:9/16;object-fit:cover;background:#000}
+.demo-card .demo-info{padding:14px 16px}
+.demo-card .demo-info h4{font-size:.9rem;color:#e2e8f0;margin-bottom:4px}
+.demo-card .demo-info p{font-size:.75rem;color:#64748b}
+
 /* Features grid */
 .features-grid{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 .feat-card{background:linear-gradient(145deg,#111827,#0f172a);border:1px solid #1e3a5f;border-radius:16px;padding:28px;transition:.3s}
@@ -124,6 +133,7 @@ section{padding:80px 24px}
   .usecases{grid-template-columns:1fr}
   .nav-links a:not(.nav-btn){display:none}
   .hero-stats{gap:24px}
+  .demos-grid{grid-template-columns:1fr;max-width:350px}
 }
 @media(max-width:500px){
   .plans-grid{grid-template-columns:1fr}
@@ -158,6 +168,36 @@ section{padding:80px 24px}
     <div class="stat"><div class="stat-num">6s</div><div class="stat-label">Animação por cena</div></div>
   </div>
 </div>
+
+<section id="demos">
+  <div class="section-title">
+    <h2>Veja o <span>resultado</span></h2>
+    <p>Vídeos criados 100% pela ferramenta. Do roteiro ao vídeo final em minutos.</p>
+  </div>
+  <div class="demos-grid">
+    <div class="demo-card">
+      <video src="/static/demo1.mp4" controls preload="metadata" poster="/static/demo1_thumb.jpg"></video>
+      <div class="demo-info">
+        <h4>Exemplo 1</h4>
+        <p>Gerado com estilo cinematográfico</p>
+      </div>
+    </div>
+    <div class="demo-card">
+      <video src="/static/demo2.mp4" controls preload="metadata" poster="/static/demo2_thumb.jpg"></video>
+      <div class="demo-info">
+        <h4>Exemplo 2</h4>
+        <p>Narração + animação + legendas</p>
+      </div>
+    </div>
+    <div class="demo-card">
+      <video src="/static/demo3.mp4" controls preload="metadata" poster="/static/demo3_thumb.jpg"></video>
+      <div class="demo-info">
+        <h4>Exemplo 3</h4>
+        <p>Criado em menos de 5 minutos</p>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section id="features">
   <div class="section-title">
