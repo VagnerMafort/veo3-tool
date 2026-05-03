@@ -174,22 +174,25 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
 
   <!-- GERAR -->
   <div class="pane active" id="paneGerar">
+    <!-- Código de teste — visível para todos -->
+    <div class="card" style="text-align:center;padding:16px 22px">
+      <button onclick="document.getElementById('codigoTesteBox').style.display=document.getElementById('codigoTesteBox').style.display==='block'?'none':'block'" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.85rem">🎁 Tenho um código de teste</button>
+      <div id="codigoTesteBox" style="display:none;margin-top:12px">
+        <div style="display:flex;gap:8px;max-width:320px;margin:0 auto">
+          <input type="text" id="inputCodigoTeste" placeholder="TESTE-XXXXXX" style="flex:1;text-align:center;font-size:1rem;letter-spacing:2px;text-transform:uppercase"/>
+          <button class="btn" onclick="validarCodigoTeste()" id="btnValidarCodigo" style="white-space:nowrap;padding:10px 16px">Ativar</button>
+        </div>
+        <div id="erroCodigoTeste" style="display:none;margin-top:8px;color:#fca5a5;font-size:.82rem"></div>
+        <p class="tip" style="margin-top:6px">Recebeu um código por email? Digite aqui para ativar seus créditos grátis.</p>
+      </div>
+    </div>
+
     {% if not user.plano and not user.is_admin and user.creditos < 25 %}
     <div class="card" style="text-align:center;padding:40px 22px">
       <div style="font-size:2.5rem;margin-bottom:12px">🎬</div>
       <h2 style="margin-bottom:8px">Comece a criar vídeos com IA</h2>
       <p style="color:var(--text2);font-size:.88rem;margin-bottom:20px">Assine um plano para desbloquear a criação de vídeos com inteligência artificial.</p>
       <button class="btn" onclick="trocarAba('planos')" style="max-width:300px;margin:0 auto">💎 Ver Planos</button>
-      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
-        <button onclick="document.getElementById('codigoTesteBox').style.display=document.getElementById('codigoTesteBox').style.display==='block'?'none':'block'" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.85rem">🎁 Tenho um código de teste</button>
-        <div id="codigoTesteBox" style="display:none;margin-top:12px">
-          <div style="display:flex;gap:8px;max-width:320px;margin:0 auto">
-            <input type="text" id="inputCodigoTeste" placeholder="TESTE-XXXXXX" style="flex:1;text-align:center;font-size:1rem;letter-spacing:2px;text-transform:uppercase"/>
-            <button class="btn" onclick="validarCodigoTeste()" id="btnValidarCodigo" style="white-space:nowrap;padding:10px 16px">Ativar</button>
-          </div>
-          <div id="erroCodigoTeste" style="display:none;margin-top:8px;color:#fca5a5;font-size:.82rem"></div>
-        </div>
-      </div>
     </div>
     {% else %}
     <div id="etapaRoteiro">
