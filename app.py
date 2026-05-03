@@ -306,22 +306,24 @@ class User(UserMixin, db.Model):
         return None
 
     def get_api_key(self):
-        """Retorna chave OpenAI — só se tiver plano ativo ou for admin"""
+        """Retorna chave OpenAI — só se tiver plano ativo, for admin, ou trial"""
         if self.is_admin:
             return self.api_key if self.api_key else SYSTEM_OPENAI_KEY
         if not self.plano:
-            return ""  # Sem plano = sem acesso
+            # Trial: permitir até 2 imagens grátis
+            return SYSTEM_OPENAI_KEY if SYSTEM_OPENAI_KEY else ""
         if self.plano == "api_propria" and self.api_key:
             return self.api_key
         # Planos com créditos usam chave do sistema
         return SYSTEM_OPENAI_KEY
 
     def get_provider(self):
-        """Retorna provider — só se tiver plano ativo ou for admin"""
+        """Retorna provider — só se tiver plano ativo, for admin, ou trial"""
         if self.is_admin:
             return self.provider if self.provider else ("openai" if SYSTEM_OPENAI_KEY else "")
         if not self.plano:
-            return ""
+            # Trial: usar openai do sistema
+            return "openai" if SYSTEM_OPENAI_KEY else ""
         if self.provider:
             return self.provider
         return "openai" if SYSTEM_OPENAI_KEY else ""
@@ -1248,11 +1250,26 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             total = len(linhas)
             # Contar quantas cenas precisam ser geradas (excluir preenchidas)
             cenas_a_gerar = [i for i in range(total) if str(i+1) not in cenas_preenchidas]
-            creditos_por_cena = calcular_creditos_cena(melhorar_prompt=melhorar_prompts, narracao=False, animar=False)
-            creditos_necessarios = len(cenas_a_gerar) * creditos_por_cena
-            if not user.tem_creditos(creditos_necessarios):
-                jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes. Necessário: {creditos_necessarios}, disponível: {user.creditos}", "total": 0, "atual": 0}
-                return
+
+            # Trial: usuário sem plano pode gerar até 2 imagens grátis
+            is_trial = not user.plano and not user.is_admin
+            TRIAL_MAX_IMAGENS = 2
+            if is_trial:
+                # Contar imagens já geradas pelo trial (criações anteriores)
+                trial_geradas = Criacao.query.filter_by(user_id=user.id).count()
+                imagens_restantes = max(0, TRIAL_MAX_IMAGENS - trial_geradas)
+                if imagens_restantes <= 0:
+                    jobs[job_id] = {"status": "erro", "progresso": "TRIAL_LIMITE:Você já usou suas 2 imagens grátis. Assine um plano para continuar criando.", "total": 0, "atual": 0}
+                    return
+                # Limitar cenas a gerar ao restante do trial
+                cenas_a_gerar = cenas_a_gerar[:imagens_restantes]
+                creditos_necessarios = 0  # Trial não cobra créditos
+            else:
+                creditos_por_cena = calcular_creditos_cena(melhorar_prompt=melhorar_prompts, narracao=False, animar=False)
+                creditos_necessarios = len(cenas_a_gerar) * creditos_por_cena
+                if not user.tem_creditos(creditos_necessarios):
+                    jobs[job_id] = {"status": "erro", "progresso": f"Créditos insuficientes. Necessário: {creditos_necessarios}, disponível: {user.creditos}", "total": 0, "atual": 0}
+                    return
 
             jobs[job_id]["total"] = total
             blocos = []
@@ -1421,9 +1438,9 @@ Write in ENGLISH."""},
                 with ThreadPoolExecutor(max_workers=5) as executor:
                     list(executor.map(gerar_bloco, cenas_a_gerar))
 
-            # Gastar créditos apenas pelas cenas geradas
+            # Gastar créditos apenas pelas cenas geradas (trial não cobra)
             creditos_gastos_sb = 0
-            if cenas_a_gerar:
+            if cenas_a_gerar and not is_trial:
                 creditos_por_cena = calcular_creditos_cena(melhorar_prompt=melhorar_prompts, narracao=False, animar=False)
                 creditos_gastos_sb = len(cenas_a_gerar) * creditos_por_cena
                 if not user.gastar_creditos(creditos_gastos_sb):
@@ -1432,7 +1449,7 @@ Write in ENGLISH."""},
                 db.session.commit()
 
             blocos.sort(key=lambda x: x["index"])
-            sb_data = {"blocos": blocos, "estilo": estilo, "dir": sb_dir, "creditos_gastos": creditos_gastos_sb, "tipo_video": tipo_video}
+            sb_data = {"blocos": blocos, "estilo": estilo, "dir": sb_dir, "creditos_gastos": creditos_gastos_sb, "tipo_video": tipo_video, "is_trial": is_trial}
             with open(os.path.join(sb_dir, "storyboard.json"), "w") as f:
                 json.dump(sb_data, f)
             jobs[job_id] = {"status": "storyboard_pronto", "progresso": "Storyboard pronto", "total": total, "atual": total, "blocos": blocos, "sb_id": job_id}
@@ -4124,10 +4141,11 @@ def dividir_roteiro_route():
     if not texto:
         return jsonify({"erro": "Escreva o roteiro"}), 400
 
-    # Cobrar 1 crédito pra dividir
-    if not current_user.gastar_creditos(1):
-        return jsonify({"erro": "Créditos insuficientes. Necessário: 1 crédito."}), 400
-    db.session.commit()
+    # Cobrar 1 crédito pra dividir (grátis pra trial sem plano)
+    if current_user.plano:
+        if not current_user.gastar_creditos(1):
+            return jsonify({"erro": "Créditos insuficientes. Necessário: 1 crédito."}), 400
+        db.session.commit()
 
     estilo = request.form.get("estilo", "").strip()
     melhorar = request.form.get("melhorar_prompts", "false") == "true"
@@ -4348,6 +4366,10 @@ def editar_texto_cena():
 @app.route("/finalizar_video", methods=["POST"])
 @login_required
 def finalizar_video_route():
+    # Trial: bloquear finalização de vídeo
+    if not current_user.plano and not current_user.is_admin:
+        return jsonify({"erro": "Assine um plano para gerar vídeos completos. Suas 2 imagens de demonstração foram geradas com sucesso!"}), 403
+
     sb_id = request.form.get("sb_id")
     voice_id = request.form.get("voice_id", "").strip()
     modo_video = request.form.get("modo_video", "longo")

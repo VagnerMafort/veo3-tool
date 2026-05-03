@@ -1704,7 +1704,22 @@ function mostrarErro(elementId, msg, autoDismiss=10000){
 function mostrarErroSB(msg){
   document.getElementById('statusSB').style.display='none';
   document.getElementById('btnGerarSB').disabled=false;
-  if(msg.toLowerCase().includes('cr') && msg.toLowerCase().includes('insuficiente')){
+  if(msg.includes('TRIAL_LIMITE')){
+    // Mostrar modal de trial expirado
+    const modal=document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML=`<div style="background:#111827;border:1px solid #1e3a5f;border-radius:16px;padding:32px;max-width:440px;text-align:center">
+      <div style="font-size:3rem;margin-bottom:12px">🎬</div>
+      <h2 style="color:#e2e8f0;margin-bottom:8px">Gostou do resultado?</h2>
+      <p style="color:#94a3b8;font-size:.9rem;margin-bottom:6px;line-height:1.6">Você usou suas <b>2 imagens grátis</b> de demonstração.</p>
+      <p style="color:#94a3b8;font-size:.9rem;margin-bottom:20px;line-height:1.6">Assine um plano para gerar vídeos completos com narração, animação e legendas.</p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button onclick="trocarAba('planos');this.closest('div[style]').parentElement.remove()" style="padding:12px 24px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer">💎 Ver Planos</button>
+        <button onclick="this.closest('div[style]').parentElement.remove()" style="padding:12px 24px;background:none;border:1px solid #1e3a5f;color:#94a3b8;border-radius:10px;font-size:.9rem;cursor:pointer">Fechar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+  } else if(msg.toLowerCase().includes('cr') && msg.toLowerCase().includes('insuficiente')){
     document.getElementById('creditosRestantes').textContent=document.getElementById('creditosNum').textContent;
     document.getElementById('creditosModal').style.display='block';
   } else {
