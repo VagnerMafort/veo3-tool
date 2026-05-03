@@ -581,16 +581,13 @@ MANDATORY STYLE (you MUST use this exact style, do NOT change it): {estilo_det}
 Character reference (use ONLY when that specific character is mentioned in the scene):
 {ficha_personagens}
 
-{f'Creative direction: {direcao_criativa}' if direcao_criativa else ''}
+{f'MANDATORY VISUAL DIRECTION (you MUST set the scene in this environment): {direcao_criativa}. ALL scenes MUST show this visual direction as the setting/background. Do NOT use generic landscapes, mountains or deserts unless the creative direction specifically asks for them.' if direcao_criativa else ''}
 
 STRICT RULES:
 - START the prompt with the style description: "{estilo_det}"
 - ONLY describe what the scene text says. Nothing else.
-- If the scene says "an army surrounded the city" → show the ARMY and the CITY. Do NOT show Eliseu or the servant.
-- If the scene says "the servant woke up in panic" → show the SERVANT panicking. Do NOT show Eliseu unless the scene mentions him.
-- If the scene says "Eliseu prayed" → show Eliseu praying. Do NOT show fire horses unless the scene mentions them.
-- If the scene says "fire horses and chariots" → show HUNDREDS of supernatural fire horses and flaming chariots filling the ENTIRE sky over mountains. Make it MASSIVE and EPIC.
-- If the scene is a call to action (comment, share) → show an inspirational landscape, NO people.
+- {'The visual environment MUST match the creative direction above. Use luxury, urban, modern settings as described.' if direcao_criativa else ''}
+- If the scene is a call to action (comment, share) → show an inspirational scene matching the creative direction, NO people.
 - Include a character's physical description ONLY if that character is explicitly mentioned or implied in THIS scene.
 - Do NOT add characters or elements from OTHER scenes.
 - NEVER use "oil painting", "watercolor", "illustration" or any style other than the MANDATORY STYLE above.
@@ -600,7 +597,7 @@ STRICT RULES:
         else:
             system = prompts.get("melhorar", DEFAULT_PROMPTS["melhorar"]).replace("{estilo}", estilo_det)
             if direcao_criativa:
-                system += f"\n\nCreative direction: \"{direcao_criativa}\""
+                system += f"\n\nMANDATORY VISUAL DIRECTION: \"{direcao_criativa}\". ALL scenes MUST use this as the visual environment/setting. Do NOT use generic landscapes, mountains or deserts unless specifically asked."
             if contexto_roteiro:
                 system += f"\n\nFull story context: \"{contexto_roteiro[:300]}\"\nKeep ALL characters visually identical across scenes."
 
