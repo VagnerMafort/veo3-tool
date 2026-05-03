@@ -68,35 +68,36 @@ SYSTEM_OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "")
 SYSTEM_MINIMAX_KEY = os.environ.get("MINIMAX_API_KEY", "")
 SYSTEM_MINIMAX_GROUP_ID = os.environ.get("MINIMAX_GROUP_ID", "")
 
-# ── Email Config ──
-SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
-EMAIL_FROM = os.environ.get("EMAIL_FROM", SMTP_USER)
-
-# Admin Master — único que pode conceder/remover admin de outros
-ADMIN_MASTER_EMAIL = os.environ.get("ADMIN_MASTER_EMAIL", "ministerioprvagner@gmail.com")
+# ── Email Config (Resend API) ──
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+EMAIL_FROM = os.environ.get("EMAIL_FROM", "Klyonclaw Studio <noreply@klyonclaw.com>")
 
 def enviar_email(destinatario, assunto, corpo_html):
-    """Envia email em background"""
-    if not SMTP_USER or not SMTP_PASS:
+    """Envia email via Resend API em background"""
+    if not RESEND_API_KEY:
+        import sys; sys.stderr.write(f"[EMAIL] RESEND_API_KEY não configurada, email não enviado para {destinatario}\n"); sys.stderr.flush()
         return
     def _enviar():
         try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = assunto
-            msg["From"] = f"Klyonclaw Studio <{EMAIL_FROM}>"
-            msg["To"] = destinatario
-            msg.attach(MIMEText(corpo_html, "html"))
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(EMAIL_FROM, destinatario, msg.as_string())
+            r = requests.post("https://api.resend.com/emails", headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type": "application/json"
+            }, json={
+                "from": EMAIL_FROM,
+                "to": [destinatario],
+                "subject": assunto,
+                "html": corpo_html
+            }, timeout=15)
+            if r.ok:
+                import sys; sys.stderr.write(f"[EMAIL] Enviado para {destinatario}: {assunto}\n"); sys.stderr.flush()
+            else:
+                import sys; sys.stderr.write(f"[EMAIL] Erro {r.status_code}: {r.text[:200]}\n"); sys.stderr.flush()
         except Exception as e:
-            import sys
-            sys.stderr.write(f"[EMAIL] Erro: {e}\n"); sys.stderr.flush()
+            import sys; sys.stderr.write(f"[EMAIL] Erro: {e}\n"); sys.stderr.flush()
     threading.Thread(target=_enviar, daemon=True).start()
+
+# Admin Master — único que pode conceder/remover admin de outros
+ADMIN_MASTER_EMAIL = os.environ.get("ADMIN_MASTER_EMAIL", "ministerioprvagner@gmail.com")
 
 CREDITOS_POR_IMAGEM = 12  # Base: gerar imagem
 CREDITOS_MELHORAR_PROMPT = 3  # Melhorar prompt com IA
