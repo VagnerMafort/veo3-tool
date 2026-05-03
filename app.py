@@ -982,7 +982,57 @@ def gerar_imagem(prompt, user, output_path, estilo="", usar_banco=False, formato
         gerar_imagem_replicate(prompt, api_key, output_path)
     else:
         raise Exception("Nenhuma chave de API disponível. Entre em contato com o suporte.")
+    # Marca d'água em imagens (exceto api_propria, business e admin)
+    if not usuario_sem_marca(user):
+        aplicar_marca_dagua_imagem(output_path)
     salvar_no_banco(prompt, estilo, output_path, tipo="imagem")
+
+
+def usuario_sem_marca(user):
+    """Retorna True se o usuário NÃO deve ter marca d'água"""
+    if user.is_admin:
+        return True
+    if user.plano in ("api_propria", "business"):
+        return True
+    return False
+
+
+def aplicar_marca_dagua_imagem(img_path):
+    """Adiciona marca d'água semi-transparente na imagem"""
+    try:
+        from PIL import ImageDraw, ImageFont
+        img = Image.open(img_path).convert("RGBA")
+        overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        texto = "Klyonclaw Studio"
+        # Tamanho da fonte proporcional à imagem
+        font_size = max(20, img.width // 18)
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+        except:
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", font_size)
+            except:
+                font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), texto, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        # Posição: centro inferior
+        x = (img.width - tw) // 2
+        y = img.height - th - max(30, img.height // 20)
+        # Sombra
+        draw.text((x + 2, y + 2), texto, fill=(0, 0, 0, 80), font=font)
+        # Texto semi-transparente
+        draw.text((x, y), texto, fill=(255, 255, 255, 90), font=font)
+        result = Image.alpha_composite(img, overlay).convert("RGB")
+        result.save(img_path)
+    except Exception as e:
+        import sys
+        sys.stderr.write(f"[WATERMARK] Erro imagem: {e}\n"); sys.stderr.flush()
+
+
+def get_marca_dagua_ffmpeg():
+    """Retorna o filtro FFmpeg para marca d'água em vídeo"""
+    return "drawtext=text='Klyonclaw Studio':fontsize=28:fontcolor=white@0.3:x=(w-text_w)/2:y=h-th-30:shadowcolor=black@0.3:shadowx=2:shadowy=2"
 
 def gerar_srt(blocos, srt_path):
     def fmt(s):
@@ -1907,6 +1957,17 @@ Regras:
                 db.session.commit()
 
             jobs[job_id]["progresso"] = "Compactando..."
+            # Marca d'água no vídeo final (exceto api_propria, business e admin)
+            if not usuario_sem_marca(user) and os.path.exists(video_path):
+                video_wm = video_path.replace(".mp4", "_wm.mp4")
+                wm_filter = get_marca_dagua_ffmpeg()
+                cmd_wm = ["ffmpeg", "-y", "-i", video_path, "-vf", wm_filter,
+                           "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p",
+                           "-c:a", "copy", video_wm]
+                result_wm = subprocess.run(cmd_wm, capture_output=True, text=True)
+                if result_wm.returncode == 0 and os.path.exists(video_wm):
+                    os.replace(video_wm, video_path)
+
             zip_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.zip")
             with zipfile.ZipFile(zip_path, "w") as zf:
                 for img in imagens:
