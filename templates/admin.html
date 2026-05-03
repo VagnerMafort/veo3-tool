@@ -970,17 +970,31 @@ async function carregarDemos(){
 async function uploadDemo(){
   const file=document.getElementById('inputDemoVideo').files[0];
   if(!file)return;
+  if(file.size>200*1024*1024){alert('Vídeo muito grande. Máximo 200MB.');return;}
   const titulo=document.getElementById('demoTitulo').value.trim()||'Vídeo demo';
   const descricao=document.getElementById('demoDescricao').value.trim()||'Gerado com Klyonclaw Studio';
   const prog=document.getElementById('demoUploadProgress');
-  prog.style.display='block';prog.textContent='Enviando vídeo...';
+  prog.style.display='block';prog.textContent='Enviando vídeo... 0%';
   const fd=new FormData();
   fd.append('video',file);fd.append('titulo',titulo);fd.append('descricao',descricao);
-  const res=await fetch('/admin/demos/upload',{method:'POST',body:fd});
-  const d=await res.json();
-  prog.style.display='none';
-  if(d.ok){document.getElementById('demoTitulo').value='';document.getElementById('demoDescricao').value='';document.getElementById('inputDemoVideo').value='';carregarDemos();}
-  else{prog.style.display='block';prog.textContent='❌ '+(d.erro||'Erro ao enviar');}
+  const xhr=new XMLHttpRequest();
+  xhr.open('POST','/admin/demos/upload');
+  xhr.upload.onprogress=function(e){
+    if(e.lengthComputable){
+      const pct=Math.round(e.loaded/e.total*100);
+      prog.textContent=`Enviando vídeo... ${pct}%`;
+    }
+  };
+  xhr.onload=function(){
+    prog.style.display='none';
+    try{
+      const d=JSON.parse(xhr.responseText);
+      if(d.ok){document.getElementById('demoTitulo').value='';document.getElementById('demoDescricao').value='';document.getElementById('inputDemoVideo').value='';carregarDemos();}
+      else{prog.style.display='block';prog.textContent='❌ '+(d.erro||'Erro ao enviar');}
+    }catch(e){prog.style.display='block';prog.textContent='❌ Erro no servidor';}
+  };
+  xhr.onerror=function(){prog.style.display='block';prog.textContent='❌ Erro de conexão';};
+  xhr.send(fd);
 }
 async function deletarDemo(idx){
   if(!confirm('Remover este vídeo demo?'))return;
