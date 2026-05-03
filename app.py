@@ -103,15 +103,21 @@ def email_header():
 def email_demos_section():
     """Seção de vídeos demo para incluir nos emails"""
     try:
-        demos = load_demos() if 'load_demos' in dir() else []
+        demos_file = "demos_config.json"
+        if os.path.exists(demos_file):
+            with open(demos_file) as f:
+                demos = json.load(f)
+        else:
+            demos = []
     except:
         demos = []
     if not demos:
         return ''
     videos_html = ''
     for d in demos[:3]:
-        videos_html += f'<a href="https://studio.klyonclaw.com" style="display:inline-block;margin:4px"><div style="background:#1e3a5f;border-radius:8px;padding:8px;text-align:center;width:140px"><div style="font-size:2rem">🎬</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">{d.get("titulo","Vídeo demo")}</div></div></a>'
-    return f'<div style="margin:20px 0;padding:16px;background:#0f172a;border-radius:10px;text-align:center"><div style="font-size:13px;color:#4a9eff;font-weight:600;margin-bottom:8px">🎬 Veja o que nossos usuários estão criando:</div>{videos_html}<div style="margin-top:10px"><a href="https://studio.klyonclaw.com" style="color:#4a9eff;font-size:12px">Ver mais exemplos →</a></div></div>'
+        video_url = f"https://studio.klyonclaw.com{d.get('path','')}"
+        videos_html += f'<a href="https://studio.klyonclaw.com" style="display:inline-block;margin:6px;text-decoration:none"><div style="background:#1e3a5f;border:1px solid #4a9eff;border-radius:10px;padding:12px;text-align:center;width:150px"><div style="font-size:2.5rem;margin-bottom:4px">▶️</div><div style="font-size:12px;color:#e2e8f0;font-weight:600">{d.get("titulo","Vídeo demo")}</div><div style="font-size:10px;color:#94a3b8;margin-top:2px">{d.get("descricao","Clique para assistir")}</div></div></a>'
+    return f'<div style="margin:24px 0;padding:20px;background:#0f172a;border:1px solid #1e3a5f;border-radius:12px;text-align:center"><div style="font-size:14px;color:#4a9eff;font-weight:700;margin-bottom:12px">🎬 Veja o que a ferramenta entrega:</div><div>{videos_html}</div><div style="margin-top:12px"><a href="https://studio.klyonclaw.com" style="color:#4a9eff;font-size:13px;font-weight:600">Acessar e criar o seu →</a></div></div>'
 
 def verificar_emails_automaticos():
     """Verifica e envia emails de reengajamento para usuários inativos"""
@@ -4030,16 +4036,16 @@ def admin_testar_email():
     templates = {
         "boas_vindas": ("Bem-vindo ao Klyonclaw Studio! 🎬", f"""
         <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
-            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            {email_header()}
             <p>Olá <b>{nome}</b>! 👋</p>
             <p>Sua conta foi criada com sucesso. Agora você pode criar vídeos incríveis com inteligência artificial.</p>
-            <p>Escolha um plano e comece a criar:</p>
+            {email_demos_section()}
             <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Acessar Klyonclaw Studio</a>
             <p style="color:#888;font-size:12px;margin-top:20px">Klyonclaw Studio — AI Video Automation</p>
         </div>"""),
         "nova_senha": ("Sua nova senha — Klyonclaw Studio", f"""
         <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
-            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            {email_header()}
             <p>Olá <b>{nome}</b>,</p>
             <p>Sua nova senha temporária é: <b style="font-size:18px;color:#4a9eff">abc123xyz</b></p>
             <p>Recomendamos que altere sua senha após o login.</p>
@@ -4047,15 +4053,10 @@ def admin_testar_email():
         </div>"""),
         "convite_teste": ("🎬 Você foi selecionado para testar o Klyonclaw Studio!", f"""
         <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
-            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            {email_header()}
             <p>Olá <b>{nome}</b>! 👋</p>
             <p style="font-size:16px;line-height:1.6">Você foi <b style="color:#4a9eff">selecionado(a)</b> para testar gratuitamente nossa plataforma de criação de vídeos com IA!</p>
-            <p>Para ativar seu acesso:</p>
-            <ol style="font-size:15px;line-height:2;padding-left:20px">
-                <li>Acesse <a href="https://studio.klyonclaw.com/dashboard" style="color:#4a9eff">studio.klyonclaw.com</a></li>
-                <li>Na aba <b>Criar</b>, clique em <b>🎁 Tenho um código</b></li>
-                <li>Digite o código abaixo</li>
-            </ol>
+            {email_demos_section()}
             <div style="background:#1e3a5f;border:2px solid #4a9eff;border-radius:10px;padding:20px;text-align:center;margin:20px 0">
                 <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Seu código de teste</div>
                 <div style="font-size:28px;font-weight:800;color:#4a9eff;letter-spacing:4px">TESTE-ABC123</div>
@@ -4065,11 +4066,11 @@ def admin_testar_email():
             <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
         </div>"""),
         "codigo_invalido": ("❌ Código inválido — Klyonclaw Studio", f"""
-        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">{email_header()}
         <p>Olá <b>{nome}</b>, o código <b style="color:#ef4444">TESTE-ERRADO</b> não é válido.</p>
         <p>Verifique se digitou corretamente o código recebido por email.</p></div>"""),
         "codigo_expirado": ("⏰ Código expirado — Klyonclaw Studio", f"""
-        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">{email_header()}
         <p>Olá <b>{nome}</b>, o código <b style="color:#ef4444">TESTE-ABC123</b> expirou (validade: 2 horas).</p>
         <p>Assine um plano para começar a criar:</p>
         <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Ver Planos →</a></div>"""),
