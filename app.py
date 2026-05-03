@@ -575,7 +575,7 @@ def melhorar_prompt(texto, estilo, api_key, contexto_roteiro="", ficha_personage
 
             system = f"""Convert this scene into an image prompt in ENGLISH. The scene text is the ONLY thing that matters.
 
-Style: {estilo_det}
+MANDATORY STYLE (you MUST use this exact style, do NOT change it): {estilo_det}
 {plano_instrucao}
 
 Character reference (use ONLY when that specific character is mentioned in the scene):
@@ -584,6 +584,7 @@ Character reference (use ONLY when that specific character is mentioned in the s
 {f'Creative direction: {direcao_criativa}' if direcao_criativa else ''}
 
 STRICT RULES:
+- START the prompt with the style description: "{estilo_det}"
 - ONLY describe what the scene text says. Nothing else.
 - If the scene says "an army surrounded the city" → show the ARMY and the CITY. Do NOT show Eliseu or the servant.
 - If the scene says "the servant woke up in panic" → show the SERVANT panicking. Do NOT show Eliseu unless the scene mentions him.
@@ -592,6 +593,7 @@ STRICT RULES:
 - If the scene is a call to action (comment, share) → show an inspirational landscape, NO people.
 - Include a character's physical description ONLY if that character is explicitly mentioned or implied in THIS scene.
 - Do NOT add characters or elements from OTHER scenes.
+- NEVER use "oil painting", "watercolor", "illustration" or any style other than the MANDATORY STYLE above.
 - End with: no text, no letters, no words, no writing, no watermarks
 - Output ONLY the prompt."""
 
@@ -1535,8 +1537,9 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     import time as _t
                     for tentativa in range(3):
                         try:
-                            # Prompt que preserva a imagem mas adiciona movimento visível
-                            anim_prompt = "Bring this image to life with cinematic motion. Camera slowly pushes in, characters breathe and move naturally, hair and clothes sway, environment has depth with parallax layers. Dramatic lighting shifts. Keep all original elements exactly as shown."
+                            # Prompt com contexto da cena para movimento relevante + instrução de preservar a imagem
+                            cena_texto_en = img.get("texto", "")[:80]
+                            anim_prompt = f"Cinematic motion: {cena_texto_en}. Camera pushes in slowly, characters move and breathe naturally, wind blows through hair and clothes, atmospheric particles, volumetric light shifts. Preserve all original elements, colors and composition."
                             gerar_video_minimax(img["path"], anim_prompt, minimax_key_cache, clipe_path)
                             clipes_video[i] = clipe_path
                             # Salvar no banco imediatamente (path absoluto)
