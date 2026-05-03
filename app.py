@@ -1160,7 +1160,10 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
         system = prompts.get("dividir", DEFAULT_PROMPTS["dividir"])
 
         if tipo_video == "animado":
-            cenas_alvo = max(3, round(duracao_estimada / 6))
+            # Cada cena deve ter 4-6s de narração (~2.5 palavras/s com speed 1.1 = ~12-16 palavras)
+            MAX_PALAVRAS_CENA = 15  # ~6s de narração
+            MIN_PALAVRAS_CENA = 10  # ~4s de narração
+            cenas_alvo = max(3, round(n_palavras / 13))  # ~13 palavras por cena = ~5s
             # Dividir no código — não confiar no GPT pra manter texto completo
             # Separar por frases (pontuação)
             import re
@@ -1168,15 +1171,14 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
             frases = [f.strip() for f in frases if f.strip()]
 
             if len(frases) <= cenas_alvo:
-                # Poucas frases — cada frase é uma cena, dividir as longas se precisar
                 linhas_resultado = frases[:]
             else:
-                # Agrupar frases pra ter ~cenas_alvo cenas
-                palavras_por_cena = max(10, n_palavras // cenas_alvo)
+                # Agrupar frases respeitando o limite de palavras por cena
+                palavras_por_cena = min(MAX_PALAVRAS_CENA, max(MIN_PALAVRAS_CENA, n_palavras // cenas_alvo))
                 linhas_resultado = []
                 cena_atual = ""
                 for frase in frases:
-                    if cena_atual and len((cena_atual + " " + frase).split()) > palavras_por_cena * 1.3:
+                    if cena_atual and len((cena_atual + " " + frase).split()) > palavras_por_cena:
                         linhas_resultado.append(cena_atual.strip())
                         cena_atual = frase
                     else:
@@ -1184,28 +1186,39 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
                 if cena_atual:
                     linhas_resultado.append(cena_atual.strip())
 
-            # Ajustar pro número exato
-            while len(linhas_resultado) > cenas_alvo and len(linhas_resultado) > 1:
-                menor_idx = min(range(len(linhas_resultado) - 1), key=lambda i: len(linhas_resultado[i].split()))
-                linhas_resultado[menor_idx] = linhas_resultado[menor_idx] + " " + linhas_resultado[menor_idx + 1]
-                linhas_resultado.pop(menor_idx + 1)
+            # Quebrar cenas que ainda estão muito longas (>MAX_PALAVRAS_CENA)
+            resultado_final = []
+            for cena in linhas_resultado:
+                palavras = cena.split()
+                if len(palavras) > MAX_PALAVRAS_CENA:
+                    # Dividir num ponto natural
+                    meio = len(palavras) // 2
+                    melhor_corte = meio
+                    for j in range(max(3, meio - 5), min(len(palavras) - 2, meio + 6)):
+                        if palavras[j].endswith(('.', ',', ';', '!', '?')):
+                            melhor_corte = j + 1
+                            break
+                    resultado_final.append(" ".join(palavras[:melhor_corte]))
+                    resultado_final.append(" ".join(palavras[melhor_corte:]))
+                else:
+                    resultado_final.append(cena)
+            linhas_resultado = resultado_final
 
-            while len(linhas_resultado) < cenas_alvo:
-                maior_idx = max(range(len(linhas_resultado)), key=lambda i: len(linhas_resultado[i].split()))
-                palavras_cena = linhas_resultado[maior_idx].split()
-                if len(palavras_cena) < 6:
-                    break
-                # Dividir num ponto natural
-                meio = len(palavras_cena) // 2
-                melhor_corte = meio
-                for j in range(max(3, meio - 5), min(len(palavras_cena) - 2, meio + 6)):
-                    if palavras_cena[j].endswith(('.', ',', ';', '!', '?')):
-                        melhor_corte = j + 1
-                        break
-                parte1 = " ".join(palavras_cena[:melhor_corte])
-                parte2 = " ".join(palavras_cena[melhor_corte:])
-                linhas_resultado[maior_idx] = parte1
-                linhas_resultado.insert(maior_idx + 1, parte2)
+            # Juntar cenas muito curtas (<MIN_PALAVRAS_CENA) com a próxima
+            resultado_final = []
+            i = 0
+            while i < len(linhas_resultado):
+                cena = linhas_resultado[i]
+                if len(cena.split()) < MIN_PALAVRAS_CENA and i + 1 < len(linhas_resultado):
+                    # Juntar com a próxima se o total não passar do máximo
+                    proxima = linhas_resultado[i + 1]
+                    if len(cena.split()) + len(proxima.split()) <= MAX_PALAVRAS_CENA:
+                        resultado_final.append((cena + " " + proxima).strip())
+                        i += 2
+                        continue
+                resultado_final.append(cena)
+                i += 1
+            linhas_resultado = resultado_final
 
             import sys
             sys.stderr.write(f"[DIVIDIR] Animado: {n_palavras} palavras, {int(duracao_estimada)}s, alvo {cenas_alvo} cenas, resultado {len(linhas_resultado)} cenas\n"); sys.stderr.flush()
@@ -1667,17 +1680,64 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     clipes_validos = []
                     for ci, cp in enumerate(clipes_video):
                         if cp and os.path.exists(cp) and ci < len(imagens):
-                            # Cortar clipe na duração exata do áudio da cena
                             dur_cena_audio = imagens[ci]["duracao"]
-                            clipe_cortado = os.path.join(job_dir, f"clipe_cut_{ci+1:04d}.mp4")
-                            cmd_cut = ["ffmpeg", "-y", "-i", cp, "-t", str(dur_cena_audio),
-                                       "-c:v", "copy", "-an", clipe_cortado]
-                            result = subprocess.run(cmd_cut, capture_output=True, text=True)
-                            if result.returncode == 0 and os.path.exists(clipe_cortado):
-                                clipes_validos.append(clipe_cortado)
+                            # Medir duração real do clipe animado
+                            try:
+                                p = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                                                    "-of", "default=noprint_wrappers=1:nokey=1", cp],
+                                                   capture_output=True, text=True)
+                                dur_clipe = float(p.stdout.strip()) if p.returncode == 0 else 6.0
+                            except:
+                                dur_clipe = 6.0
+
+                            if dur_cena_audio <= dur_clipe:
+                                # Áudio cabe no clipe — só cortar
+                                clipe_final = os.path.join(job_dir, f"clipe_final_{ci+1:04d}.mp4")
+                                cmd_cut = ["ffmpeg", "-y", "-i", cp, "-t", str(dur_cena_audio),
+                                           "-c:v", "copy", "-an", clipe_final]
+                                subprocess.run(cmd_cut, capture_output=True, text=True)
+                                if os.path.exists(clipe_final):
+                                    clipes_validos.append(clipe_final)
+                                else:
+                                    clipes_validos.append(cp)
                                 sys.stderr.write(f"[SYNC] Cena {ci+1}: clipe cortado em {dur_cena_audio:.1f}s\n"); sys.stderr.flush()
                             else:
-                                clipes_validos.append(cp)
+                                # Áudio maior que o clipe — animação + imagem estática pro restante
+                                dur_restante = dur_cena_audio - dur_clipe
+                                img = imagens[ci]
+                                # Criar clipe estático pro restante
+                                clipe_estatico = os.path.join(job_dir, f"clipe_static_{ci+1:04d}.mp4")
+                                try:
+                                    im = Image.open(img["path"])
+                                    w, h = im.size
+                                    im.close()
+                                except:
+                                    w, h = 1024, 1792
+                                cmd_static = ["ffmpeg", "-y", "-loop", "1", "-t", str(dur_restante + 0.5),
+                                              "-i", os.path.abspath(img["path"]),
+                                              "-vf", f"scale={w}:{h},zoompan=z='1.08':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(dur_restante*25)}:s={w}x{h}:fps=25,trim=duration={dur_restante},setpts=PTS-STARTPTS",
+                                              "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p", "-an", clipe_estatico]
+                                subprocess.run(cmd_static, capture_output=True, text=True)
+                                # Concatenar animação + estático
+                                clipe_final = os.path.join(job_dir, f"clipe_final_{ci+1:04d}.mp4")
+                                # Re-encode o clipe animado pro mesmo codec
+                                clipe_anim_re = os.path.join(job_dir, f"clipe_anim_re_{ci+1:04d}.mp4")
+                                cmd_re = ["ffmpeg", "-y", "-i", cp,
+                                          "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p", "-an", clipe_anim_re]
+                                subprocess.run(cmd_re, capture_output=True, text=True)
+                                concat_cena = os.path.join(job_dir, f"concat_cena_{ci+1:04d}.txt")
+                                with open(concat_cena, "w") as f:
+                                    f.write(f"file '{os.path.abspath(clipe_anim_re)}'\n")
+                                    if os.path.exists(clipe_estatico):
+                                        f.write(f"file '{os.path.abspath(clipe_estatico)}'\n")
+                                cmd_concat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_cena,
+                                              "-c:v", "copy", "-an", clipe_final]
+                                subprocess.run(cmd_concat, capture_output=True, text=True)
+                                if os.path.exists(clipe_final):
+                                    clipes_validos.append(clipe_final)
+                                else:
+                                    clipes_validos.append(cp)
+                                sys.stderr.write(f"[SYNC] Cena {ci+1}: animacao {dur_clipe:.1f}s + estatico {dur_restante:.1f}s = {dur_cena_audio:.1f}s\n"); sys.stderr.flush()
 
                     # PASSO 1: Concatenar clipes cortados
                     concat_path = os.path.join(job_dir, "concat_list.txt")
