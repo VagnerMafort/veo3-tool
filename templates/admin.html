@@ -486,31 +486,33 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
   <!-- DOCUMENTAÇÃO -->
   <div class="pane" id="paneDocs">
     <div class="card">
-      <h2>📖 Documentação Completa — Klyonclaw Studio</h2>
-      <p style="font-size:.78rem;color:var(--text3);margin-bottom:20px">Documentação técnica e operacional do sistema. Visível apenas para o Admin Master.</p>
+      <h2>📖 Documentação — Klyonclaw Studio</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:14px">Documentação técnica e operacional. Visível apenas para o Admin Master.</p>
+      <button class="btn" onclick="baixarDocumentacao()" style="max-width:280px">📥 Baixar Documentação (.txt)</button>
     </div>
 
     <div class="card">
       <h2>1. Arquitetura do Sistema</h2>
       <h3>1.1 Stack Tecnológico</h3>
-      <div class="metric-row"><span class="metric-label">Backend</span><span class="metric-value">Python Flask</span></div>
+      <div class="metric-row"><span class="metric-label">Backend</span><span class="metric-value">Python Flask + python-dotenv</span></div>
       <div class="metric-row"><span class="metric-label">Banco de dados</span><span class="metric-value">SQLite (SQLAlchemy + sqlite3)</span></div>
-      <div class="metric-row"><span class="metric-label">Servidor</span><span class="metric-value">Gunicorn + Nginx (Docker)</span></div>
+      <div class="metric-row"><span class="metric-label">Servidor</span><span class="metric-value">Gunicorn + Nginx</span></div>
       <div class="metric-row"><span class="metric-label">Frontend</span><span class="metric-value">HTML/CSS/JS puro + Fabric.js</span></div>
       <div class="metric-row"><span class="metric-label">Pagamentos</span><span class="metric-value">Stripe (checkout + webhooks)</span></div>
       <div class="metric-row"><span class="metric-label">IA Imagens</span><span class="metric-value">OpenAI gpt-image-1 / DALL-E 3</span></div>
       <div class="metric-row"><span class="metric-label">IA Texto</span><span class="metric-value">OpenAI GPT-4o-mini</span></div>
-      <div class="metric-row"><span class="metric-label">IA Vídeo</span><span class="metric-value">MiniMax Hailuo 2.3-Fast</span></div>
-      <div class="metric-row"><span class="metric-label">IA Áudio</span><span class="metric-value">MiniMax Speech-02-HD</span></div>
-      <div class="metric-row"><span class="metric-label">Transcrição</span><span class="metric-value">OpenAI Whisper (local)</span></div>
-      <div class="metric-row"><span class="metric-label">Vídeo</span><span class="metric-value">FFmpeg</span></div>
+      <div class="metric-row"><span class="metric-label">IA Vídeo</span><span class="metric-value">MiniMax Hailuo 2.3-Fast (6s por clipe, 768P)</span></div>
+      <div class="metric-row"><span class="metric-label">IA Áudio</span><span class="metric-value">MiniMax Speech-02-HD (narração por cena)</span></div>
+      <div class="metric-row"><span class="metric-label">Transcrição</span><span class="metric-value">Whisper (legendas palavra por palavra)</span></div>
+      <div class="metric-row"><span class="metric-label">Vídeo</span><span class="metric-value">FFmpeg (montagem, legendas, música)</span></div>
+      <div class="metric-row"><span class="metric-label">PWA</span><span class="metric-value">manifest.json + apple-touch-icon</span></div>
       <div class="metric-row"><span class="metric-label">SSL</span><span class="metric-value">Let's Encrypt (Certbot)</span></div>
       <div class="metric-row"><span class="metric-label">VPS</span><span class="metric-value">144.91.105.101</span></div>
       <div class="metric-row"><span class="metric-label">Domínio</span><span class="metric-value">studio.klyonclaw.com</span></div>
 
       <h3>1.2 Estrutura de Pastas</h3>
       <div class="metric-row"><span class="metric-label">/var/www/veo3-tool/</span><span class="metric-value">Raiz do projeto</span></div>
-      <div class="metric-row"><span class="metric-label">app.py</span><span class="metric-value">Backend principal (~3100 linhas)</span></div>
+      <div class="metric-row"><span class="metric-label">app.py</span><span class="metric-value">Backend principal (~4500 linhas)</span></div>
       <div class="metric-row"><span class="metric-label">templates/</span><span class="metric-value">HTML (dashboard, admin, login, etc.)</span></div>
       <div class="metric-row"><span class="metric-label">instance/veo3.db</span><span class="metric-value">Banco de dados SQLite</span></div>
       <div class="metric-row"><span class="metric-label">uploads/</span><span class="metric-value">Arquivos temporários de upload</span></div>
@@ -572,12 +574,15 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
       <p style="font-size:.82rem;color:var(--text2);line-height:1.6">1. Usuário escreve roteiro → 2. IA divide em cenas (GPT-4o-mini) → 3. Gera imagens por cena (gpt-image-1) → 4. Usuário revisa storyboard → 5. Configura narração/animação/legendas → 6. Gera vídeo final (FFmpeg)</p>
 
       <h3>4.2 Narração</h3>
-      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">MiniMax Speech-02-HD. Texto completo narrado de uma vez. Whisper transcreve pra sincronizar timestamps com cenas. 16 vozes padrão + clonagem de voz.</p>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">MiniMax Speech-02-HD. Cada cena narrada separadamente para sincronização perfeita. Áudios concatenados com pydub. Modo Shorts remove silêncio. 16 vozes padrão + clonagem de voz.</p>
 
       <h3>4.3 Animação</h3>
-      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">MiniMax Hailuo 2.3-Fast. Image-to-video, 6s por clipe, 768P. Processamento em lotes de 3. Cenas do banco são reutilizadas sem gerar. Detecção de saldo insuficiente vs rate limit.</p>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">MiniMax Hailuo 2.3-Fast. Image-to-video, 6s por clipe, 768P. Prompt usa texto da cena para movimento contextual. Clipes cortados na duração do áudio da cena. Processamento em lotes de 3.</p>
 
-      <h3>4.4 Montagem Final</h3>
+      <h3>4.4 Sincronização</h3>
+      <p style="font-size:.82rem;color:var(--text2);line-height:1.6">Duração de cada imagem = duração exata do áudio daquela cena. Quando o áudio termina, a imagem muda. Clipes animados cortados com FFmpeg -t. Funciona em modo Longo e Shorts.</p>
+
+      <h3>4.5 Montagem Final</h3>
       <p style="font-size:.82rem;color:var(--text2);line-height:1.6">FFmpeg concatena clipes + áudio. Legendas SRT palavra por palavra via Whisper. Música de fundo mixada em volume baixo. Zoompan em imagens estáticas. Suporte a mix de imagens e vídeos do banco.</p>
     </div>
 
@@ -983,6 +988,31 @@ async function deletarDemo(idx){
   carregarDemos();
 }
 carregarDemos();
+
+// Baixar documentação como .txt
+function baixarDocumentacao(){
+  const docs=document.getElementById('paneDocs');
+  if(!docs)return;
+  let texto='DOCUMENTAÇÃO — KLYONCLAW STUDIO\n';
+  texto+='Gerado em: '+new Date().toLocaleDateString('pt-BR')+'\n';
+  texto+='='.repeat(50)+'\n\n';
+  docs.querySelectorAll('.card').forEach(card=>{
+    const h2=card.querySelector('h2');
+    if(h2)texto+='\n'+h2.textContent+'\n'+'-'.repeat(40)+'\n';
+    card.querySelectorAll('h3').forEach(h3=>{texto+='\n  '+h3.textContent+'\n';});
+    card.querySelectorAll('.metric-row').forEach(row=>{
+      const label=row.querySelector('.metric-label');
+      const value=row.querySelector('.metric-value');
+      if(label&&value)texto+='  '+label.textContent.padEnd(35)+value.textContent+'\n';
+    });
+    card.querySelectorAll('p').forEach(p=>{texto+='\n  '+p.textContent+'\n';});
+  });
+  const blob=new Blob([texto],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='klyonclaw_studio_documentacao.txt';a.click();
+  URL.revokeObjectURL(url);
+}
 </script>
 </body>
 </html>
