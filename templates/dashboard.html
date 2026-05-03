@@ -1067,6 +1067,8 @@ if(window.location.search.includes('novo=1')||(!localStorage.getItem('klyonclaw_
     <p style="margin-top:14px"><a href="#" onclick="document.getElementById('welcomeModal').remove();return false" style="color:#475569;font-size:.78rem;text-decoration:none">✕ Fechar</a></p>
   </div>`;
   document.body.appendChild(modal);
+  // Auto-fechar após 15s se o usuário não interagir
+  setTimeout(()=>{const m=document.getElementById('welcomeModal');if(m)m.remove();},15000);
 }
 
 // Rascunhos
@@ -1108,9 +1110,13 @@ async function abrirRascunho(rascunhoId){
   }catch(e){alert('Erro ao carregar rascunho');}
 }
 
-// Novo usuário sem plano → abrir aba planos
+// Novo usuário sem plano → abrir aba planos (só se não tem modal de boas-vindas)
 {% if not user.plano and not user.is_admin and user.creditos < 25 %}
-setTimeout(()=>trocarAba('planos'),100);
+setTimeout(()=>{
+  if(!document.getElementById('welcomeModal')){
+    trocarAba('planos');
+  }
+},200);
 {% endif %}
 
 // Theme
