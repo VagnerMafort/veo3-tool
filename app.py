@@ -3747,18 +3747,31 @@ def admin_user_acoes(user_id):
 def admin_enviar_convite_teste():
     if not current_user.is_admin:
         return jsonify({"erro": "Sem permissao"}), 403
+    data = request.json or {}
+    user_id_manual = data.get("user_id")
     try:
         conn = sqlite3.connect('instance/veo3.db')
-        conn.execute("CREATE TABLE IF NOT EXISTS convites_teste (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, email TEXT, codigo TEXT, usado INTEGER DEFAULT 0, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
-        ja_convidados = [r[0] for r in conn.execute("SELECT user_id FROM convites_teste").fetchall()]
+        conn.execute("CREATE TABLE IF NOT EXISTS convites_teste (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, email TEXT, codigo TEXT, usado INTEGER DEFAULT 0, cancelado INTEGER DEFAULT 0, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        try: conn.execute("ALTER TABLE convites_teste ADD COLUMN cancelado INTEGER DEFAULT 0")
+        except: pass
+        ja_convidados = [r[0] for r in conn.execute("SELECT user_id FROM convites_teste WHERE cancelado=0").fetchall()]
         conn.close()
     except:
         ja_convidados = []
-    usuarios = [u for u in User.query.order_by(User.criado_em.desc()).all()
-                if not u.plano and not u.is_admin and u.id not in ja_convidados]
-    if not usuarios:
-        return jsonify({"erro": "Nenhum usuário elegível"}), 400
-    selecionados = usuarios[:2]
+
+    if user_id_manual:
+        # Seleção manual
+        user = User.query.get(user_id_manual)
+        if not user:
+            return jsonify({"erro": "Usuário não encontrado"}), 404
+        selecionados = [user]
+    else:
+        # Automático
+        usuarios = [u for u in User.query.order_by(User.criado_em.desc()).all()
+                    if not u.plano and not u.is_admin and u.id not in ja_convidados]
+        if not usuarios:
+            return jsonify({"erro": "Nenhum usuário elegível"}), 400
+        selecionados = usuarios[:2]
     enviados = []
     for user in selecionados:
         codigo = f"TESTE-{uuid.uuid4().hex[:6].upper()}"
@@ -3796,12 +3809,28 @@ def admin_listar_convites():
         return jsonify({"erro": "Sem permissao"}), 403
     try:
         conn = sqlite3.connect('instance/veo3.db')
-        conn.execute("CREATE TABLE IF NOT EXISTS convites_teste (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, email TEXT, codigo TEXT, usado INTEGER DEFAULT 0, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
-        rows = conn.execute("SELECT email, codigo, usado, criado_em FROM convites_teste ORDER BY id DESC LIMIT 20").fetchall()
+        conn.execute("CREATE TABLE IF NOT EXISTS convites_teste (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, email TEXT, codigo TEXT, usado INTEGER DEFAULT 0, cancelado INTEGER DEFAULT 0, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        try: conn.execute("ALTER TABLE convites_teste ADD COLUMN cancelado INTEGER DEFAULT 0")
+        except: pass
+        rows = conn.execute("SELECT email, codigo, usado, criado_em, cancelado FROM convites_teste ORDER BY id DESC LIMIT 20").fetchall()
         conn.close()
-        return jsonify({"convites": [{"email": r[0], "codigo": r[1], "usado": bool(r[2]), "data": r[3]} for r in rows]})
+        return jsonify({"convites": [{"email": r[0], "codigo": r[1], "usado": bool(r[2]), "data": r[3], "cancelado": bool(r[4] if len(r) > 4 else 0)} for r in rows]})
     except:
         return jsonify({"convites": []})
+
+@app.route("/admin/cancelar_convite", methods=["POST"])
+@login_required
+def admin_cancelar_convite():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    codigo = request.json.get("codigo", "")
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("UPDATE convites_teste SET cancelado=1 WHERE codigo=? AND usado=0", (codigo,))
+        conn.commit(); conn.close()
+        return jsonify({"ok": True})
+    except:
+        return jsonify({"erro": "Erro ao cancelar"}), 500
 
 @app.route("/validar_codigo_teste", methods=["POST"])
 @login_required
@@ -3817,7 +3846,7 @@ def validar_codigo_teste():
         if ja_usou:
             conn.close()
             return jsonify({"erro": "Você já utilizou um código de teste anteriormente."}), 400
-        row = conn.execute("SELECT id, user_id, usado, criado_em FROM convites_teste WHERE codigo=?", (codigo,)).fetchone()
+        row = conn.execute("SELECT id, user_id, usado, criado_em FROM convites_teste WHERE codigo=? AND cancelado=0", (codigo,)).fetchone()
         if not row:
             conn.close()
             enviar_email(current_user.email, "❌ Código inválido — Klyonclaw Studio", f"""

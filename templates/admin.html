@@ -158,8 +158,21 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
   <div class="pane" id="paneUsuarios">
     <div class="card">
       <h2>🎁 Convites de Teste</h2>
-      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Seleciona 2 usuários recentes sem plano e envia email com código de teste (200 créditos, validade 2h).</p>
-      <button class="btn" onclick="enviarConvites()" id="btnEnviarConvites" style="max-width:300px;margin-bottom:10px">📧 Enviar Convites de Teste</button>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envie convites de teste com 200 créditos (validade 2h).</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:end">
+        <div style="flex:1;min-width:200px">
+          <label style="margin:0;font-size:.75rem">Selecionar usuário (ou deixe vazio pra auto)</label>
+          <select id="conviteUserSelect" style="font-size:.82rem">
+            <option value="">🤖 Automático (2 mais recentes sem plano)</option>
+            {% for u in users %}
+            {% if not u.plano and not u.is_admin %}
+            <option value="{{ u.id }}">{{ u.nome }} ({{ u.email }})</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn-sm btn-green" onclick="enviarConvites()" id="btnEnviarConvites" style="padding:10px 16px;font-size:.82rem">📧 Enviar Convite</button>
+      </div>
       <div id="convitesResultado" style="display:none;font-size:.82rem;margin-bottom:10px"></div>
       <div id="convitesLista" style="font-size:.78rem;color:var(--text2)"></div>
     </div>
@@ -1036,10 +1049,12 @@ carregarDemos();
 // Convites de teste
 async function enviarConvites(){
   const btn=document.getElementById('btnEnviarConvites');
+  const userId=document.getElementById('conviteUserSelect').value;
   btn.disabled=true;btn.textContent='Enviando...';
-  const res=await fetch('/admin/enviar_convite_teste',{method:'POST',headers:{'Content-Type':'application/json'}});
+  const body=userId?{user_id:parseInt(userId)}:{};
+  const res=await fetch('/admin/enviar_convite_teste',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await res.json();
-  btn.disabled=false;btn.textContent='📧 Enviar Convites de Teste';
+  btn.disabled=false;btn.textContent='📧 Enviar Convite';
   const resultado=document.getElementById('convitesResultado');
   resultado.style.display='block';
   if(d.ok){
@@ -1047,14 +1062,24 @@ async function enviarConvites(){
     carregarConvites();
   } else {resultado.innerHTML='<div style="color:var(--red-text)">❌ '+(d.erro||'Erro')+'</div>';}
 }
+async function cancelarConvite(codigo){
+  if(!confirm('Cancelar este convite?'))return;
+  const res=await fetch('/admin/cancelar_convite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo})});
+  const d=await res.json();
+  if(d.ok)carregarConvites();else alert(d.erro||'Erro');
+}
 async function carregarConvites(){
   const res=await fetch('/admin/convites_teste');
   const d=await res.json();
   const el=document.getElementById('convitesLista');
   if(!d.convites||d.convites.length===0){el.innerHTML='Nenhum convite enviado.';return;}
-  el.innerHTML=d.convites.map(c=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
-    <span>${c.email}</span><span><b>${c.codigo}</b> ${c.usado?'✅ Usado':'⏳ Pendente'} · ${c.data}</span>
-  </div>`).join('');
+  el.innerHTML=d.convites.map(c=>{
+    const status=c.usado?'<span style="color:var(--green)">✅ Usado</span>':c.cancelado?'<span style="color:var(--text3)">🚫 Cancelado</span>':'<span style="color:var(--accent)">⏳ Pendente</span>';
+    const cancelBtn=(!c.usado&&!c.cancelado)?`<button class="btn-sm btn-red" onclick="cancelarConvite('${c.codigo}')" style="padding:2px 8px;font-size:.65rem">✕</button>`:'';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span>${c.email}</span><span style="display:flex;align-items:center;gap:6px"><b>${c.codigo}</b> ${status} ${cancelBtn}</span>
+    </div>`;
+  }).join('');
 }
 carregarConvites();
 
