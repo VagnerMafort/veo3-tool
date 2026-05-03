@@ -1644,10 +1644,19 @@ async function buscarBanco(append){
     </div>`;
   });
   if(d.tem_mais){
-    const container=grid.parentElement;
-    const btn=document.createElement('button');btn.id='btnCarregarMais';btn.className='btn-outline';btn.style.cssText='margin-top:10px;width:100%';btn.textContent=`Carregar mais (${d.total - bancoPagina*20} restantes)`;
+    let btn=document.getElementById('btnCarregarMais');
+    if(!btn){
+      btn=document.createElement('button');btn.id='btnCarregarMais';btn.className='btn';
+      btn.style.cssText='margin-top:12px;width:100%;background:var(--accent2);padding:10px';
+      grid.parentElement.appendChild(btn);
+    }
+    const restantes=d.total-(bancoPagina*20);
+    btn.textContent=`Carregar mais (${restantes > 0 ? restantes : '+'} itens)`;
     btn.onclick=()=>{bancoPagina++;buscarBanco(true);};
-    container.insertBefore(btn,container.querySelector('.btn-outline:last-child'));
+    btn.style.display='block';
+  } else {
+    const btn=document.getElementById('btnCarregarMais');
+    if(btn)btn.style.display='none';
   }
 }
 async function deletarBancoItem(imgId){
