@@ -3890,6 +3890,76 @@ def validar_codigo_teste():
         return jsonify({"erro": "Erro ao validar código"}), 500
 
 @app.route("/admin/definir_plano", methods=["POST"])
+
+@app.route("/admin/testar_email", methods=["POST"])
+@login_required
+def admin_testar_email():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    email_dest = request.json.get("email", "").strip()
+    tipo = request.json.get("tipo", "")
+    if not email_dest:
+        return jsonify({"erro": "Digite um email"}), 400
+    nome = "Usuário Teste"
+    templates = {
+        "boas_vindas": ("Bem-vindo ao Klyonclaw Studio! 🎬", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
+            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            <p>Olá <b>{nome}</b>! 👋</p>
+            <p>Sua conta foi criada com sucesso. Agora você pode criar vídeos incríveis com inteligência artificial.</p>
+            <p>Escolha um plano e comece a criar:</p>
+            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Acessar Klyonclaw Studio</a>
+            <p style="color:#888;font-size:12px;margin-top:20px">Klyonclaw Studio — AI Video Automation</p>
+        </div>"""),
+        "nova_senha": ("Sua nova senha — Klyonclaw Studio", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
+            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            <p>Olá <b>{nome}</b>,</p>
+            <p>Sua nova senha temporária é: <b style="font-size:18px;color:#4a9eff">abc123xyz</b></p>
+            <p>Recomendamos que altere sua senha após o login.</p>
+            <a href="https://studio.klyonclaw.com/login" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Fazer Login</a>
+        </div>"""),
+        "convite_teste": ("🎬 Você foi selecionado para testar o Klyonclaw Studio!", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
+            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            <p>Olá <b>{nome}</b>! 👋</p>
+            <p style="font-size:16px;line-height:1.6">Você foi <b style="color:#4a9eff">selecionado(a)</b> para testar gratuitamente nossa plataforma de criação de vídeos com IA!</p>
+            <p>Para ativar seu acesso:</p>
+            <ol style="font-size:15px;line-height:2;padding-left:20px">
+                <li>Acesse <a href="https://studio.klyonclaw.com/dashboard" style="color:#4a9eff">studio.klyonclaw.com</a></li>
+                <li>Na aba <b>Criar</b>, clique em <b>🎁 Tenho um código</b></li>
+                <li>Digite o código abaixo</li>
+            </ol>
+            <div style="background:#1e3a5f;border:2px solid #4a9eff;border-radius:10px;padding:20px;text-align:center;margin:20px 0">
+                <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Seu código de teste</div>
+                <div style="font-size:28px;font-weight:800;color:#4a9eff;letter-spacing:4px">TESTE-ABC123</div>
+            </div>
+            <p style="color:#ef4444;font-size:14px;font-weight:600">⏰ Este código expira em 2 horas.</p>
+            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Acessar agora →</a>
+            <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
+        </div>"""),
+        "codigo_invalido": ("❌ Código inválido — Klyonclaw Studio", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        <p>Olá <b>{nome}</b>, o código <b style="color:#ef4444">TESTE-ERRADO</b> não é válido.</p>
+        <p>Verifique se digitou corretamente o código recebido por email.</p></div>"""),
+        "codigo_expirado": ("⏰ Código expirado — Klyonclaw Studio", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        <p>Olá <b>{nome}</b>, o código <b style="color:#ef4444">TESTE-ABC123</b> expirou (validade: 2 horas).</p>
+        <p>Assine um plano para começar a criar:</p>
+        <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Ver Planos →</a></div>"""),
+        "teste_ativado": ("✅ Teste ativado! — Klyonclaw Studio", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        <p>Olá <b>{nome}</b>! 🎉 Seu teste foi ativado!</p>
+        <p>Você recebeu <b style="color:#4a9eff">200 créditos</b> para criar seus primeiros vídeos.</p>
+        <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Criar meu primeiro vídeo →</a></div>"""),
+    }
+    if tipo not in templates:
+        return jsonify({"erro": "Tipo de email inválido"}), 400
+    assunto, corpo = templates[tipo]
+    enviar_email(email_dest, f"[TESTE] {assunto}", corpo)
+    return jsonify({"ok": True, "msg": f"Email '{tipo}' enviado para {email_dest}"})
+
+@app.route("/admin/definir_plano", methods=["POST"])
 @login_required
 def admin_definir_plano():
     if not current_user.is_admin:
