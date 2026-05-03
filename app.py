@@ -100,6 +100,124 @@ def email_header():
     """Header padrão dos emails com logo"""
     return '<div style="text-align:center;margin-bottom:16px"><img src="https://studio.klyonclaw.com/static/logo.png" alt="Klyonclaw Studio" style="height:50px" /><div style="font-size:10px;color:#64748b;margin-top:4px;letter-spacing:2px;text-transform:uppercase">AI Video Automation</div></div>'
 
+def email_demos_section():
+    """Seção de vídeos demo para incluir nos emails"""
+    try:
+        demos = load_demos() if 'load_demos' in dir() else []
+    except:
+        demos = []
+    if not demos:
+        return ''
+    videos_html = ''
+    for d in demos[:3]:
+        videos_html += f'<a href="https://studio.klyonclaw.com" style="display:inline-block;margin:4px"><div style="background:#1e3a5f;border-radius:8px;padding:8px;text-align:center;width:140px"><div style="font-size:2rem">🎬</div><div style="font-size:11px;color:#94a3b8;margin-top:4px">{d.get("titulo","Vídeo demo")}</div></div></a>'
+    return f'<div style="margin:20px 0;padding:16px;background:#0f172a;border-radius:10px;text-align:center"><div style="font-size:13px;color:#4a9eff;font-weight:600;margin-bottom:8px">🎬 Veja o que nossos usuários estão criando:</div>{videos_html}<div style="margin-top:10px"><a href="https://studio.klyonclaw.com" style="color:#4a9eff;font-size:12px">Ver mais exemplos →</a></div></div>'
+
+def verificar_emails_automaticos():
+    """Verifica e envia emails de reengajamento para usuários inativos"""
+    try:
+        with app.app_context():
+            import sys
+            from datetime import timedelta
+            agora = datetime.utcnow()
+            conn = sqlite3.connect('instance/veo3.db')
+            conn.execute("CREATE TABLE IF NOT EXISTS emails_enviados (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, tipo TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+            # Migrar coluna ultimo_acesso
+            try: conn.execute("ALTER TABLE user ADD COLUMN ultimo_acesso TIMESTAMP")
+            except: pass
+            conn.commit()
+
+            def ja_enviou(user_id, tipo):
+                return conn.execute("SELECT id FROM emails_enviados WHERE user_id=? AND tipo=?", (user_id, tipo)).fetchone() is not None
+
+            def marcar_enviado(user_id, tipo):
+                conn.execute("INSERT INTO emails_enviados (user_id, tipo) VALUES (?, ?)", (user_id, tipo))
+
+            demos_html = email_demos_section()
+            usuarios = User.query.all()
+
+            for user in usuarios:
+                if user.is_admin or user.plano:
+                    continue
+
+                ultimo = user.ultimo_acesso or user.criado_em
+                horas_inativo = (agora - ultimo).total_seconds() / 3600
+
+                # EMAIL 1: Criou conta mas não acessou por 24h
+                if horas_inativo >= 24 and horas_inativo < 72 and not ja_enviou(user.id, "reengajamento_24h"):
+                    enviar_email(user.email, "🎬 Seu vídeo está esperando por você — Klyonclaw Studio", f"""
+                    <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
+                        {email_header()}
+                        <p>Olá <b>{user.nome}</b>! 👋</p>
+                        <p style="font-size:16px;line-height:1.6">Você criou sua conta no Klyonclaw Studio mas ainda não começou a criar. Que tal transformar uma ideia em vídeo agora?</p>
+                        <p style="font-size:15px;line-height:1.6;color:#94a3b8">É simples: escreva um roteiro, escolha o estilo e a IA faz o resto — imagens, narração, animação e legendas.</p>
+                        {demos_html}
+                        <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;margin-top:10px">Criar meu primeiro vídeo →</a>
+                        <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
+                    </div>""")
+                    marcar_enviado(user.id, "reengajamento_24h")
+                    sys.stderr.write(f"[EMAIL-AUTO] Enviado reengajamento_24h para {user.email}\n"); sys.stderr.flush()
+
+                # EMAIL 2: Usou a conta mas ficou 2 dias sem voltar
+                elif horas_inativo >= 48 and not ja_enviou(user.id, "reengajamento_48h"):
+                    # Verificar se o usuário já fez alguma ação (dividiu roteiro, gerou imagens)
+                    tem_acao = conn.execute("SELECT id FROM user_acoes WHERE user_id=? LIMIT 1", (user.id,)).fetchone()
+                    if tem_acao:
+                        enviar_email(user.email, "💡 Sentimos sua falta — Klyonclaw Studio", f"""
+                        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
+                            {email_header()}
+                            <p>Olá <b>{user.nome}</b>! 👋</p>
+                            <p style="font-size:16px;line-height:1.6">Faz um tempo que você não aparece por aqui. Temos novidades e melhorias que vão te surpreender!</p>
+                            <p style="font-size:15px;line-height:1.6;color:#94a3b8">Que tal criar um novo vídeo? Basta escrever o roteiro e deixar a IA trabalhar pra você.</p>
+                            {demos_html}
+                            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;margin-top:10px">Voltar e criar →</a>
+                            <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
+                        </div>""")
+                        marcar_enviado(user.id, "reengajamento_48h")
+                        sys.stderr.write(f"[EMAIL-AUTO] Enviado reengajamento_48h para {user.email}\n"); sys.stderr.flush()
+
+                # EMAIL 3: Tem rascunho não finalizado
+                if not ja_enviou(user.id, "rascunho_pendente"):
+                    # Buscar rascunho do usuário
+                    try:
+                        rascunho_info = None
+                        if os.path.exists(STORYBOARD_FOLDER):
+                            for sb_id in os.listdir(STORYBOARD_FOLDER):
+                                sb_path = os.path.join(STORYBOARD_FOLDER, sb_id, "storyboard.json")
+                                if os.path.exists(sb_path):
+                                    with open(sb_path) as f:
+                                        sb_data = json.load(f)
+                                    blocos = sb_data.get("blocos", [])
+                                    if blocos and len(blocos) > 0:
+                                        # Verificar se pertence ao usuário (pelo texto das cenas)
+                                        preview_texto = blocos[0].get("texto", "")[:80]
+                                        if preview_texto:
+                                            rascunho_info = {"preview": preview_texto, "total_cenas": len(blocos)}
+                                            break
+                        if rascunho_info and horas_inativo >= 24:
+                            enviar_email(user.email, "📝 Seu vídeo está quase pronto — Klyonclaw Studio", f"""
+                            <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
+                                {email_header()}
+                                <p>Olá <b>{user.nome}</b>! 👋</p>
+                                <p style="font-size:16px;line-height:1.6">Você começou a criar um vídeo mas não terminou. Seu rascunho está salvo e esperando por você!</p>
+                                <div style="background:#1e3a5f;border:1px solid #4a9eff;border-radius:10px;padding:16px;margin:16px 0">
+                                    <div style="font-size:12px;color:#4a9eff;margin-bottom:6px">📝 Seu rascunho</div>
+                                    <div style="font-size:15px;color:#e2e8f0;font-weight:600">"{rascunho_info['preview']}..."</div>
+                                    <div style="font-size:12px;color:#94a3b8;margin-top:4px">{rascunho_info['total_cenas']} cenas criadas</div>
+                                </div>
+                                <p style="font-size:15px;line-height:1.6;color:#94a3b8">Falta pouco! Escolha a narração, ative a animação e gere o vídeo final.</p>
+                                {demos_html}
+                                <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#059669;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;margin-top:10px">Terminar meu vídeo →</a>
+                                <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
+                            </div>""")
+                            marcar_enviado(user.id, "rascunho_pendente")
+                            sys.stderr.write(f"[EMAIL-AUTO] Enviado rascunho_pendente para {user.email}\n"); sys.stderr.flush()
+                    except: pass
+
+            conn.commit(); conn.close()
+    except Exception as e:
+        import sys; sys.stderr.write(f"[EMAIL-AUTO] Erro: {e}\n"); sys.stderr.flush()
+
 # Admin Master — único que pode conceder/remover admin de outros
 ADMIN_MASTER_EMAIL = os.environ.get("ADMIN_MASTER_EMAIL", "ministerioprvagner@gmail.com")
 
@@ -272,6 +390,7 @@ class User(UserMixin, db.Model):
     banco_ativo = db.Column(db.Boolean, default=False)
     audio_ativo = db.Column(db.Boolean, default=False)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    ultimo_acesso = db.Column(db.DateTime, default=datetime.utcnow)
     criacoes = db.relationship("Criacao", backref="user", lazy=True)
 
     def get_vozes_clonadas(self):
@@ -2125,6 +2244,8 @@ def login():
         data = request.json
         user = User.query.filter_by(email=data["email"]).first()
         if user and check_password_hash(user.senha, data["senha"]):
+            user.ultimo_acesso = datetime.utcnow()
+            db.session.commit()
             login_user(user)
             return jsonify({"ok": True})
         return jsonify({"erro": "Email ou senha incorretos"}), 401
@@ -3953,10 +4074,45 @@ def admin_testar_email():
         <p>Assine um plano para começar a criar:</p>
         <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Ver Planos →</a></div>"""),
         "teste_ativado": ("✅ Teste ativado! — Klyonclaw Studio", f"""
-        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">{email_header()}
         <p>Olá <b>{nome}</b>! 🎉 Seu teste foi ativado!</p>
         <p>Você recebeu <b style="color:#4a9eff">200 créditos</b> para criar seus primeiros vídeos.</p>
         <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Criar meu primeiro vídeo →</a></div>"""),
+        "reengajamento_24h": ("🎬 Seu vídeo está esperando — Klyonclaw Studio", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
+            {email_header()}
+            <p>Olá <b>{nome}</b>! 👋</p>
+            <p style="font-size:16px;line-height:1.6">Você criou sua conta mas ainda não começou a criar. Que tal transformar uma ideia em vídeo agora?</p>
+            <p style="font-size:15px;color:#94a3b8">É simples: escreva um roteiro, escolha o estilo e a IA faz o resto.</p>
+            {email_demos_section()}
+            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Criar meu primeiro vídeo →</a>
+            <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
+        </div>"""),
+        "reengajamento_48h": ("💡 Sentimos sua falta — Klyonclaw Studio", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
+            {email_header()}
+            <p>Olá <b>{nome}</b>! 👋</p>
+            <p style="font-size:16px;line-height:1.6">Faz um tempo que você não aparece. Temos novidades que vão te surpreender!</p>
+            <p style="font-size:15px;color:#94a3b8">Que tal criar um novo vídeo? Basta escrever o roteiro e deixar a IA trabalhar.</p>
+            {email_demos_section()}
+            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Voltar e criar →</a>
+            <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
+        </div>"""),
+        "rascunho_pendente": ("📝 Seu vídeo está quase pronto — Klyonclaw Studio", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
+            {email_header()}
+            <p>Olá <b>{nome}</b>! 👋</p>
+            <p style="font-size:16px;line-height:1.6">Você começou a criar um vídeo mas não terminou. Seu rascunho está salvo!</p>
+            <div style="background:#1e3a5f;border:1px solid #4a9eff;border-radius:10px;padding:16px;margin:16px 0">
+                <div style="font-size:12px;color:#4a9eff;margin-bottom:6px">📝 Seu rascunho</div>
+                <div style="font-size:15px;color:#e2e8f0;font-weight:600">"Exemplo de roteiro do usuário..."</div>
+                <div style="font-size:12px;color:#94a3b8;margin-top:4px">5 cenas criadas</div>
+            </div>
+            <p style="font-size:15px;color:#94a3b8">Falta pouco! Escolha a narração e gere o vídeo final.</p>
+            {email_demos_section()}
+            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#059669;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Terminar meu vídeo →</a>
+            <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
+        </div>"""),
     }
     if tipo not in templates:
         return jsonify({"erro": "Tipo de email inválido"}), 400
@@ -4910,4 +5066,21 @@ else:
     # Atualizar branding na Stripe (fora do try pra garantir execução)
     try:
         atualizar_branding_stripe()
+    except: pass
+    # Timer para emails automáticos de reengajamento (a cada 1 hora)
+    def _timer_emails():
+        import time
+        time.sleep(60)  # Esperar 1 min após iniciar
+        while True:
+            try:
+                verificar_emails_automaticos()
+            except: pass
+            time.sleep(3600)  # A cada 1 hora
+    threading.Thread(target=_timer_emails, daemon=True).start()
+    # Migrar coluna ultimo_acesso
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        try: conn.execute("ALTER TABLE user ADD COLUMN ultimo_acesso TIMESTAMP")
+        except: pass
+        conn.commit(); conn.close()
     except: pass
