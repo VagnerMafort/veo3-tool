@@ -1999,6 +1999,12 @@ Regras:
             db.session.add(criacao)
             db.session.commit()
             limpar_job(job_dir)
+            # Remover rascunho (storyboard) após finalizar vídeo
+            try:
+                sb_dir_final = os.path.join(STORYBOARD_FOLDER, sb_id)
+                if os.path.exists(sb_dir_final):
+                    shutil.rmtree(sb_dir_final)
+            except: pass
             jobs[job_id] = {"status": "pronto", "progresso": "Concluido", "total": len(imagens), "atual": len(imagens), "zip": zip_path, "video": video_path}
         except Exception as e:
             jobs[job_id] = {"status": "erro", "progresso": str(e), "total": 0, "atual": 0}

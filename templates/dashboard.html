@@ -1130,9 +1130,12 @@ function trocarAba(aba){
   const abas=['gerar','rascunhos','thumbs','planos','historico','clonar','ajuda','suporte','perfil'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
-  document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
-  if(aba==='rascunhos')carregarRascunhos();
-  if(aba==='thumbs')carregarThumbnails();
+  const pane=document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1));
+  if(pane)pane.classList.add('active');
+  try{
+    if(aba==='rascunhos')carregarRascunhos();
+    if(aba==='thumbs')carregarThumbnails();
+  }catch(e){console.error('Erro ao carregar aba:',e);}
 }
 
 function setModo(m){document.getElementById('modoVideo').value=m;document.getElementById('btnModoLongo').classList.toggle('active',m==='longo');document.getElementById('btnModoShorts').classList.toggle('active',m==='shorts');}
