@@ -101,7 +101,7 @@ def email_header():
     return '<div style="text-align:center;margin-bottom:16px"><img src="https://studio.klyonclaw.com/static/logo.png" alt="Klyonclaw Studio" style="height:50px" /><div style="font-size:10px;color:#64748b;margin-top:4px;letter-spacing:2px;text-transform:uppercase">AI Video Automation</div></div>'
 
 def email_demos_section():
-    """Seção de vídeos demo para incluir nos emails"""
+    """Seção de vídeos demo para incluir nos emails — thumbnail com link para landing"""
     try:
         demos_file = "demos_config.json"
         if os.path.exists(demos_file):
@@ -113,11 +113,14 @@ def email_demos_section():
         demos = []
     if not demos:
         return ''
-    videos_html = ''
-    for d in demos[:3]:
-        video_url = f"https://studio.klyonclaw.com{d.get('path','')}"
-        videos_html += f'<a href="https://studio.klyonclaw.com" style="display:inline-block;margin:6px;text-decoration:none"><div style="background:#1e3a5f;border:1px solid #4a9eff;border-radius:10px;padding:12px;text-align:center;width:150px"><div style="font-size:2.5rem;margin-bottom:4px">▶️</div><div style="font-size:12px;color:#e2e8f0;font-weight:600">{d.get("titulo","Vídeo demo")}</div><div style="font-size:10px;color:#94a3b8;margin-top:2px">{d.get("descricao","Clique para assistir")}</div></div></a>'
-    return f'<div style="margin:24px 0;padding:20px;background:#0f172a;border:1px solid #1e3a5f;border-radius:12px;text-align:center"><div style="font-size:14px;color:#4a9eff;font-weight:700;margin-bottom:12px">🎬 Veja o que a ferramenta entrega:</div><div>{videos_html}</div><div style="margin-top:12px"><a href="https://studio.klyonclaw.com" style="color:#4a9eff;font-size:13px;font-weight:600">Acessar e criar o seu →</a></div></div>'
+    n = len(demos)
+    return f'''<div style="margin:24px 0;text-align:center">
+        <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:12px;padding:24px;border:1px solid #4a9eff">
+            <div style="font-size:15px;color:#fff;font-weight:700;margin-bottom:4px">🎬 Veja {n} vídeo{"s" if n>1 else ""} criado{"s" if n>1 else ""} pela ferramenta</div>
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:16px">100% gerados com IA — do roteiro ao vídeo final</div>
+            <a href="https://studio.klyonclaw.com/#demos" style="display:inline-block;padding:14px 32px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">▶ Assistir exemplos</a>
+        </div>
+    </div>'''
 
 def verificar_emails_automaticos():
     """Verifica e envia emails de reengajamento para usuários inativos"""
