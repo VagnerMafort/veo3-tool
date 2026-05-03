@@ -295,7 +295,8 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <input type="hidden" id="animarIA" value="false"/>
         {% if user.minimax_key or (user.plano and user.plano != 'api_propria') or user.is_admin %}
         <label>Voz para narração</label>
-        <select id="voiceId">
+        <div style="display:flex;gap:8px;align-items:center">
+        <select id="voiceId" style="flex:1">
           <option value="">— Sem narração —</option>
           <optgroup label="Vozes padrão">
           {% for v in vozes %}
@@ -310,6 +311,9 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
           </optgroup>
           {% endif %}
         </select>
+        <button type="button" onclick="ouvirVoz()" style="padding:8px 14px;background:var(--accent2);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;white-space:nowrap" id="btnOuvirVoz">▶ Ouvir</button>
+        </div>
+        <audio id="vozPreviewPlayer" style="display:none;width:100%;margin-top:8px;height:32px" controls></audio>
         {% endif %}
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
           <label>🎵 Música de fundo</label>
@@ -1178,6 +1182,22 @@ const legendaAtivo=document.getElementById('legendaAtivo'),secaoLegenda=document
 if(legendaAtivo)legendaAtivo.addEventListener('change',()=>{secaoLegenda.style.display=legendaAtivo.checked?'block':'none';});
 const efeitosSonorosEl=document.getElementById('efeitosSonoros'),tipEfeitos=document.getElementById('tipEfeitos');
 if(efeitosSonorosEl)efeitosSonorosEl.addEventListener('change',()=>{if(tipEfeitos)tipEfeitos.style.display=efeitosSonorosEl.checked?'block':'none';});
+
+async function ouvirVoz(){
+  const voiceId=document.getElementById('voiceId').value;
+  if(!voiceId){alert('Selecione uma voz primeiro');return;}
+  const btn=document.getElementById('btnOuvirVoz');
+  const player=document.getElementById('vozPreviewPlayer');
+  btn.textContent='⏳ Gerando...';btn.disabled=true;
+  try{
+    const res=await fetch('/preview_voz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice_id:voiceId})});
+    if(!res.ok){const d=await res.json();alert(d.erro||'Erro');btn.textContent='▶ Ouvir';btn.disabled=false;return;}
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    player.src=url;player.style.display='block';player.play();
+    btn.textContent='▶ Ouvir';btn.disabled=false;
+  }catch(e){btn.textContent='▶ Ouvir';btn.disabled=false;alert('Erro ao gerar preview');}
+}
 
 async function toggleMusicaAuto(){
   const check=document.getElementById('musicaAuto');

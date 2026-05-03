@@ -3815,6 +3815,36 @@ def deletar_voz():
     db.session.commit()
     return jsonify({"ok": True})
 
+# ── Preview de Voz ───────────────────────────────────────
+VOICE_PREVIEW_FOLDER = "voice_previews"
+os.makedirs(VOICE_PREVIEW_FOLDER, exist_ok=True)
+
+@app.route("/preview_voz", methods=["POST"])
+@login_required
+def preview_voz():
+    """Gera um áudio curto de preview da voz selecionada (cacheado)"""
+    voice_id = request.json.get("voice_id", "").strip()
+    if not voice_id:
+        return jsonify({"erro": "Selecione uma voz"}), 400
+    # Verificar cache
+    cache_path = os.path.join(VOICE_PREVIEW_FOLDER, f"{voice_id}.mp3")
+    if os.path.exists(cache_path):
+        return send_file(cache_path, mimetype="audio/mpeg")
+    # Gerar preview
+    minimax_key = current_user.get_minimax_key()
+    minimax_gid = current_user.get_minimax_group_id()
+    if not minimax_key:
+        minimax_key = SYSTEM_MINIMAX_KEY
+        minimax_gid = SYSTEM_MINIMAX_GROUP_ID
+    if not minimax_key:
+        return jsonify({"erro": "API de voz não configurada"}), 400
+    try:
+        texto_preview = "Olá, esta é uma prévia da minha voz. Espero que goste do resultado."
+        gerar_audio_minimax(texto_preview, minimax_key, minimax_gid, voice_id, cache_path)
+        return send_file(cache_path, mimetype="audio/mpeg")
+    except Exception as e:
+        return jsonify({"erro": "Erro ao gerar preview"}), 500
+
 # ── Rotas Música ─────────────────────────────────────────
 @app.route("/upload_musica", methods=["POST"])
 @login_required
