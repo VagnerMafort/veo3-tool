@@ -157,6 +157,13 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
   <!-- USUARIOS -->
   <div class="pane" id="paneUsuarios">
     <div class="card">
+      <h2>🎁 Convites de Teste</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Seleciona 2 usuários recentes sem plano e envia email com código de teste (200 créditos, validade 2h).</p>
+      <button class="btn" onclick="enviarConvites()" id="btnEnviarConvites" style="max-width:300px;margin-bottom:10px">📧 Enviar Convites de Teste</button>
+      <div id="convitesResultado" style="display:none;font-size:.82rem;margin-bottom:10px"></div>
+      <div id="convitesLista" style="font-size:.78rem;color:var(--text2)"></div>
+    </div>
+    <div class="card">
       <h2>👥 Gerenciar Usuários ({{ users|length }})</h2>
       <input type="text" id="buscaUser" placeholder="Buscar por nome ou email..." oninput="filtrarUsers()" style="margin-bottom:14px"/>
       <div id="listaUsers">
@@ -1025,6 +1032,31 @@ async function deletarDemo(idx){
   carregarDemos();
 }
 carregarDemos();
+
+// Convites de teste
+async function enviarConvites(){
+  const btn=document.getElementById('btnEnviarConvites');
+  btn.disabled=true;btn.textContent='Enviando...';
+  const res=await fetch('/admin/enviar_convite_teste',{method:'POST',headers:{'Content-Type':'application/json'}});
+  const d=await res.json();
+  btn.disabled=false;btn.textContent='📧 Enviar Convites de Teste';
+  const resultado=document.getElementById('convitesResultado');
+  resultado.style.display='block';
+  if(d.ok){
+    resultado.innerHTML='<div style="color:var(--green)">✅ Convites enviados:</div>'+d.enviados.map(e=>`<div style="margin-top:4px">${e.nome} (${e.email}) — <b>${e.codigo}</b></div>`).join('');
+    carregarConvites();
+  } else {resultado.innerHTML='<div style="color:var(--red-text)">❌ '+(d.erro||'Erro')+'</div>';}
+}
+async function carregarConvites(){
+  const res=await fetch('/admin/convites_teste');
+  const d=await res.json();
+  const el=document.getElementById('convitesLista');
+  if(!d.convites||d.convites.length===0){el.innerHTML='Nenhum convite enviado.';return;}
+  el.innerHTML=d.convites.map(c=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
+    <span>${c.email}</span><span><b>${c.codigo}</b> ${c.usado?'✅ Usado':'⏳ Pendente'} · ${c.data}</span>
+  </div>`).join('');
+}
+carregarConvites();
 
 // Baixar documentação como .txt
 function baixarDocumentacao(){

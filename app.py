@@ -3741,6 +3741,125 @@ def admin_user_acoes(user_id):
     except:
         return jsonify({"acoes": []})
 
+# ── Convites de Teste ──
+@app.route("/admin/enviar_convite_teste", methods=["POST"])
+@login_required
+def admin_enviar_convite_teste():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("CREATE TABLE IF NOT EXISTS convites_teste (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, email TEXT, codigo TEXT, usado INTEGER DEFAULT 0, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        ja_convidados = [r[0] for r in conn.execute("SELECT user_id FROM convites_teste").fetchall()]
+        conn.close()
+    except:
+        ja_convidados = []
+    usuarios = [u for u in User.query.order_by(User.criado_em.desc()).all()
+                if not u.plano and not u.is_admin and u.id not in ja_convidados]
+    if not usuarios:
+        return jsonify({"erro": "Nenhum usuário elegível"}), 400
+    selecionados = usuarios[:2]
+    enviados = []
+    for user in selecionados:
+        codigo = f"TESTE-{uuid.uuid4().hex[:6].upper()}"
+        try:
+            conn = sqlite3.connect('instance/veo3.db')
+            conn.execute("INSERT INTO convites_teste (user_id, email, codigo) VALUES (?, ?, ?)", (user.id, user.email, codigo))
+            conn.commit(); conn.close()
+        except: continue
+        enviar_email(user.email, "🎬 Você foi selecionado para testar o Klyonclaw Studio!", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
+            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            <p>Olá <b>{user.nome}</b>! 👋</p>
+            <p style="font-size:16px;line-height:1.6">Você foi <b style="color:#4a9eff">selecionado(a)</b> para testar gratuitamente nossa plataforma de criação de vídeos com IA!</p>
+            <p>Para ativar seu acesso:</p>
+            <ol style="font-size:15px;line-height:2;padding-left:20px">
+                <li>Acesse <a href="https://studio.klyonclaw.com/dashboard" style="color:#4a9eff">studio.klyonclaw.com</a></li>
+                <li>Na aba <b>Criar</b>, clique em <b>🎁 Tenho um código</b></li>
+                <li>Digite o código abaixo</li>
+            </ol>
+            <div style="background:#1e3a5f;border:2px solid #4a9eff;border-radius:10px;padding:20px;text-align:center;margin:20px 0">
+                <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Seu código de teste</div>
+                <div style="font-size:28px;font-weight:800;color:#4a9eff;letter-spacing:4px">{codigo}</div>
+            </div>
+            <p style="color:#ef4444;font-size:14px;font-weight:600">⏰ Este código expira em 2 horas.</p>
+            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Acessar agora →</a>
+            <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
+        </div>""")
+        enviados.append({"nome": user.nome, "email": user.email, "codigo": codigo})
+    return jsonify({"ok": True, "enviados": enviados})
+
+@app.route("/admin/convites_teste")
+@login_required
+def admin_listar_convites():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("CREATE TABLE IF NOT EXISTS convites_teste (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, email TEXT, codigo TEXT, usado INTEGER DEFAULT 0, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        rows = conn.execute("SELECT email, codigo, usado, criado_em FROM convites_teste ORDER BY id DESC LIMIT 20").fetchall()
+        conn.close()
+        return jsonify({"convites": [{"email": r[0], "codigo": r[1], "usado": bool(r[2]), "data": r[3]} for r in rows]})
+    except:
+        return jsonify({"convites": []})
+
+@app.route("/validar_codigo_teste", methods=["POST"])
+@login_required
+def validar_codigo_teste():
+    codigo = request.json.get("codigo", "").strip().upper()
+    if not codigo:
+        return jsonify({"erro": "Digite o código"}), 400
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("CREATE TABLE IF NOT EXISTS convites_teste (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, email TEXT, codigo TEXT, usado INTEGER DEFAULT 0, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        # Já usou código antes?
+        ja_usou = conn.execute("SELECT id FROM convites_teste WHERE user_id=? AND usado=1", (current_user.id,)).fetchone()
+        if ja_usou:
+            conn.close()
+            return jsonify({"erro": "Você já utilizou um código de teste anteriormente."}), 400
+        row = conn.execute("SELECT id, user_id, usado, criado_em FROM convites_teste WHERE codigo=?", (codigo,)).fetchone()
+        if not row:
+            conn.close()
+            enviar_email(current_user.email, "❌ Código inválido — Klyonclaw Studio", f"""
+            <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            <p>Olá <b>{current_user.nome}</b>, o código <b style="color:#ef4444">{codigo}</b> não é válido.</p></div>""")
+            return jsonify({"erro": "Código inválido."}), 400
+        convite_id, convite_user_id, usado, criado_em = row
+        if usado:
+            conn.close()
+            return jsonify({"erro": "Este código já foi utilizado."}), 400
+        if convite_user_id != current_user.id:
+            conn.close()
+            return jsonify({"erro": "Este código não pertence à sua conta."}), 400
+        from datetime import timedelta
+        try:
+            criado = datetime.strptime(criado_em, "%Y-%m-%d %H:%M:%S")
+        except:
+            criado = datetime.strptime(criado_em.split(".")[0], "%Y-%m-%d %H:%M:%S")
+        if datetime.utcnow() - criado > timedelta(hours=2):
+            conn.close()
+            enviar_email(current_user.email, "⏰ Código expirado — Klyonclaw Studio", f"""
+            <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            <p>Olá <b>{current_user.nome}</b>, o código <b style="color:#ef4444">{codigo}</b> expirou (validade: 2 horas).</p>
+            <p>Assine um plano para começar a criar:</p>
+            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Ver Planos →</a></div>""")
+            return jsonify({"erro": "Código expirado (validade: 2 horas)."}), 400
+        # Sucesso — ativar tester
+        conn.execute("UPDATE convites_teste SET usado=1 WHERE id=?", (convite_id,))
+        conn.commit(); conn.close()
+        current_user.plano = "tester"
+        current_user.creditos = 200
+        db.session.commit()
+        enviar_email(current_user.email, "✅ Teste ativado! — Klyonclaw Studio", f"""
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        <p>Olá <b>{current_user.nome}</b>! 🎉 Seu teste foi ativado!</p>
+        <p>Você recebeu <b style="color:#4a9eff">200 créditos</b> para criar seus primeiros vídeos.</p>
+        <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Criar meu primeiro vídeo →</a></div>""")
+        return jsonify({"ok": True})
+    except Exception as e:
+        import sys; sys.stderr.write(f"[CONVITE] Erro: {e}\n"); sys.stderr.flush()
+        return jsonify({"erro": "Erro ao validar código"}), 500
+
 @app.route("/admin/definir_plano", methods=["POST"])
 @login_required
 def admin_definir_plano():

@@ -180,6 +180,16 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
       <h2 style="margin-bottom:8px">Comece a criar vídeos com IA</h2>
       <p style="color:var(--text2);font-size:.88rem;margin-bottom:20px">Assine um plano para desbloquear a criação de vídeos com inteligência artificial.</p>
       <button class="btn" onclick="trocarAba('planos')" style="max-width:300px;margin:0 auto">💎 Ver Planos</button>
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+        <button onclick="document.getElementById('codigoTesteBox').style.display=document.getElementById('codigoTesteBox').style.display==='block'?'none':'block'" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.85rem">🎁 Tenho um código de teste</button>
+        <div id="codigoTesteBox" style="display:none;margin-top:12px">
+          <div style="display:flex;gap:8px;max-width:320px;margin:0 auto">
+            <input type="text" id="inputCodigoTeste" placeholder="TESTE-XXXXXX" style="flex:1;text-align:center;font-size:1rem;letter-spacing:2px;text-transform:uppercase"/>
+            <button class="btn" onclick="validarCodigoTeste()" id="btnValidarCodigo" style="white-space:nowrap;padding:10px 16px">Ativar</button>
+          </div>
+          <div id="erroCodigoTeste" style="display:none;margin-top:8px;color:#fca5a5;font-size:.82rem"></div>
+        </div>
+      </div>
     </div>
     {% else %}
     <div id="etapaRoteiro">
@@ -1182,6 +1192,41 @@ const legendaAtivo=document.getElementById('legendaAtivo'),secaoLegenda=document
 if(legendaAtivo)legendaAtivo.addEventListener('change',()=>{secaoLegenda.style.display=legendaAtivo.checked?'block':'none';});
 const efeitosSonorosEl=document.getElementById('efeitosSonoros'),tipEfeitos=document.getElementById('tipEfeitos');
 if(efeitosSonorosEl)efeitosSonorosEl.addEventListener('change',()=>{if(tipEfeitos)tipEfeitos.style.display=efeitosSonorosEl.checked?'block':'none';});
+
+async function validarCodigoTeste(){
+  const codigo=document.getElementById('inputCodigoTeste').value.trim();
+  if(!codigo){document.getElementById('erroCodigoTeste').textContent='Digite o código';document.getElementById('erroCodigoTeste').style.display='block';return;}
+  const btn=document.getElementById('btnValidarCodigo');
+  btn.disabled=true;btn.textContent='Validando...';
+  document.getElementById('erroCodigoTeste').style.display='none';
+  try{
+    const res=await fetch('/validar_codigo_teste',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo})});
+    const d=await res.json();
+    btn.disabled=false;btn.textContent='Ativar';
+    if(d.ok){
+      // Modal de sucesso com indicação do plano Pro
+      const modal=document.createElement('div');
+      modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px';
+      modal.innerHTML=`<div style="background:#111827;border:1px solid #1e3a5f;border-radius:16px;padding:36px;max-width:440px;text-align:center">
+        <div style="font-size:3.5rem;margin-bottom:12px">🎉</div>
+        <h2 style="color:#e2e8f0;margin-bottom:8px">Teste Ativado!</h2>
+        <p style="color:#059669;font-size:1.1rem;font-weight:700;margin-bottom:16px">+200 créditos adicionados</p>
+        <p style="color:#94a3b8;font-size:.9rem;margin-bottom:24px;line-height:1.6">Agora você pode criar vídeos com narração, animação e legendas. Quando seus créditos acabarem, recomendamos o plano mais popular:</p>
+        <div style="background:linear-gradient(135deg,#1e3a5f,#0f172a);border:2px solid #4a9eff;border-radius:12px;padding:20px;margin-bottom:20px">
+          <div style="font-size:.7rem;color:#4a9eff;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">⭐ Mais Popular</div>
+          <div style="font-size:1.3rem;font-weight:800;color:#fff">Plano Pro</div>
+          <div style="font-size:1.5rem;font-weight:800;color:#4a9eff;margin:8px 0">R$79,90<span style="font-size:.8rem;color:#94a3b8">/mês</span></div>
+          <div style="font-size:.85rem;color:#94a3b8">1.500 créditos por mês</div>
+        </div>
+        <button onclick="this.closest('div[style]').parentElement.remove();location.reload()" style="padding:14px 28px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:1rem;width:100%">🎬 Começar a criar agora</button>
+      </div>`;
+      document.body.appendChild(modal);
+    } else {
+      document.getElementById('erroCodigoTeste').textContent='❌ '+(d.erro||'Erro');
+      document.getElementById('erroCodigoTeste').style.display='block';
+    }
+  }catch(e){btn.disabled=false;btn.textContent='Ativar';document.getElementById('erroCodigoTeste').textContent='❌ Erro de conexão';document.getElementById('erroCodigoTeste').style.display='block';}
+}
 
 async function ouvirVoz(){
   const voiceId=document.getElementById('voiceId').value;
