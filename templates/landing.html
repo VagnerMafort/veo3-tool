@@ -174,30 +174,26 @@ section{padding:80px 24px}
     <h2>Veja o <span>resultado</span></h2>
     <p>Vídeos criados 100% pela ferramenta. Do roteiro ao vídeo final em minutos.</p>
   </div>
-  <div class="demos-grid">
-    <div class="demo-card">
-      <video src="/static/demo1.mp4" controls preload="metadata" poster="/static/demo1_thumb.jpg"></video>
-      <div class="demo-info">
-        <h4>Exemplo 1</h4>
-        <p>Gerado com estilo cinematográfico</p>
-      </div>
-    </div>
-    <div class="demo-card">
-      <video src="/static/demo2.mp4" controls preload="metadata" poster="/static/demo2_thumb.jpg"></video>
-      <div class="demo-info">
-        <h4>Exemplo 2</h4>
-        <p>Narração + animação + legendas</p>
-      </div>
-    </div>
-    <div class="demo-card">
-      <video src="/static/demo3.mp4" controls preload="metadata" poster="/static/demo3_thumb.jpg"></video>
-      <div class="demo-info">
-        <h4>Exemplo 3</h4>
-        <p>Criado em menos de 5 minutos</p>
-      </div>
-    </div>
+  <div class="demos-grid" id="demosGrid">
+    <div style="grid-column:1/-1;text-align:center;color:#64748b;font-size:.9rem">Carregando...</div>
   </div>
 </section>
+<script>
+fetch('/api/demos').then(r=>r.json()).then(d=>{
+  const grid=document.getElementById('demosGrid');
+  if(!d.demos||d.demos.length===0){grid.closest('section').style.display='none';return;}
+  grid.innerHTML='';
+  d.demos.forEach(demo=>{
+    grid.innerHTML+=`<div class="demo-card">
+      <video src="${demo.path}" controls preload="metadata"></video>
+      <div class="demo-info"><h4>${demo.titulo}</h4><p>${demo.descricao}</p></div>
+    </div>`;
+  });
+  // Ajustar grid pra quantidade de vídeos
+  if(d.demos.length===1)grid.style.gridTemplateColumns='1fr';
+  else if(d.demos.length===2)grid.style.gridTemplateColumns='repeat(2,1fr)';
+});
+</script>
 
 <section id="features">
   <div class="section-title">

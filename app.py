@@ -3232,6 +3232,70 @@ def admin_branding():
         return jsonify({"ok": True})
     return jsonify(load_branding())
 
+# ── Demo Videos (Landing Page) ──
+DEMOS_FILE = "demos_config.json"
+
+def load_demos():
+    try:
+        if os.path.exists(DEMOS_FILE):
+            with open(DEMOS_FILE) as f:
+                return json.load(f)
+    except: pass
+    return []
+
+def save_demos(demos):
+    with open(DEMOS_FILE, "w") as f:
+        json.dump(demos, f, indent=2)
+
+@app.route("/admin/demos", methods=["GET"])
+@login_required
+def admin_demos_get():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    return jsonify({"demos": load_demos()})
+
+@app.route("/admin/demos/upload", methods=["POST"])
+@login_required
+def admin_demos_upload():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    if "video" not in request.files or not request.files["video"].filename:
+        return jsonify({"erro": "Envie um vídeo"}), 400
+    video = request.files["video"]
+    titulo = request.form.get("titulo", "").strip() or "Vídeo demo"
+    descricao = request.form.get("descricao", "").strip() or "Gerado com Klyonclaw Studio"
+    os.makedirs("static", exist_ok=True)
+    demos = load_demos()
+    idx = len(demos) + 1
+    filename = f"demo_{uuid.uuid4().hex[:8]}.mp4"
+    filepath = os.path.join("static", filename)
+    video.save(filepath)
+    demos.append({"filename": filename, "titulo": titulo, "descricao": descricao, "path": f"/static/{filename}"})
+    save_demos(demos)
+    return jsonify({"ok": True})
+
+@app.route("/admin/demos/delete", methods=["POST"])
+@login_required
+def admin_demos_delete():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    data = request.json
+    idx = data.get("index", -1)
+    demos = load_demos()
+    if 0 <= idx < len(demos):
+        # Deletar arquivo
+        filepath = os.path.join("static", demos[idx]["filename"])
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        demos.pop(idx)
+        save_demos(demos)
+    return jsonify({"ok": True})
+
+@app.route("/api/demos")
+def api_demos():
+    """Retorna demos para a landing page (público)"""
+    return jsonify({"demos": load_demos()})
+
 @app.route("/static/<path:filename>")
 def static_files(filename):
     if ".." in filename or filename.startswith("/"):
