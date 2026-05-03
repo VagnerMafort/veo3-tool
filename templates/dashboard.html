@@ -1103,6 +1103,8 @@ async function abrirRascunho(rascunhoId){
     sbId=d.sb_id;
     sbBlocos=d.blocos;
     sbEstilo=d.estilo||'';
+    // Popular previewCenas a partir dos blocos do rascunho (pra música automática funcionar)
+    previewCenas=d.blocos.map((b,i)=>({index:i+1, texto:b.texto, preenchida:true}));
     // Restaurar tipo de vídeo salvo no rascunho (default: animado)
     setTipoVideo(d.tipo_video||'animado');
     trocarAba('gerar');
