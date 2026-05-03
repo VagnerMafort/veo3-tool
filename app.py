@@ -746,11 +746,11 @@ RULES:
     except: pass
     return ""
 
-def gerar_audio_minimax(texto, api_key, group_id, voice_id, output_path):
+def gerar_audio_minimax(texto, api_key, group_id, voice_id, output_path, speed=1.0):
     url = f"https://api.minimaxi.chat/v1/t2a_v2?GroupId={group_id}"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     body = {"model": "speech-02-hd", "text": texto, "stream": False,
-            "voice_setting": {"voice_id": voice_id, "speed": 1.0, "vol": 1.0, "pitch": 0},
+            "voice_setting": {"voice_id": voice_id, "speed": speed, "vol": 1.0, "pitch": 0},
             "audio_setting": {"sample_rate": 32000, "bitrate": 128000, "format": "mp3"}}
     r = requests.post(url, headers=headers, json=body, timeout=60)
     if not r.ok:
@@ -1494,7 +1494,9 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     narracao_ok = False
                     for tentativa in range(3):
                         try:
-                            gerar_audio_minimax(bloco["texto"], user.get_minimax_key(), user.get_minimax_group_id(), voice_id, audio_cena_path)
+                            # Velocidade: shorts mais rápido, longo um pouco mais rápido que o padrão
+                            narr_speed = 1.2 if modo_video == "shorts" else 1.1
+                            gerar_audio_minimax(bloco["texto"], user.get_minimax_key(), user.get_minimax_group_id(), voice_id, audio_cena_path, speed=narr_speed)
                             narracao_ok = True
                             break
                         except Exception as e:
