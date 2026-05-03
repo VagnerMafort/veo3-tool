@@ -1603,7 +1603,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                         try:
                             # Traduzir texto da cena em instrução de movimento para o MiniMax
                             cena_texto = img.get("texto", "")[:120]
-                            anim_prompt = f"{cena_texto}. Characters perform the described action with full body movement. Dynamic camera tracking shot. Cinematic motion, dramatic lighting."
+                            anim_prompt = f"{cena_texto}. Characters perform the described action with full body movement. Dynamic camera tracking shot. Cinematic motion, dramatic lighting. Never move characters backward unless explicitly stated."
                             gerar_video_minimax(img["path"], anim_prompt, minimax_key_cache, clipe_path)
                             clipes_video[i] = clipe_path
                             # Salvar no banco imediatamente (path absoluto)
