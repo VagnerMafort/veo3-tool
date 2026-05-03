@@ -1183,7 +1183,11 @@ async function toggleMusicaAuto(){
     if(seletor)seletor.style.display='none';
     if(info)info.style.display='block';
     // Pedir sugestão ao GPT
-    const roteiro=document.getElementById('textoRoteiro')?document.getElementById('textoRoteiro').value:'';
+    let roteiro=document.getElementById('textoRoteiro')?document.getElementById('textoRoteiro').value:'';
+    // Se o textarea está vazio mas já tem storyboard, pegar texto das cenas
+    if(!roteiro && typeof previewCenas !== 'undefined' && previewCenas.length > 0){
+      roteiro = previewCenas.map(c=>c.texto||'').join('. ');
+    }
     if(!roteiro){check.checked=false;if(seletor)seletor.style.display='block';if(info)info.style.display='none';alert('Escreva o roteiro primeiro');return;}
     document.getElementById('musicaAutoNome').textContent='Analisando roteiro...';
     document.getElementById('musicaAutoCat').textContent='';
