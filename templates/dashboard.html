@@ -1053,16 +1053,18 @@ if(window.location.search.includes('pagamento=sucesso')){
 if(window.location.search.includes('novo=1')||(!localStorage.getItem('klyonclaw_welcomed')&&!{{ 'true' if user.plano else 'false' }})){
   localStorage.setItem('klyonclaw_welcomed','1');
   const modal=document.createElement('div');
+  modal.id='welcomeModal';
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.onclick=function(e){if(e.target===modal){modal.remove();}};
   modal.innerHTML=`<div style="background:#111827;border:1px solid #1e3a5f;border-radius:16px;padding:32px;max-width:440px;text-align:center">
     <img src="/static/logo.png" alt="Klyonclaw Studio" style="height:50px;margin-bottom:12px" onerror="this.outerHTML='<div style=\\'font-size:3rem;margin-bottom:12px\\'>🎬</div>'"/>
     <h2 style="color:#e2e8f0;margin-bottom:8px">Bem-vindo ao Klyonclaw Studio!</h2>
-    <p style="color:#94a3b8;font-size:.9rem;margin-bottom:20px;line-height:1.6">Transforme roteiros em vídeos profissionais com IA. Pra começar, escolha um plano e ganhe seus primeiros créditos.</p>
+    <p style="color:#94a3b8;font-size:.9rem;margin-bottom:20px;line-height:1.6">Transforme roteiros em vídeos profissionais com IA. Pra começar, experimente grátis ou escolha um plano.</p>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <button onclick="this.closest('div[style]').parentElement.remove();trocarAba('planos')" style="padding:12px 24px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:.9rem">💎 Ver Planos</button>
-      <button onclick="this.closest('div[style]').parentElement.remove();trocarAba('ajuda')" style="padding:12px 24px;background:none;border:1px solid #1e3a5f;color:#94a3b8;border-radius:10px;cursor:pointer;font-size:.9rem">❓ Como funciona</button>
+      <button onclick="document.getElementById('welcomeModal').remove();trocarAba('planos')" style="padding:12px 24px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:.9rem">💎 Ver Planos</button>
+      <button onclick="document.getElementById('welcomeModal').remove()" style="padding:12px 24px;background:none;border:1px solid #1e3a5f;color:#94a3b8;border-radius:10px;cursor:pointer;font-size:.9rem">✨ Experimentar grátis</button>
     </div>
-    <p style="margin-top:14px"><a href="#" onclick="this.closest('div[style]').parentElement.remove();return false" style="color:#475569;font-size:.78rem;text-decoration:none">Fechar</a></p>
+    <p style="margin-top:14px"><a href="#" onclick="document.getElementById('welcomeModal').remove();return false" style="color:#475569;font-size:.78rem;text-decoration:none">✕ Fechar</a></p>
   </div>`;
   document.body.appendChild(modal);
 }
