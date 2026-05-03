@@ -96,6 +96,10 @@ def enviar_email(destinatario, assunto, corpo_html):
             import sys; sys.stderr.write(f"[EMAIL] Erro: {e}\n"); sys.stderr.flush()
     threading.Thread(target=_enviar, daemon=True).start()
 
+def email_header():
+    """Header padrão dos emails com logo"""
+    return '<div style="text-align:center;margin-bottom:16px"><img src="https://studio.klyonclaw.com/static/logo.png" alt="Klyonclaw Studio" style="height:50px" /><div style="font-size:10px;color:#64748b;margin-top:4px;letter-spacing:2px;text-transform:uppercase">AI Video Automation</div></div>'
+
 # Admin Master — único que pode conceder/remover admin de outros
 ADMIN_MASTER_EMAIL = os.environ.get("ADMIN_MASTER_EMAIL", "ministerioprvagner@gmail.com")
 
@@ -2152,7 +2156,7 @@ def cadastro():
         # Email de boas-vindas
         enviar_email(user.email, "Bem-vindo ao Klyonclaw Studio! 🎬", f"""
         <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
-            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            {email_header()}
             <p>Olá <b>{user.nome}</b>! 👋</p>
             <p>Sua conta foi criada com sucesso. Agora você pode criar vídeos incríveis com inteligência artificial.</p>
             <p>Escolha um plano e comece a criar:</p>
@@ -2180,7 +2184,7 @@ def esqueci_senha():
     # Enviar nova senha por email
     enviar_email(email, "Sua nova senha — Klyonclaw Studio", f"""
     <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
-        <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        {email_header()}
         <p>Olá <b>{user.nome}</b>,</p>
         <p>Sua senha foi redefinida. Use a nova senha abaixo para acessar sua conta:</p>
         <div style="background:#1a2332;border-radius:8px;padding:16px;text-align:center;margin:16px 0">
@@ -3783,7 +3787,7 @@ def admin_enviar_convite_teste():
         except: continue
         enviar_email(user.email, "🎬 Você foi selecionado para testar o Klyonclaw Studio!", f"""
         <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">
-            <h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            {email_header()}
             <p>Olá <b>{user.nome}</b>! 👋</p>
             <p style="font-size:16px;line-height:1.6">Você foi <b style="color:#4a9eff">selecionado(a)</b> para testar gratuitamente nossa plataforma de criação de vídeos com IA!</p>
             <p>Para ativar seu acesso:</p>
@@ -3851,7 +3855,7 @@ def validar_codigo_teste():
         if not row:
             conn.close()
             enviar_email(current_user.email, "❌ Código inválido — Klyonclaw Studio", f"""
-            <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">{email_header()}
             <p>Olá <b>{current_user.nome}</b>, o código <b style="color:#ef4444">{codigo}</b> não é válido.</p></div>""")
             return jsonify({"erro": "Código inválido."}), 400
         convite_id, convite_user_id, usado, criado_em = row
@@ -3869,7 +3873,7 @@ def validar_codigo_teste():
         if datetime.utcnow() - criado > timedelta(hours=2):
             conn.close()
             enviar_email(current_user.email, "⏰ Código expirado — Klyonclaw Studio", f"""
-            <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+            <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">{email_header()}
             <p>Olá <b>{current_user.nome}</b>, o código <b style="color:#ef4444">{codigo}</b> expirou (validade: 2 horas).</p>
             <p>Assine um plano para começar a criar:</p>
             <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Ver Planos →</a></div>""")
@@ -3881,7 +3885,7 @@ def validar_codigo_teste():
         current_user.creditos = 200
         db.session.commit()
         enviar_email(current_user.email, "✅ Teste ativado! — Klyonclaw Studio", f"""
-        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px"><h1 style="color:#4a9eff">Klyonclaw Studio</h1>
+        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">{email_header()}
         <p>Olá <b>{current_user.nome}</b>! 🎉 Seu teste foi ativado!</p>
         <p>Você recebeu <b style="color:#4a9eff">200 créditos</b> para criar seus primeiros vídeos.</p>
         <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Criar meu primeiro vídeo →</a></div>""")
