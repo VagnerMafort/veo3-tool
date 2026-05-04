@@ -145,6 +145,16 @@ def email_header():
     """Header padrão dos emails com logo"""
     return '<div style="text-align:center;margin-bottom:16px"><img src="https://studio.klyonclaw.com/static/logo.png" alt="Klyonclaw Studio" style="height:50px" /><div style="font-size:10px;color:#64748b;margin-top:4px;letter-spacing:2px;text-transform:uppercase">AI Video Automation</div></div>'
 
+def email_wrap(conteudo):
+    """Wrapper padrão para todos os emails — card escuro com letras claras"""
+    return f'''<div style="font-family:'Segoe UI',Arial,sans-serif;background:#070b14;padding:20px;min-height:100vh">
+<div style="max-width:500px;margin:0 auto;background:#0b1120;border:1px solid #1e3a5f;border-radius:16px;overflow:hidden">
+<div style="padding:24px">{conteudo}</div>
+<div style="padding:16px 24px;border-top:1px solid #1e3a5f;text-align:center">
+<p style="font-size:11px;color:#475569;margin:0">Klyonclaw Studio — AI Video Automation</p>
+<p style="font-size:10px;color:#334155;margin-top:4px"><a href="https://studio.klyonclaw.com" style="color:#4a9eff;text-decoration:none">studio.klyonclaw.com</a></p>
+</div></div></div>'''
+
 def email_demos_section():
     """Seção de vídeos demo para incluir nos emails — thumbnail com link para landing"""
     try:
@@ -2336,15 +2346,11 @@ def cadastro():
         db.session.add(user)
         db.session.commit()
         # Email de boas-vindas
-        enviar_email(user.email, "Bem-vindo ao Klyonclaw Studio! 🎬", f"""
-        <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
+        enviar_email(user.email, "Bem-vindo ao Klyonclaw Studio! 🎬", email_wrap(f"""
             {email_header()}
-            <p>Olá <b>{user.nome}</b>! 👋</p>
-            <p>Sua conta foi criada com sucesso. Agora você pode criar vídeos incríveis com inteligência artificial.</p>
-            <p>Escolha um plano e comece a criar:</p>
-            <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Acessar Klyonclaw Studio</a>
-            <p style="color:#888;font-size:12px;margin-top:20px">Klyonclaw Studio — AI Video Automation</p>
-        </div>""")
+            <p style="font-size:16px;color:#e2e8f0">Olá <b style="color:#4a9eff">{user.nome}</b>! 👋</p>
+            <p style="font-size:15px;color:#94a3b8;line-height:1.7">Sua conta foi criada com sucesso. Agora você pode criar vídeos incríveis com inteligência artificial.</p>
+            <div style="text-align:center;margin:20px 0"><a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#2563eb,#4a9eff);color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">Acessar Klyonclaw Studio →</a></div>"""))
         login_user(user)
         return jsonify({"ok": True})
     return render_template("cadastro.html")
@@ -2364,18 +2370,16 @@ def esqueci_senha():
     user.senha = generate_password_hash(nova_senha)
     db.session.commit()
     # Enviar nova senha por email
-    enviar_email(email, "Sua nova senha — Klyonclaw Studio", f"""
-    <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
+    enviar_email(email, "Sua nova senha — Klyonclaw Studio", email_wrap(f"""
         {email_header()}
-        <p>Olá <b>{user.nome}</b>,</p>
-        <p>Sua senha foi redefinida. Use a nova senha abaixo para acessar sua conta:</p>
-        <div style="background:#1a2332;border-radius:8px;padding:16px;text-align:center;margin:16px 0">
-            <span style="font-size:1.4rem;font-weight:700;color:#4a9eff;letter-spacing:2px">{nova_senha}</span>
+        <p style="font-size:16px;color:#e2e8f0">Olá <b style="color:#4a9eff">{user.nome}</b>,</p>
+        <p style="font-size:15px;color:#94a3b8;line-height:1.7">Sua senha foi redefinida. Use a nova senha abaixo:</p>
+        <div style="background:#1e3a5f;border:2px solid #4a9eff;border-radius:12px;padding:20px;text-align:center;margin:20px 0">
+            <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Sua nova senha</div>
+            <div style="font-size:24px;font-weight:800;color:#4a9eff;letter-spacing:4px">{nova_senha}</div>
         </div>
-        <p style="font-size:.85rem;color:#666">Recomendamos alterar sua senha após o login.</p>
-        <a href="https://studio.klyonclaw.com/login" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Acessar minha conta</a>
-        <p style="color:#888;font-size:12px;margin-top:20px">Se você não solicitou essa alteração, entre em contato conosco.</p>
-    </div>""")
+        <p style="font-size:13px;color:#64748b">Recomendamos alterar sua senha após o login.</p>
+        <div style="text-align:center;margin:20px 0"><a href="https://studio.klyonclaw.com/login" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#2563eb,#4a9eff);color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">Acessar minha conta →</a></div>"""))
     return jsonify({"ok": True, "msg": "Nova senha enviada para seu email"})
 
 # ── Thumbnail Engine ──────────────────────────────────────
