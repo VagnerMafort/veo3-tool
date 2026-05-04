@@ -388,6 +388,24 @@ os.makedirs(BANCO_IMG_FOLDER, exist_ok=True)
 jobs = {}
 whisper_model = None
 
+# Proteção: salvar clipes animados no banco mesmo se o servidor reiniciar
+def salvar_clipe_no_banco_seguro(clipe_path, texto, sb_dir):
+    """Salva clipe animado no banco imediatamente após geração — independente do job"""
+    try:
+        import sqlite3 as _sql3
+        _nome = f"{uuid.uuid4().hex[:12]}.mp4"
+        _destino = os.path.join(os.path.abspath(BANCO_IMG_FOLDER), _nome)
+        shutil.copy(clipe_path, _destino)
+        _conn = _sql3.connect(os.path.join(os.path.abspath('instance'), 'veo3.db'))
+        _conn.execute("INSERT INTO banco_imagens (prompt, estilo, tags, path, tipo, categoria, descricao) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (texto, "", texto.lower(), _destino, "video", "cena_animada", texto[:100]))
+        _conn.commit()
+        _conn.close()
+        return True
+    except Exception as e:
+        import sys; sys.stderr.write(f"[BANCO] Erro ao salvar clipe: {e}\n"); sys.stderr.flush()
+        return False
+
 # Prompts padrão - editáveis pelo admin
 DEFAULT_PROMPTS = {
     "melhorar": """You are a cinematic storyboard artist and prompt engineer.
@@ -1830,20 +1848,9 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                             anim_prompt = f"{cena_texto}. Characters perform the described action with full body movement. Dynamic camera tracking shot. Cinematic motion, dramatic lighting. Never move characters backward unless explicitly stated."
                             gerar_video_minimax(img["path"], anim_prompt, minimax_key_cache, clipe_path)
                             clipes_video[i] = clipe_path
-                            # Salvar no banco imediatamente (path absoluto)
-                            try:
-                                import sqlite3 as _sql3
-                                _nome = f"{uuid.uuid4().hex[:12]}.mp4"
-                                _destino = os.path.join(os.path.abspath(BANCO_IMG_FOLDER), _nome)
-                                shutil.copy(clipe_path, _destino)
-                                _conn = _sql3.connect(os.path.join(os.path.abspath('instance'), 'veo3.db'))
-                                _conn.execute("INSERT INTO banco_imagens (prompt, estilo, tags, path, tipo, categoria, descricao) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                    (img["texto"], "", img["texto"].lower(), _destino, "video", "cena_animada", img["texto"][:100]))
-                                _conn.commit()
-                                _conn.close()
-                                sys.stderr.write(f"[ANIMAR] Cena {i+1}: salva no banco\n"); sys.stderr.flush()
-                            except Exception as be:
-                                sys.stderr.write(f"[ANIMAR] Cena {i+1}: erro ao salvar no banco: {be}\n"); sys.stderr.flush()
+                            # Salvar no banco imediatamente
+                            salvar_clipe_no_banco_seguro(clipe_path, img["texto"], sb_dir)
+                            sys.stderr.write(f"[ANIMAR] Cena {i+1}: OK e salva no banco\n"); sys.stderr.flush()
                             jobs[job_id]["atual"] = sum(1 for c in clipes_video if c is not None)
                             jobs[job_id]["progresso"] = f"Animando cenas... {jobs[job_id]['atual']}/{n_cenas} prontas (~{tempo_est} min)"
                             return
@@ -4121,6 +4128,7 @@ def admin_testar_email():
     email_dest = request.json.get("email", "").strip()
     tipo = request.json.get("tipo", "")
     destino = request.json.get("destino", "teste")
+    user_ids = request.json.get("user_ids", [])
     nome = current_user.nome
     demos_html = email_demos_section()
     promo = load_promo()
@@ -4241,9 +4249,10 @@ def admin_testar_email():
     if destino == "teste":
         destinatarios = [current_user]
     elif destino == "email" and email_dest:
-        # Enviar para email específico
         enviar_email(email_dest, assunto, corpo)
         return jsonify({"ok": True, "msg": f"Email '{tipo}' enviado para {email_dest}"})
+    elif destino == "selecionar" and user_ids:
+        destinatarios = [User.query.get(uid) for uid in user_ids if User.query.get(uid)]
     elif destino == "sem_plano":
         destinatarios = [u for u in User.query.all() if not u.plano and not u.is_admin]
     elif destino == "com_plano":

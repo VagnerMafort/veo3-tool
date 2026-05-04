@@ -157,6 +157,34 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
 
   <!-- USUARIOS -->
   <div class="pane" id="paneUsuarios">
+    <div class="card" style="border-color:#f59e0b;background:linear-gradient(135deg,var(--bg3),var(--bg2))">
+      <h2>🛒 Checkouts Abandonados</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Usuários que iniciaram o pagamento mas não finalizaram. Bons candidatos para recuperação.</p>
+      {% set abandonados = [] %}
+      {% for u in users %}
+        {% if u.stripe_customer_id and not u.plano and not u.is_admin %}
+          {% if abandonados.append(u) %}{% endif %}
+        {% endif %}
+      {% endfor %}
+      {% if abandonados|length > 0 %}
+      <div style="font-size:.88rem;color:#f59e0b;font-weight:700;margin-bottom:10px">{{ abandonados|length }} usuário(s) abandonaram o checkout</div>
+      {% for u in abandonados %}
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:.85rem;color:var(--text);font-weight:600">{{ u.nome }}</div>
+          <div style="font-size:.75rem;color:var(--text2)">{{ u.email }}</div>
+          <div style="font-size:.68rem;color:var(--text3)">Cadastro: {{ u.criado_em.strftime('%d/%m/%Y %H:%M') }}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn-sm btn-green" onclick="enviarEmailRecuperacao('{{ u.email }}','{{ u.nome }}')" style="font-size:.72rem">📧 Enviar email</button>
+          <button class="btn-sm btn-blue" onclick="mostrarCreditos({{ u.id }})" style="font-size:.72rem">💰 Dar créditos</button>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div style="text-align:center;color:var(--text3);font-size:.82rem;padding:10px">Nenhum checkout abandonado 🎉</div>
+      {% endif %}
+    </div>
     <div class="card">
       <h2>👥 Gerenciar Usuários ({{ users|length }})</h2>
       <input type="text" id="buscaUser" placeholder="Buscar por nome ou email..." oninput="filtrarUsers()" style="margin-bottom:14px"/>
@@ -482,15 +510,31 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
           <label style="margin:0;font-size:.75rem">Destinatários</label>
           <select id="testeEmailDestino" style="font-size:.82rem" onchange="toggleTesteUserSelect()">
             <option value="teste">🧪 Só meu email</option>
-            <option value="email">📧 Email específico</option>
             <option value="todos">📧 Todos os usuários</option>
             <option value="sem_plano">🆓 Sem plano</option>
             <option value="com_plano">💎 Com plano</option>
+            <option value="selecionar">👤 Selecionar usuários</option>
+            <option value="email">✉️ Email específico</option>
           </select>
         </div>
       </div>
       <div id="testeEmailInputBox" style="display:none;margin-bottom:10px">
         <input type="email" id="testeEmailDest" placeholder="email@exemplo.com" style="font-size:.82rem"/>
+      </div>
+      <div id="testeUserSelectBox" style="display:none;margin-bottom:10px">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <button class="btn-sm btn-blue" onclick="document.querySelectorAll('.testeUserCheck').forEach(c=>c.checked=true);atualizarTesteCount()" style="font-size:.68rem">✅ Todos</button>
+          <button class="btn-sm" style="background:var(--text3);font-size:.68rem" onclick="document.querySelectorAll('.testeUserCheck').forEach(c=>c.checked=false);atualizarTesteCount()">❌ Nenhum</button>
+        </div>
+        <div style="max-height:180px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px">
+          {% for u in users %}{% if not u.is_admin %}
+          <label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:.75rem;color:var(--text2);cursor:pointer;border-bottom:1px solid var(--border)">
+            <input type="checkbox" class="testeUserCheck" value="{{ u.id }}"/>
+            {{ u.nome }} <span style="color:var(--text3)">({{ u.email }})</span>
+          </label>
+          {% endif %}{% endfor %}
+        </div>
+        <div style="font-size:.7rem;color:var(--text3);margin-top:4px" id="testeSelectCount">0 selecionados</div>
       </div>
       <button class="btn-sm btn-green" onclick="enviarEmailTeste()" id="btnTesteEmail" style="padding:10px 16px;font-size:.82rem">📧 Enviar</button>
       <div id="testeEmailResult" style="display:none;font-size:.82rem;margin-top:6px"></div>
@@ -1222,29 +1266,50 @@ function atualizarContadorEmails(){
 function toggleTesteUserSelect(){
   const dest=document.getElementById('testeEmailDestino').value;
   document.getElementById('testeEmailInputBox').style.display=dest==='email'?'block':'none';
+  document.getElementById('testeUserSelectBox').style.display=dest==='selecionar'?'block':'none';
 }
+function atualizarTesteCount(){
+  const count=document.querySelectorAll('.testeUserCheck:checked').length;
+  document.getElementById('testeSelectCount').textContent=count+' selecionados';
+}
+document.querySelectorAll('.testeUserCheck').forEach(cb=>cb.addEventListener('change',atualizarTesteCount));
 async function enviarEmailTeste(){
   const tipo=document.getElementById('testeEmailTipo').value;
   const destino=document.getElementById('testeEmailDestino').value;
   const btn=document.getElementById('btnTesteEmail');
   const result=document.getElementById('testeEmailResult');
   let email='';
+  let userIds=[];
   if(destino==='email'){
     email=document.getElementById('testeEmailDest').value.trim();
     if(!email){result.style.display='block';result.innerHTML='<span style="color:var(--red-text)">❌ Digite um email</span>';return;}
   }
+  if(destino==='selecionar'){
+    document.querySelectorAll('.testeUserCheck:checked').forEach(cb=>userIds.push(parseInt(cb.value)));
+    if(userIds.length===0){result.style.display='block';result.innerHTML='<span style="color:var(--red-text)">❌ Selecione pelo menos um usuário</span>';return;}
+  }
   if(destino!=='teste'&&destino!=='email'){
-    if(!confirm(`Enviar email "${tipo}" para ${destino==='todos'?'TODOS':destino==='sem_plano'?'sem plano':'com plano'}?`))return;
+    const label={todos:'TODOS',sem_plano:'sem plano',com_plano:'com plano',selecionar:userIds.length+' selecionados'};
+    if(!confirm(`Enviar email "${tipo}" para ${label[destino]}?`))return;
   }
   btn.disabled=true;btn.textContent='Enviando...';
   result.style.display='none';
   const body={tipo,destino};
   if(email)body.email=email;
+  if(userIds.length>0)body.user_ids=userIds;
   const res=await fetch('/admin/testar_email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await res.json();
   btn.disabled=false;btn.textContent='📧 Enviar';
   result.style.display='block';
   result.innerHTML=d.ok?`<span style="color:var(--green)">✅ ${d.msg}</span>`:`<span style="color:var(--red-text)">❌ ${d.erro||'Erro'}</span>`;
+}
+
+// Recuperação de checkout abandonado
+async function enviarEmailRecuperacao(email,nome){
+  if(!confirm(`Enviar email de recuperação para ${nome} (${email})?`))return;
+  const res=await fetch('/admin/testar_email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:'promocao_lancamento',destino:'email',email:email})});
+  const d=await res.json();
+  alert(d.ok?`✅ Email enviado para ${email}`:`❌ ${d.erro||'Erro'}`);
 }
 
 // Convites de teste
