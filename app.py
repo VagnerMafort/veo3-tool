@@ -4118,7 +4118,7 @@ def admin_testar_email():
     tipo = request.json.get("tipo", "")
     if not email_dest:
         return jsonify({"erro": "Digite um email"}), 400
-    nome = "Usuário Teste"
+    nome = current_user.nome
     demos_html = email_demos_section()
     promo = load_promo()
     mult = promo.get("multiplicador", 2) if promo.get("ativa") else 2
