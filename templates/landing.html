@@ -403,11 +403,11 @@ fetch('/api/promo').then(r=>r.json()).then(p=>{
   if(p.ativa){
     const m=p.multiplicador||2;
     document.getElementById('promoBanner').style.display='block';
-    document.getElementById('promoTexto').textContent=m+'x créditos no primeiro mês!';
+    document.getElementById('promoTexto').textContent=m+'x mais créditos no primeiro mês!';
     const planos={descBasico:{normal:500},descPro:{normal:1500},descBusiness:{normal:4000}};
     for(const[id,info]of Object.entries(planos)){
       const el=document.getElementById(id);
-      if(el)el.innerHTML=`<span style="text-decoration:line-through;color:#ef4444;font-size:1.1rem;font-weight:700">${info.normal.toLocaleString()}</span> <span style="font-size:1.3rem;font-weight:900;color:#4a9eff;text-shadow:0 0 10px rgba(74,158,255,.4)">${(info.normal*m).toLocaleString()} créditos</span><br><span style="font-size:.75rem;color:#f59e0b;font-weight:600">🔥 no 1º mês!</span>`;
+      if(el)el.innerHTML=`<span style="text-decoration:line-through;color:#ef4444;font-size:1.1rem;font-weight:700">${info.normal.toLocaleString()}</span> <span style="font-size:1.3rem;font-weight:900;color:#4a9eff">${(info.normal*m).toLocaleString()} créditos</span><br><span style="font-size:.75rem;color:#f59e0b;font-weight:600">🔥 no 1º mês!</span>`;
     }
   } else {
     document.getElementById('heroBadge').style.display='inline-block';
