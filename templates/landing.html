@@ -155,7 +155,13 @@ section{padding:80px 24px}
 </nav>
 
 <div class="hero">
-  <div class="hero-badge" id="heroBadge">✨ Plataforma de criação de vídeos com IA</div>
+  <div id="heroBadge" style="display:none"></div>
+  <div id="promoBanner" style="display:none;background:linear-gradient(135deg,#dc2626,#f59e0b);border-radius:16px;padding:20px 24px;margin-bottom:24px;text-align:center;animation:pulse 2s infinite">
+    <div style="font-size:clamp(1.2rem,3vw,1.8rem);font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.3)">🔥 PROMOÇÃO DE LANÇAMENTO 🔥</div>
+    <div style="font-size:clamp(1rem,2.5vw,1.4rem);font-weight:700;color:#fff;margin-top:6px" id="promoTexto">Dobro de créditos no primeiro mês!</div>
+    <div style="font-size:.85rem;color:rgba(255,255,255,.85);margin-top:4px">Oferta por tempo limitado — aproveite agora</div>
+  </div>
+  <style>@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}</style>
   <div style="margin-bottom:20px">
     <img src="/static/logo.png" alt="Klyonclaw Studio" style="height:60px;margin-bottom:10px" onerror="this.style.display='none'"/>
     <div style="font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;color:#fff;letter-spacing:1px">Klyonclaw <span style="color:#4a9eff">Studio</span></div>
@@ -396,15 +402,17 @@ document.querySelectorAll('.faq-q').forEach(q=>{
 fetch('/api/promo').then(r=>r.json()).then(p=>{
   if(p.ativa){
     const m=p.multiplicador||2;
-    document.getElementById('heroBadge').innerHTML='🔥 LANÇAMENTO — '+m+'x créditos no primeiro mês!';
-    document.getElementById('heroBadge').style.background='rgba(239,68,68,0.15)';
-    document.getElementById('heroBadge').style.borderColor='rgba(239,68,68,0.4)';
-    document.getElementById('heroBadge').style.color='#fca5a5';
+    document.getElementById('promoBanner').style.display='block';
+    document.getElementById('promoTexto').textContent=m+'x créditos no primeiro mês!';
     const planos={descBasico:{normal:500},descPro:{normal:1500},descBusiness:{normal:4000}};
     for(const[id,info]of Object.entries(planos)){
       const el=document.getElementById(id);
-      if(el)el.innerHTML=`<s>${info.normal}</s> <b style="color:#4a9eff">${info.normal*m} créditos</b> no 1º mês!`;
+      if(el)el.innerHTML=`<span style="text-decoration:line-through;color:#ef4444;font-size:1.1rem;font-weight:700">${info.normal.toLocaleString()}</span> <span style="font-size:1.3rem;font-weight:900;color:#4a9eff;text-shadow:0 0 10px rgba(74,158,255,.4)">${(info.normal*m).toLocaleString()} créditos</span><br><span style="font-size:.75rem;color:#f59e0b;font-weight:600">🔥 no 1º mês!</span>`;
     }
+  } else {
+    document.getElementById('heroBadge').style.display='inline-block';
+    document.getElementById('heroBadge').className='hero-badge';
+    document.getElementById('heroBadge').textContent='✨ Plataforma de criação de vídeos com IA';
   }
 });
 </script>
