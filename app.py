@@ -96,6 +96,30 @@ def enviar_email(destinatario, assunto, corpo_html):
             import sys; sys.stderr.write(f"[EMAIL] Erro: {e}\n"); sys.stderr.flush()
     threading.Thread(target=_enviar, daemon=True).start()
 
+# ── Promoção de Lançamento ──
+PROMO_ATIVA = os.environ.get("PROMO_ATIVA", "true").lower() == "true"
+PROMO_MULTIPLICADOR = 2  # Dobro de créditos no primeiro mês
+
+def aplicar_promocao(user, creditos):
+    """Aplica promoção de lançamento se ativa e se é a primeira assinatura do usuário"""
+    if not PROMO_ATIVA:
+        return creditos
+    # Verificar se o usuário já teve plano antes (não é primeira vez)
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("CREATE TABLE IF NOT EXISTS promo_usada (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        ja_usou = conn.execute("SELECT id FROM promo_usada WHERE user_id=?", (user.id,)).fetchone()
+        if ja_usou:
+            conn.close()
+            return creditos
+        # Marcar como usada
+        conn.execute("INSERT INTO promo_usada (user_id) VALUES (?)", (user.id,))
+        conn.commit(); conn.close()
+        import sys; sys.stderr.write(f"[PROMO] {user.email}: {creditos} → {creditos * PROMO_MULTIPLICADOR} creditos (dobro lancamento)\n"); sys.stderr.flush()
+        return creditos * PROMO_MULTIPLICADOR
+    except:
+        return creditos
+
 def email_header():
     """Header padrão dos emails com logo"""
     return '<div style="text-align:center;margin-bottom:16px"><img src="https://studio.klyonclaw.com/static/logo.png" alt="Klyonclaw Studio" style="height:50px" /><div style="font-size:10px;color:#64748b;margin-top:4px;letter-spacing:2px;text-transform:uppercase">AI Video Automation</div></div>'
@@ -3082,7 +3106,7 @@ def pagamento_sucesso():
 
                 if tipo == "assinatura":
                     current_user.plano = plano_key
-                    current_user.creditos = creditos
+                    current_user.creditos = aplicar_promocao(current_user, creditos)
                 elif tipo == "avulso":
                     current_user.creditos += creditos
                 elif tipo == "addon":
@@ -3150,7 +3174,7 @@ def stripe_webhook():
                 plano_key = meta.get("plano_key", "")
                 if tipo == "assinatura":
                     user.plano = plano_key
-                    user.creditos = creditos
+                    user.creditos = aplicar_promocao(user, creditos)
                 elif tipo == "avulso":
                     user.creditos += creditos
                 elif tipo == "addon":
