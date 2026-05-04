@@ -97,14 +97,30 @@ def enviar_email(destinatario, assunto, corpo_html):
     threading.Thread(target=_enviar, daemon=True).start()
 
 # ── Promoção de Lançamento ──
-PROMO_ATIVA = os.environ.get("PROMO_ATIVA", "true").lower() == "true"
-PROMO_MULTIPLICADOR = 2  # Dobro de créditos no primeiro mês
+PROMO_FILE = "promo_config.json"
+
+def load_promo():
+    try:
+        if os.path.exists(PROMO_FILE):
+            with open(PROMO_FILE) as f:
+                return json.load(f)
+    except: pass
+    return {"ativa": True, "multiplicador": 2}
+
+def save_promo(data):
+    with open(PROMO_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+def promo_ativa():
+    return load_promo().get("ativa", True)
+
+def promo_multiplicador():
+    return load_promo().get("multiplicador", 2)
 
 def aplicar_promocao(user, creditos):
     """Aplica promoção de lançamento se ativa e se é a primeira assinatura do usuário"""
-    if not PROMO_ATIVA:
+    if not promo_ativa():
         return creditos
-    # Verificar se o usuário já teve plano antes (não é primeira vez)
     try:
         conn = sqlite3.connect('instance/veo3.db')
         conn.execute("CREATE TABLE IF NOT EXISTS promo_usada (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
@@ -112,11 +128,11 @@ def aplicar_promocao(user, creditos):
         if ja_usou:
             conn.close()
             return creditos
-        # Marcar como usada
         conn.execute("INSERT INTO promo_usada (user_id) VALUES (?)", (user.id,))
         conn.commit(); conn.close()
-        import sys; sys.stderr.write(f"[PROMO] {user.email}: {creditos} → {creditos * PROMO_MULTIPLICADOR} creditos (dobro lancamento)\n"); sys.stderr.flush()
-        return creditos * PROMO_MULTIPLICADOR
+        mult = promo_multiplicador()
+        import sys; sys.stderr.write(f"[PROMO] {user.email}: {creditos} → {creditos * mult} creditos (x{mult} lancamento)\n"); sys.stderr.flush()
+        return creditos * mult
     except:
         return creditos
 
@@ -3532,6 +3548,27 @@ def load_branding():
 def save_branding(data):
     with open(BRANDING_FILE, "w") as f:
         json.dump(data, f, indent=2)
+
+@app.route("/admin/promo", methods=["GET", "POST"])
+@login_required
+def admin_promo():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    if request.method == "POST":
+        data = request.json
+        promo = load_promo()
+        if "ativa" in data:
+            promo["ativa"] = data["ativa"]
+        if "multiplicador" in data:
+            promo["multiplicador"] = int(data["multiplicador"])
+        save_promo(promo)
+        return jsonify({"ok": True})
+    return jsonify(load_promo())
+
+@app.route("/api/promo")
+def api_promo():
+    """Retorna status da promoção (público, para landing)"""
+    return jsonify(load_promo())
 
 @app.route("/admin/branding", methods=["GET", "POST"])
 @login_required
