@@ -4120,8 +4120,7 @@ def admin_testar_email():
         return jsonify({"erro": "Sem permissao"}), 403
     email_dest = request.json.get("email", "").strip()
     tipo = request.json.get("tipo", "")
-    if not email_dest:
-        return jsonify({"erro": "Digite um email"}), 400
+    destino = request.json.get("destino", "teste")
     nome = current_user.nome
     demos_html = email_demos_section()
     promo = load_promo()
@@ -4238,8 +4237,28 @@ def admin_testar_email():
     if tipo not in templates:
         return jsonify({"erro": "Tipo de email inválido"}), 400
     assunto, corpo = templates[tipo]
-    enviar_email(email_dest, f"[TESTE] {assunto}", corpo)
-    return jsonify({"ok": True, "msg": f"Email '{tipo}' enviado para {email_dest}"})
+    # Determinar destinatários
+    if destino == "teste":
+        destinatarios = [current_user]
+    elif destino == "email" and email_dest:
+        # Enviar para email específico
+        enviar_email(email_dest, assunto, corpo)
+        return jsonify({"ok": True, "msg": f"Email '{tipo}' enviado para {email_dest}"})
+    elif destino == "sem_plano":
+        destinatarios = [u for u in User.query.all() if not u.plano and not u.is_admin]
+    elif destino == "com_plano":
+        destinatarios = [u for u in User.query.all() if u.plano and not u.is_admin]
+    elif destino == "todos":
+        destinatarios = [u for u in User.query.all() if not u.is_admin]
+    else:
+        destinatarios = [current_user]
+    enviados = 0
+    for user in destinatarios:
+        # Recriar corpo com nome do usuário real
+        corpo_user = corpo.replace(nome, user.nome) if nome != user.nome else corpo
+        enviar_email(user.email, assunto, corpo_user)
+        enviados += 1
+    return jsonify({"ok": True, "msg": f"Email '{tipo}' enviado para {enviados} usuário(s)"})
 
 @app.route("/admin/enviar_promo_massa", methods=["POST"])
 @login_required
