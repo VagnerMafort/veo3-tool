@@ -4241,6 +4241,17 @@ def admin_testar_email():
 <p style="text-align:center;font-size:12px;color:#ef4444;font-weight:600;margin-top:12px">⏰ Promoção por tempo limitado — não perca!</p>
 <p style="color:#475569;font-size:11px;margin-top:24px;text-align:center">Klyonclaw Studio — AI Video Automation</p>
 </div></div>"""),
+        "recuperacao_checkout": ("Você esqueceu algo? — Klyonclaw Studio", email_wrap(f"""
+            {email_header()}
+            <p style="font-size:16px;color:#e2e8f0">Olá <b style="color:#4a9eff">{nome}</b>! 👋</p>
+            <p style="font-size:15px;color:#94a3b8;line-height:1.7">Notamos que você começou a assinar um plano mas não finalizou. Acontece! 😊</p>
+            <p style="font-size:15px;color:#94a3b8;line-height:1.7">Seu carrinho ainda está esperando por você. Que tal voltar e garantir seus créditos?</p>
+            <div style="background:#1e3a5f;border:1px solid #4a9eff;border-radius:12px;padding:16px;margin:20px 0;text-align:center">
+                <div style="font-size:14px;color:#4a9eff;font-weight:600;margin-bottom:8px">💡 Lembre-se:</div>
+                <div style="font-size:14px;color:#e2e8f0;line-height:1.6">✅ Vídeos com narração e animação<br>✅ 10+ estilos visuais<br>✅ Legendas sincronizadas<br>✅ Cancele quando quiser</div>
+            </div>
+            {demos_html}
+            <div style="text-align:center;margin:20px 0"><a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#2563eb,#4a9eff);color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">Finalizar minha assinatura →</a></div>""")),
     }
     if tipo not in templates:
         return jsonify({"erro": "Tipo de email inválido"}), 400
