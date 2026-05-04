@@ -3654,9 +3654,17 @@ def admin_upload_thumb_exemplo():
         return jsonify({"erro": "Tipo inválido"}), 400
     imagem = request.files["imagem"]
     os.makedirs("static", exist_ok=True)
-    filepath = os.path.join("static", f"thumb_{tipo}.jpg")
+    ext = imagem.filename.rsplit(".", 1)[-1].lower() if "." in imagem.filename else "jpg"
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        ext = "jpg"
+    # Remover versões antigas
+    for old_ext in ("jpg", "jpeg", "png", "webp"):
+        old_path = os.path.join("static", f"thumb_{tipo}.{old_ext}")
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    filepath = os.path.join("static", f"thumb_{tipo}.{ext}")
     imagem.save(filepath)
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "ext": ext})
 
 @app.route("/admin/demos/upload", methods=["POST"])
 @login_required
