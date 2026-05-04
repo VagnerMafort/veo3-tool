@@ -516,20 +516,38 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     </div>
 
     <div class="card">
-      <h2>📢 Enviar Atualização do Sistema</h2>
-      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envie um email de novidade/atualização. Reutilizável para qualquer update.</p>
-      <label style="margin-top:0">Título da atualização</label>
+      <h2>📢 Enviar Email Manual</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envie qualquer email personalizado para os usuários.</p>
+      <label style="margin-top:0">Assunto</label>
       <input type="text" id="updateTitulo" placeholder="Ex: Novo sistema de animação híbrida" style="font-size:.82rem"/>
       <label>Conteúdo (use Enter para quebrar linhas)</label>
-      <textarea id="updateConteudo" style="min-height:180px;font-size:.82rem" placeholder="Descreva a novidade aqui..."></textarea>
-      <label>Enviar para</label>
-      <select id="updateDestino" style="font-size:.82rem">
+      <textarea id="updateConteudo" style="min-height:180px;font-size:.82rem" placeholder="Escreva o conteúdo do email aqui..."></textarea>
+      <label>Destinatários</label>
+      <select id="updateDestino" style="font-size:.82rem" onchange="toggleUserSelect()">
         <option value="teste">🧪 Teste (só meu email)</option>
         <option value="todos">📧 Todos os usuários</option>
         <option value="sem_plano">🆓 Apenas sem plano</option>
         <option value="com_plano">💎 Apenas com plano</option>
+        <option value="selecionar">👤 Selecionar usuários</option>
       </select>
-      <button class="btn" onclick="enviarAtualizacao()" id="btnEnviarUpdate" style="max-width:400px;background:linear-gradient(135deg,#2563eb,#7c3aed)">📢 Enviar Atualização</button>
+      <div id="userSelectBox" style="display:none;margin-top:10px">
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <button class="btn-sm btn-blue" onclick="selecionarTodosEmails(true)" style="font-size:.7rem">✅ Marcar todos</button>
+          <button class="btn-sm" style="background:var(--text3);font-size:.7rem" onclick="selecionarTodosEmails(false)">❌ Desmarcar todos</button>
+        </div>
+        <div id="userCheckboxList" style="max-height:200px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px">
+          {% for u in users %}
+          {% if not u.is_admin %}
+          <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.78rem;color:var(--text2);cursor:pointer;border-bottom:1px solid var(--border)">
+            <input type="checkbox" class="userEmailCheck" value="{{ u.id }}" data-email="{{ u.email }}"/>
+            <span>{{ u.nome }} <span style="color:var(--text3)">({{ u.email }})</span> {% if u.plano %}<span style="color:var(--green);font-size:.65rem">{{ u.plano }}</span>{% else %}<span style="color:var(--text3);font-size:.65rem">sem plano</span>{% endif %}</span>
+          </label>
+          {% endif %}
+          {% endfor %}
+        </div>
+        <div style="font-size:.72rem;color:var(--text3);margin-top:4px" id="userSelectCount">0 selecionados</div>
+      </div>
+      <button class="btn" onclick="enviarAtualizacao()" id="btnEnviarUpdate" style="max-width:400px;background:linear-gradient(135deg,#2563eb,#7c3aed)">📢 Enviar Email</button>
       <div id="updateResult" style="display:none;font-size:.82rem;margin-top:8px"></div>
     </div>
   </div>
@@ -1146,15 +1164,38 @@ async function enviarAtualizacao(){
   const titulo=document.getElementById('updateTitulo').value.trim();
   const conteudo=document.getElementById('updateConteudo').value.trim();
   const destino=document.getElementById('updateDestino').value;
-  if(!titulo||!conteudo){document.getElementById('updateResult').style.display='block';document.getElementById('updateResult').innerHTML='<span style="color:var(--red-text)">❌ Preencha título e conteúdo</span>';return;}
-  if(!confirm(`Enviar atualização "${titulo}" para ${destino==='todos'?'TODOS os usuários':destino==='sem_plano'?'usuários SEM plano':'usuários COM plano'}?`))return;
+  if(!titulo||!conteudo){document.getElementById('updateResult').style.display='block';document.getElementById('updateResult').innerHTML='<span style="color:var(--red-text)">❌ Preencha assunto e conteúdo</span>';return;}
+  let userIds=[];
+  if(destino==='selecionar'){
+    document.querySelectorAll('.userEmailCheck:checked').forEach(cb=>userIds.push(parseInt(cb.value)));
+    if(userIds.length===0){document.getElementById('updateResult').style.display='block';document.getElementById('updateResult').innerHTML='<span style="color:var(--red-text)">❌ Selecione pelo menos um usuário</span>';return;}
+  }
+  const label={teste:'você (teste)',todos:'TODOS os usuários',sem_plano:'usuários SEM plano',com_plano:'usuários COM plano',selecionar:`${userIds.length} usuários selecionados`};
+  if(!confirm(`Enviar email "${titulo}" para ${label[destino]}?`))return;
   const btn=document.getElementById('btnEnviarUpdate');
   btn.disabled=true;btn.textContent='Enviando...';
-  const res=await fetch('/admin/enviar_atualizacao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({titulo,conteudo,destino})});
+  const body={titulo,conteudo,destino};
+  if(userIds.length>0)body.user_ids=userIds;
+  const res=await fetch('/admin/enviar_atualizacao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await res.json();
-  btn.disabled=false;btn.textContent='📢 Enviar Atualização';
+  btn.disabled=false;btn.textContent='📢 Enviar Email';
   document.getElementById('updateResult').style.display='block';
-  document.getElementById('updateResult').innerHTML=d.ok?`<span style="color:var(--green)">✅ Atualização enviada para ${d.enviados} usuários!</span>`:`<span style="color:var(--red-text)">❌ ${d.erro||'Erro'}</span>`;
+  document.getElementById('updateResult').innerHTML=d.ok?`<span style="color:var(--green)">✅ Email enviado para ${d.enviados} usuários!</span>`:`<span style="color:var(--red-text)">❌ ${d.erro||'Erro'}</span>`;
+}
+
+function toggleUserSelect(){
+  const destino=document.getElementById('updateDestino').value;
+  document.getElementById('userSelectBox').style.display=destino==='selecionar'?'block':'none';
+}
+function selecionarTodosEmails(val){
+  document.querySelectorAll('.userEmailCheck').forEach(cb=>{cb.checked=val;});
+  atualizarContadorEmails();
+}
+document.querySelectorAll('.userEmailCheck').forEach(cb=>cb.addEventListener('change',atualizarContadorEmails));
+function atualizarContadorEmails(){
+  const count=document.querySelectorAll('.userEmailCheck:checked').length;
+  const el=document.getElementById('userSelectCount');
+  if(el)el.textContent=count+' selecionados';
 }
 
 // Testar emails

@@ -4310,12 +4310,15 @@ def admin_enviar_atualizacao():
     titulo = data.get("titulo", "").strip()
     conteudo = data.get("conteudo", "").strip()
     destino = data.get("destino", "todos")
+    user_ids = data.get("user_ids", [])
     if not titulo or not conteudo:
         return jsonify({"erro": "Preencha título e conteúdo"}), 400
     demos_html = email_demos_section()
     conteudo_html = conteudo.replace('\n', '<br/>')
     if destino == "teste":
         usuarios = [current_user]
+    elif destino == "selecionar" and user_ids:
+        usuarios = [User.query.get(uid) for uid in user_ids if User.query.get(uid)]
     elif destino == "sem_plano":
         usuarios = [u for u in User.query.all() if not u.plano and not u.is_admin]
     elif destino == "com_plano":
