@@ -349,10 +349,10 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
       </div>
       <div id="uploadProgressAdm" style="display:none;margin-bottom:10px;background:var(--bg3);border-radius:8px;padding:8px;font-size:.78rem;color:var(--text2)"></div>
       <input type="text" id="bancoBuscaAdm" placeholder="🔍 Buscar..." oninput="carregarBancoAdm()" style="margin-bottom:8px"/>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <button class="btn-sm btn-blue" onclick="bancoFiltroAdm='';bancoCatAdm='';carregarBancoAdm()">Todos</button>
-        <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" onclick="bancoFiltroAdm='imagem';carregarBancoAdm()">🖼️ Imagens</button>
-        <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" onclick="bancoFiltroAdm='video';carregarBancoAdm()">🎬 Vídeos</button>
+      <div style="display:flex;gap:6px;margin-bottom:10px" id="bancoFiltrosBtns">
+        <button class="btn-sm btn-blue" onclick="filtrarBancoAdm('')">Todos</button>
+        <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" onclick="filtrarBancoAdm('imagem')">🖼️ Imagens</button>
+        <button class="btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)" onclick="filtrarBancoAdm('video')">🎬 Vídeos</button>
       </div>
       <div id="bancoCatsAdm" style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;font-size:.7rem"></div>
       <div id="bancoGridAdm" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
@@ -904,6 +904,17 @@ async function salvarBranding(){
 // Banco de imagens admin
 let bancoPagAdm=1,bancoFiltroAdm='',bancoCatAdm='';
 const CATEGORIAS_BANCO={paisagem:'🏞️',pessoa:'👤',animal:'🐾',tecnologia:'💻',fantasia:'🧙',urbano:'🏙️',natureza:'🌿',comida:'🍕',esporte:'⚽',negocio:'💼',educacao:'📚',saude:'❤️',musica_arte:'🎨',transporte:'🚗',abstrato:'🎭',geral:'📦',admin_upload:'📤'};
+function filtrarBancoAdm(tipo){
+  bancoFiltroAdm=tipo;bancoCatAdm='';
+  document.querySelectorAll('#bancoFiltrosBtns .btn-sm').forEach((b,i)=>{
+    if((i===0&&!tipo)||(i===1&&tipo==='imagem')||(i===2&&tipo==='video')){
+      b.style.background='var(--accent2)';b.style.color='#fff';b.style.borderColor='var(--accent2)';
+    } else {
+      b.style.background='var(--bg3)';b.style.color='var(--text2)';b.style.borderColor='var(--border)';
+    }
+  });
+  carregarBancoAdm();
+}
 async function carregarBancoAdm(append){
   if(!append)bancoPagAdm=1;
   const termo=document.getElementById('bancoBuscaAdm').value.trim();
