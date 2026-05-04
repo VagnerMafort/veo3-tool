@@ -4114,6 +4114,9 @@ def admin_testar_email():
     if not email_dest:
         return jsonify({"erro": "Digite um email"}), 400
     nome = "Usuário Teste"
+    demos_html = email_demos_section()
+    promo = load_promo()
+    mult = promo.get("multiplicador", 2) if promo.get("ativa") else 2
     templates = {
         "boas_vindas": ("Bem-vindo ao Klyonclaw Studio! 🎬", f"""
         <div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">
@@ -4195,13 +4198,98 @@ def admin_testar_email():
             <a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 28px;background:#059669;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Terminar meu vídeo →</a>
             <p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p>
         </div>"""),
-        "plano_ativado": ("Plano ativado! Seus creditos ja estao disponiveis — Klyonclaw Studio", f"""<div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">{email_header()}<p>Ola <b>{nome}</b>! 🎉</p><p style="font-size:18px;color:#059669;font-weight:700">Seu plano foi ativado com sucesso!</p><div style="background:#1e3a5f;border:2px solid #4a9eff;border-radius:12px;padding:20px;margin:16px 0;text-align:center"><div style="font-size:14px;color:#94a3b8">Plano</div><div style="font-size:22px;font-weight:800;color:#4a9eff;margin:4px 0">Pro</div><div style="font-size:14px;color:#94a3b8;margin-top:8px">Creditos disponiveis</div><div style="font-size:28px;font-weight:800;color:#fff">1500</div></div><p style="font-size:15px;color:#94a3b8;line-height:1.6">Seus creditos ja estao na sua conta e prontos para usar. Que tal criar seu primeiro video agora?</p>{email_demos_section()}<a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:16px 32px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;margin-top:10px">Criar meu primeiro video →</a><p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p></div>"""),
+        "plano_ativado": ("Plano ativado! Seus creditos ja estao disponiveis — Klyonclaw Studio", f"""<div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">{email_header()}<p>Ola <b>{nome}</b>! 🎉</p><p style="font-size:18px;color:#059669;font-weight:700">Seu plano foi ativado com sucesso!</p><div style="background:#1e3a5f;border:2px solid #4a9eff;border-radius:12px;padding:20px;margin:16px 0;text-align:center"><div style="font-size:14px;color:#94a3b8">Plano</div><div style="font-size:22px;font-weight:800;color:#4a9eff;margin:4px 0">Pro</div><div style="font-size:14px;color:#94a3b8;margin-top:8px">Creditos disponiveis</div><div style="font-size:28px;font-weight:800;color:#fff">1500</div></div><p style="font-size:15px;color:#94a3b8;line-height:1.6">Seus creditos ja estao na sua conta e prontos para usar. Que tal criar seu primeiro video agora?</p>{demos_html}<a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:16px 32px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;margin-top:10px">Criar meu primeiro video →</a><p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p></div>"""),
+        "promocao_lancamento": ("🔥 Promoção de Lançamento — {mult}x mais créditos! — Klyonclaw Studio".format(mult=mult), f"""<div style="font-family:Arial;max-width:500px;margin:0 auto;padding:0;background:#0b1120;color:#e2e8f0;border-radius:12px;overflow:hidden">
+<div style="background:linear-gradient(135deg,#dc2626,#f59e0b);padding:24px;text-align:center">
+<div style="font-size:24px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.3)">🔥 PROMOÇÃO DE LANÇAMENTO 🔥</div>
+<div style="font-size:18px;font-weight:700;color:#fff;margin-top:6px">{mult}x mais créditos no primeiro mês!</div>
+<div style="font-size:13px;color:rgba(255,255,255,.85);margin-top:4px">Oferta por tempo limitado</div>
+</div>
+<div style="padding:24px">
+{email_header()}
+<p style="font-size:16px;line-height:1.6">Olá <b>{nome}</b>! 👋</p>
+<p style="font-size:15px;line-height:1.7;color:#94a3b8">Temos uma notícia incrível pra você: estamos em <b style="color:#f59e0b">fase de lançamento</b> e quem assinar agora recebe o <b style="color:#4a9eff">{mult}x de créditos</b> no primeiro mês!</p>
+<div style="background:#1e3a5f;border:2px solid #4a9eff;border-radius:12px;padding:20px;margin:20px 0">
+<div style="text-align:center;margin-bottom:16px;font-size:14px;color:#4a9eff;font-weight:600">Veja o que você ganha:</div>
+<div style="display:flex;justify-content:space-around;text-align:center">
+<div><div style="font-size:12px;color:#94a3b8">Básico</div><div style="font-size:14px;color:#ef4444;text-decoration:line-through">500</div><div style="font-size:20px;font-weight:800;color:#4a9eff">{500*mult}</div><div style="font-size:11px;color:#94a3b8">R$39,90/mês</div></div>
+<div><div style="font-size:12px;color:#94a3b8">Pro ⭐</div><div style="font-size:14px;color:#ef4444;text-decoration:line-through">1.500</div><div style="font-size:20px;font-weight:800;color:#4a9eff">{1500*mult}</div><div style="font-size:11px;color:#94a3b8">R$79,90/mês</div></div>
+<div><div style="font-size:12px;color:#94a3b8">Business</div><div style="font-size:14px;color:#ef4444;text-decoration:line-through">4.000</div><div style="font-size:20px;font-weight:800;color:#4a9eff">{4000*mult}</div><div style="font-size:11px;color:#94a3b8">R$149,90/mês</div></div>
+</div>
+</div>
+<p style="font-size:15px;line-height:1.7;color:#94a3b8">Com esses créditos você pode criar <b style="color:#fff">vídeos profissionais completos</b> com narração, animação cinematográfica e legendas sincronizadas — tudo com inteligência artificial.</p>
+{demos_html}
+<div style="text-align:center;margin-top:20px">
+<a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#2563eb,#4a9eff);color:#fff;border-radius:12px;text-decoration:none;font-weight:800;font-size:17px;box-shadow:0 4px 15px rgba(37,99,235,.4)">Aproveitar agora →</a>
+</div>
+<p style="text-align:center;font-size:12px;color:#ef4444;font-weight:600;margin-top:12px">⏰ Promoção por tempo limitado — não perca!</p>
+<p style="color:#475569;font-size:11px;margin-top:24px;text-align:center">Klyonclaw Studio — AI Video Automation</p>
+</div></div>"""),
     }
     if tipo not in templates:
         return jsonify({"erro": "Tipo de email inválido"}), 400
     assunto, corpo = templates[tipo]
     enviar_email(email_dest, f"[TESTE] {assunto}", corpo)
     return jsonify({"ok": True, "msg": f"Email '{tipo}' enviado para {email_dest}"})
+
+@app.route("/admin/enviar_promo_massa", methods=["POST"])
+@login_required
+def admin_enviar_promo_massa():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    promo = load_promo()
+    if not promo.get("ativa"):
+        return jsonify({"erro": "Promoção não está ativa"}), 400
+    mult = promo.get("multiplicador", 2)
+    demos_html = email_demos_section()
+    # Buscar usuários sem plano que ainda não receberam email de promoção
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        conn.execute("CREATE TABLE IF NOT EXISTS emails_enviados (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, tipo TEXT, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        ja_enviados = [r[0] for r in conn.execute("SELECT user_id FROM emails_enviados WHERE tipo='promo_lancamento'").fetchall()]
+        conn.close()
+    except:
+        ja_enviados = []
+    usuarios = [u for u in User.query.all() if not u.plano and not u.is_admin and u.id not in ja_enviados]
+    if not usuarios:
+        return jsonify({"erro": "Nenhum usuário elegível (todos já receberam ou têm plano)"}), 400
+    enviados = 0
+    for user in usuarios:
+        enviar_email(user.email, f"🔥 Promoção de Lançamento — {mult}x mais créditos! — Klyonclaw Studio", f"""<div style="font-family:Arial;max-width:500px;margin:0 auto;padding:0;background:#0b1120;color:#e2e8f0;border-radius:12px;overflow:hidden">
+<div style="background:linear-gradient(135deg,#dc2626,#f59e0b);padding:24px;text-align:center">
+<div style="font-size:24px;font-weight:900;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.3)">🔥 PROMOÇÃO DE LANÇAMENTO 🔥</div>
+<div style="font-size:18px;font-weight:700;color:#fff;margin-top:6px">{mult}x mais créditos no primeiro mês!</div>
+<div style="font-size:13px;color:rgba(255,255,255,.85);margin-top:4px">Oferta por tempo limitado</div>
+</div>
+<div style="padding:24px">
+{email_header()}
+<p style="font-size:16px;line-height:1.6">Olá <b>{user.nome}</b>! 👋</p>
+<p style="font-size:15px;line-height:1.7;color:#94a3b8">Temos uma notícia incrível pra você: estamos em <b style="color:#f59e0b">fase de lançamento</b> e quem assinar agora recebe o <b style="color:#4a9eff">{mult}x de créditos</b> no primeiro mês!</p>
+<div style="background:#1e3a5f;border:2px solid #4a9eff;border-radius:12px;padding:20px;margin:20px 0">
+<div style="text-align:center;margin-bottom:16px;font-size:14px;color:#4a9eff;font-weight:600">Veja o que você ganha:</div>
+<div style="display:flex;justify-content:space-around;text-align:center">
+<div><div style="font-size:12px;color:#94a3b8">Básico</div><div style="font-size:14px;color:#ef4444;text-decoration:line-through">500</div><div style="font-size:20px;font-weight:800;color:#4a9eff">{500*mult}</div><div style="font-size:11px;color:#94a3b8">R$39,90/mês</div></div>
+<div><div style="font-size:12px;color:#94a3b8">Pro ⭐</div><div style="font-size:14px;color:#ef4444;text-decoration:line-through">1.500</div><div style="font-size:20px;font-weight:800;color:#4a9eff">{1500*mult}</div><div style="font-size:11px;color:#94a3b8">R$79,90/mês</div></div>
+<div><div style="font-size:12px;color:#94a3b8">Business</div><div style="font-size:14px;color:#ef4444;text-decoration:line-through">4.000</div><div style="font-size:20px;font-weight:800;color:#4a9eff">{4000*mult}</div><div style="font-size:11px;color:#94a3b8">R$149,90/mês</div></div>
+</div>
+</div>
+<p style="font-size:15px;line-height:1.7;color:#94a3b8">Com esses créditos você pode criar <b style="color:#fff">vídeos profissionais completos</b> com narração, animação cinematográfica e legendas sincronizadas — tudo com inteligência artificial.</p>
+{demos_html}
+<div style="text-align:center;margin-top:20px">
+<a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#2563eb,#4a9eff);color:#fff;border-radius:12px;text-decoration:none;font-weight:800;font-size:17px;box-shadow:0 4px 15px rgba(37,99,235,.4)">Aproveitar agora →</a>
+</div>
+<p style="text-align:center;font-size:12px;color:#ef4444;font-weight:600;margin-top:12px">⏰ Promoção por tempo limitado — não perca!</p>
+<p style="color:#475569;font-size:11px;margin-top:24px;text-align:center">Klyonclaw Studio — AI Video Automation</p>
+</div></div>""")
+        # Marcar como enviado
+        try:
+            conn = sqlite3.connect('instance/veo3.db')
+            conn.execute("INSERT INTO emails_enviados (user_id, tipo) VALUES (?, ?)", (user.id, "promo_lancamento"))
+            conn.commit(); conn.close()
+        except: pass
+        enviados += 1
+    import sys; sys.stderr.write(f"[PROMO] Email de promoção enviado para {enviados} usuários\n"); sys.stderr.flush()
+    return jsonify({"ok": True, "enviados": enviados})
 
 @app.route("/admin/definir_plano", methods=["POST"])
 @login_required

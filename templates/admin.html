@@ -173,6 +173,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
             <option value="reengajamento_48h">💡 Reengajamento 48h (sumiu)</option>
             <option value="rascunho_pendente">📝 Rascunho pendente</option>
             <option value="plano_ativado">✅ Plano ativado (pagamento)</option>
+            <option value="promocao_lancamento">🔥 Promoção de lançamento</option>
           </select>
         </div>
         <button class="btn-sm btn-green" onclick="enviarEmailTeste()" id="btnTesteEmail" style="padding:10px 16px;font-size:.82rem">📧 Enviar</button>
@@ -272,6 +273,8 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
         <span id="promoStatus" style="font-size:.88rem;font-weight:600"></span>
       </div>
       <div id="promoInfo" style="font-size:.78rem;color:var(--text2)"></div>
+      <button class="btn" onclick="enviarPromoMassa()" id="btnPromoMassa" style="max-width:400px;margin-top:10px;background:linear-gradient(135deg,#dc2626,#f59e0b)">📧 Enviar email de promoção para todos sem plano</button>
+      <div id="promoMassaResult" style="display:none;font-size:.82rem;margin-top:8px"></div>
     </div>
     <div class="card">
       <h2>🎨 Identidade Visual</h2>
@@ -1097,6 +1100,18 @@ async function togglePromo(){
   carregarPromo();
 }
 carregarPromo();
+
+async function enviarPromoMassa(){
+  if(!confirm('Enviar email de promoção para TODOS os usuários sem plano?'))return;
+  const btn=document.getElementById('btnPromoMassa');
+  const result=document.getElementById('promoMassaResult');
+  btn.disabled=true;btn.textContent='Enviando...';
+  const res=await fetch('/admin/enviar_promo_massa',{method:'POST',headers:{'Content-Type':'application/json'}});
+  const d=await res.json();
+  btn.disabled=false;btn.textContent='📧 Enviar email de promoção para todos sem plano';
+  result.style.display='block';
+  result.innerHTML=d.ok?`<span style="color:var(--green)">✅ Email enviado para ${d.enviados} usuários!</span>`:`<span style="color:var(--red-text)">❌ ${d.erro||'Erro'}</span>`;
+}
 
 // Testar emails
 async function enviarEmailTeste(){
