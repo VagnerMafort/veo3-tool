@@ -296,6 +296,16 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <p class="tip" style="margin-bottom:14px">Edite o texto, regere a imagem, faça upload ou busque no banco de imagens.</p>
       </div>
       <div id="listaCenas"></div>
+      <div class="card" style="margin-top:14px" id="animacaoHibridaCard" style="display:none">
+        <h2>🎬 Animação por cena</h2>
+        <p class="tip" style="margin-bottom:10px">Escolha quais cenas animar com IA (60 créditos/cena). As demais terão efeito zoom.</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="btn-sm" style="background:var(--accent)" onclick="setAnimarTodas(true)">🎬 Animar todas</button>
+          <button class="btn-sm" style="background:var(--green)" onclick="setAnimarAuto()">🤖 Auto (IA escolhe)</button>
+          <button class="btn-sm" style="background:var(--text3)" onclick="setAnimarTodas(false)">🖼️ Zoom em todas</button>
+        </div>
+        <p class="tip">Use o toggle em cada cena acima para personalizar. Auto: anima cenas com ação, zoom em paisagens e CTAs.</p>
+      </div>
       <div class="card" style="margin-top:14px">
         <h2>3. Configurar vídeo</h2>
         <label>Modo</label>
@@ -1165,12 +1175,15 @@ function setTipoVideo(tipo){
   document.getElementById('btnTipoEstatico').classList.toggle('active',tipo==='estatico');
   document.getElementById('erroTipoVideo').style.display='none';
   const tip=document.getElementById('tipoVideoTip');
+  const hibridoCard=document.getElementById('animacaoHibridaCard');
   if(tipo==='animado'){
     document.getElementById('intervaloSection').style.display='none';
     tip.textContent='Cada cena será animada em um clipe de 6 segundos com IA.';tip.style.display='block';
+    if(hibridoCard)hibridoCard.style.display='block';
   } else {
     document.getElementById('intervaloSection').style.display='block';
     tip.textContent='As imagens serão exibidas com efeito de zoom no intervalo escolhido.';tip.style.display='block';
+    if(hibridoCard)hibridoCard.style.display='none';
   }
 }
 
@@ -1646,10 +1659,35 @@ function pollSB(jobId){
 },3000);}
 
 function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaPreview').style.display='none';document.getElementById('etapaStoryboard').style.display='block';
-  const lista=document.getElementById('listaCenas');lista.innerHTML='';sbBlocos.forEach((b,i)=>{
+  const lista=document.getElementById('listaCenas');lista.innerHTML='';
+  // Inicializar estado de animação por cena
+  if(!window._animarCenas)window._animarCenas={};
+  sbBlocos.forEach((b,i)=>{
   const hasVideo=b.video?true:false;
   const videoBadge=hasVideo?'<span style="background:var(--green);color:#fff;font-size:.65rem;padding:2px 8px;border-radius:10px;margin-left:6px">🎬 Vídeo do banco</span>':'';
-  lista.innerHTML+=`<div class="sb-cena" id="cena-${b.index}"><div class="sb-num">Cena ${b.index}${videoBadge}</div>${hasVideo?`<video src="/storyboard_img/${sbId}/${b.video}?t=${Date.now()}" style="width:100%;border-radius:8px;margin-bottom:10px" controls muted playsinline></video>`:`<img src="/storyboard_img/${sbId}/${b.img}?t=${Date.now()}" alt="Cena ${b.index}"/>`}<div class="sb-texto" contenteditable="true" id="texto-${b.index}">${b.texto}</div><div class="sb-btns"><button class="btn-sm" style="background:var(--accent)" onclick="regerarCena(${b.index})">🔄 Regerar</button><button class="btn-sm" style="background:#f59e0b" onclick="girarCena(${b.index})">↻ Girar</button><label class="btn-sm" style="background:#1d4ed8;cursor:pointer">📤 Upload<input type="file" accept="image/*" style="display:none" onchange="uploadCena(${b.index},this)"/></label><button class="btn-sm" style="background:var(--green)" onclick="abrirBanco(${b.index})">🗃️ Banco</button></div></div>`;});}
+  const isAnimado=window._animarCenas[b.index]!==false;
+  lista.innerHTML+=`<div class="sb-cena" id="cena-${b.index}"><div class="sb-num" style="display:flex;justify-content:space-between;align-items:center">Cena ${b.index}${videoBadge}<label style="display:flex;align-items:center;gap:4px;font-size:.7rem;color:var(--text2);cursor:pointer;margin:0"><span id="animLabel-${b.index}">${isAnimado?'🎬 Animar':'🖼️ Zoom'}</span><label class="toggle" style="width:36px;height:20px"><input type="checkbox" ${isAnimado?'checked':''} onchange="toggleAnimarCena(${b.index},this.checked)"/><span class="slider" style="border-radius:20px"></span></label></label></div>${hasVideo?`<video src="/storyboard_img/${sbId}/${b.video}?t=${Date.now()}" style="width:100%;border-radius:8px;margin-bottom:10px" controls muted playsinline></video>`:`<img src="/storyboard_img/${sbId}/${b.img}?t=${Date.now()}" alt="Cena ${b.index}"/>`}<div class="sb-texto" contenteditable="true" id="texto-${b.index}">${b.texto}</div><div class="sb-btns"><button class="btn-sm" style="background:var(--accent)" onclick="regerarCena(${b.index})">🔄 Regerar</button><button class="btn-sm" style="background:#f59e0b" onclick="girarCena(${b.index})">↻ Girar</button><label class="btn-sm" style="background:#1d4ed8;cursor:pointer">📤 Upload<input type="file" accept="image/*" style="display:none" onchange="uploadCena(${b.index},this)"/></label><button class="btn-sm" style="background:var(--green)" onclick="abrirBanco(${b.index})">🗃️ Banco</button></div></div>`;});}
+
+function toggleAnimarCena(idx,checked){
+  window._animarCenas[idx]=checked;
+  const label=document.getElementById('animLabel-'+idx);
+  if(label)label.textContent=checked?'🎬 Animar':'🖼️ Zoom';
+}
+function setAnimarTodas(val){
+  sbBlocos.forEach(b=>{window._animarCenas[b.index]=val;});
+  mostrarStoryboard();
+}
+function setAnimarAuto(){
+  // Auto: animar cenas com ação/personagens, zoom pra paisagem/CTA/curtas
+  sbBlocos.forEach(b=>{
+    const texto=b.texto.toLowerCase();
+    const ehPaisagem=/paisagem|montanha|cidade|céu|sol|lua|mar|floresta|deserto|horizonte/.test(texto);
+    const ehCTA=/coment|compartilh|inscrev|like|siga|link|bio|canal/.test(texto);
+    const ehCurta=texto.split(' ').length<6;
+    window._animarCenas[b.index]=!(ehPaisagem||ehCTA||ehCurta);
+  });
+  mostrarStoryboard();
+}
 
 async function regerarCena(idx){const texto=document.getElementById('texto-'+idx).textContent.trim();const cena=document.getElementById('cena-'+idx);cena.style.opacity='0.5';cena.querySelector('.sb-num').textContent='Cena '+idx+' — Gerando...';const fd=new FormData();fd.append('sb_id',sbId);fd.append('index',idx);fd.append('texto',texto);fd.append('estilo',sbEstilo);fd.append('melhorar_prompts',document.getElementById('melhorarPrompts').checked?'true':'false');try{const res=await fetch('/regerar_cena',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);cena.querySelector('img').src=`/storyboard_img/${sbId}/${String(idx).padStart(3,'0')}.png?t=${Date.now()}`;atualizarCreditos();}catch(e){alert('Erro: '+e.message);}cena.style.opacity='1';cena.querySelector('.sb-num').textContent='Cena '+idx;}
 
@@ -1739,6 +1777,12 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   } else {
     fd.append('intervalo','6');
     fd.append('animar_ia','true');
+    // Enviar lista de cenas a animar (híbrido)
+    const cenasAnimar=[];
+    sbBlocos.forEach(b=>{
+      if(window._animarCenas&&window._animarCenas[b.index]!==false)cenasAnimar.push(b.index);
+    });
+    fd.append('cenas_animar',JSON.stringify(cenasAnimar));
   }
   fd.append('legenda_ativo',legendaAtivo&&legendaAtivo.checked?'true':'false');fd.append('legenda_fonte',document.getElementById('legendaFonte')?document.getElementById('legendaFonte').value:'Arial');fd.append('legenda_tamanho',document.getElementById('legendaTamanho')?document.getElementById('legendaTamanho').value:'18');fd.append('legenda_cor',document.getElementById('legendaCor')?document.getElementById('legendaCor').value:'&H00FFFFFF');fd.append('legenda_posicao',document.getElementById('legendaPosicao')?document.getElementById('legendaPosicao').value:'2');fd.append('legenda_sombra',document.getElementById('legendaSombra')&&document.getElementById('legendaSombra').checked?'true':'false');
   fd.append('musica_id',document.getElementById('musicaId').value);

@@ -1609,7 +1609,7 @@ Write in ENGLISH."""},
         except Exception as e:
             jobs[job_id] = {"status": "erro", "progresso": str(e), "total": 0, "atual": 0}
 
-def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia=False, musica_path="", efeitos_sonoros=False):
+def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia=False, musica_path="", efeitos_sonoros=False, cenas_animar=None):
     with app.app_context():
         try:
             user = User.query.get(user_id)
@@ -1747,6 +1747,13 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 def animar_cena(i):
                     img = imagens[i]
                     clipe_path = os.path.join(job_dir, f"clipe_{i+1:04d}.mp4")
+
+                    # Verificar se esta cena deve ser animada (híbrido)
+                    cena_idx = img.get("index", i+1)
+                    if cenas_animar and cena_idx not in cenas_animar:
+                        sys.stderr.write(f"[ANIMAR] Cena {i+1}: pulando (nao selecionada, zoom)\n"); sys.stderr.flush()
+                        clipes_video[i] = None  # None = usar zoompan
+                        return
 
                     # Verificar se a cena já tem vídeo do banco
                     bloco = blocos[i] if i < len(blocos) else {}
@@ -4913,6 +4920,11 @@ def finalizar_video_route():
         "sombra": request.form.get("legenda_sombra", "true") == "true",
     }
     animar_ia = request.form.get("animar_ia", "false") == "true"
+    cenas_animar_raw = request.form.get("cenas_animar", "")
+    try:
+        cenas_animar = json.loads(cenas_animar_raw) if cenas_animar_raw else []
+    except:
+        cenas_animar = []
     efeitos_sonoros = request.form.get("efeitos_sonoros", "false") == "true"
     musica_id = request.form.get("musica_id", "").strip()
     musica_path = ""
@@ -4950,7 +4962,7 @@ def finalizar_video_route():
     sys.stderr.flush()
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia, musica_path, efeitos_sonoros))
+    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia, musica_path, efeitos_sonoros, cenas_animar))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})
