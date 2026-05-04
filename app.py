@@ -73,27 +73,32 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 EMAIL_FROM = os.environ.get("EMAIL_FROM", "Klyonclaw Studio <noreply@klyonclaw.com>")
 
 def enviar_email(destinatario, assunto, corpo_html):
-    """Envia email via Resend API em background"""
+    """Envia email via Resend API em background com retry"""
     if not RESEND_API_KEY:
         import sys; sys.stderr.write(f"[EMAIL] RESEND_API_KEY não configurada, email não enviado para {destinatario}\n"); sys.stderr.flush()
         return
     def _enviar():
-        try:
-            r = requests.post("https://api.resend.com/emails", headers={
-                "Authorization": f"Bearer {RESEND_API_KEY}",
-                "Content-Type": "application/json"
-            }, json={
-                "from": EMAIL_FROM,
-                "to": [destinatario],
-                "subject": assunto,
-                "html": corpo_html
-            }, timeout=15)
-            if r.ok:
-                import sys; sys.stderr.write(f"[EMAIL] Enviado para {destinatario}: {assunto}\n"); sys.stderr.flush()
-            else:
-                import sys; sys.stderr.write(f"[EMAIL] Erro {r.status_code}: {r.text[:200]}\n"); sys.stderr.flush()
-        except Exception as e:
-            import sys; sys.stderr.write(f"[EMAIL] Erro: {e}\n"); sys.stderr.flush()
+        import time as _t
+        for tentativa in range(3):
+            try:
+                r = requests.post("https://api.resend.com/emails", headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json"
+                }, json={
+                    "from": EMAIL_FROM,
+                    "to": [destinatario],
+                    "subject": assunto,
+                    "html": corpo_html
+                }, timeout=15)
+                if r.ok:
+                    import sys; sys.stderr.write(f"[EMAIL] Enviado para {destinatario}: {assunto}\n"); sys.stderr.flush()
+                    return
+                else:
+                    import sys; sys.stderr.write(f"[EMAIL] Erro {r.status_code} tentativa {tentativa+1}: {r.text[:200]}\n"); sys.stderr.flush()
+            except Exception as e:
+                import sys; sys.stderr.write(f"[EMAIL] Erro tentativa {tentativa+1}: {e}\n"); sys.stderr.flush()
+            if tentativa < 2:
+                _t.sleep(3)
     threading.Thread(target=_enviar, daemon=True).start()
 
 # ── Promoção de Lançamento ──
