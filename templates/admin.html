@@ -989,6 +989,14 @@ async function deletarAudioSys(id){
 // Carregar branding atual
 fetch('/admin/branding').then(r=>r.json()).then(d=>{
   document.getElementById('brandNome').value=d.nome||'Klyonclaw Studio';
+  document.getElementById('brandSubtitulo').value=d.subtitulo||'AI Video Automation';
+  document.getElementById('brandCorPrimariaHex').value=d.cor_primaria||'#1a2332';
+  document.getElementById('brandCorPrimaria').value=d.cor_primaria||'#1a2332';
+  document.getElementById('brandCorAccentHex').value=d.cor_accent||'#4a9eff';
+  document.getElementById('brandCorAccent').value=d.cor_accent||'#4a9eff';
+  if(d.logo){document.getElementById('previewLogo').src=d.logo;document.getElementById('previewLogo').style.display='block';document.getElementById('placeholderLogo').style.display='none';}
+  if(d.icone){document.getElementById('previewIcone').src=d.icone;document.getElementById('previewIcone').style.display='block';document.getElementById('placeholderIcone').style.display='none';}
+}).catch(e=>console.error('Branding erro:',e));
 
 // Verificar APIs
 fetch('/admin/verificar_apis').then(r=>r.json()).then(d=>{
@@ -1000,7 +1008,7 @@ fetch('/admin/verificar_apis').then(r=>r.json()).then(d=>{
     const nome={openai:'OpenAI (Imagens)',minimax:'MiniMax (Vídeo/Áudio)',stripe:'Stripe (Pagamentos)'}[api];
     el.innerHTML+=`<div class="metric-row"><span class="metric-label">${icon} ${nome}</span><span class="metric-value">${info.msg}</span></div>`;
   });
-});
+}).catch(e=>console.error('APIs erro:',e));
 
 // Carregar mensagens de suporte
 fetch('/admin/suporte_msgs').then(r=>r.json()).then(d=>{
@@ -1017,15 +1025,7 @@ fetch('/admin/suporte_msgs').then(r=>r.json()).then(d=>{
       <div style="font-size:.82rem;color:var(--text2);background:var(--bg2);padding:10px;border-radius:6px;white-space:pre-wrap">${m.mensagem}</div>
     </div>`;
   });
-});
-  document.getElementById('brandSubtitulo').value=d.subtitulo||'AI Video Automation';
-  document.getElementById('brandCorPrimariaHex').value=d.cor_primaria||'#1a2332';
-  document.getElementById('brandCorPrimaria').value=d.cor_primaria||'#1a2332';
-  document.getElementById('brandCorAccentHex').value=d.cor_accent||'#4a9eff';
-  document.getElementById('brandCorAccent').value=d.cor_accent||'#4a9eff';
-  if(d.logo){document.getElementById('previewLogo').src=d.logo;document.getElementById('previewLogo').style.display='block';document.getElementById('placeholderLogo').style.display='none';}
-  if(d.icone){document.getElementById('previewIcone').src=d.icone;document.getElementById('previewIcone').style.display='block';document.getElementById('placeholderIcone').style.display='none';}
-});
+}).catch(e=>console.error('Suporte erro:',e));
 
 // Demos da landing
 async function carregarDemos(){
