@@ -3092,6 +3092,7 @@ def pagamento_sucesso():
 @app.route("/stripe_webhook", methods=["POST"])
 def stripe_webhook():
     if not STRIPE_WEBHOOK_SECRET:
+        import sys; sys.stderr.write("[WEBHOOK] Secret nao configurado\n"); sys.stderr.flush()
         return jsonify({"erro": "Webhook não configurado"}), 500
 
     payload = request.get_data()
@@ -3099,10 +3100,14 @@ def stripe_webhook():
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-    except (ValueError, stripe.error.SignatureVerificationError):
+    except (ValueError, stripe.error.SignatureVerificationError) as e:
+        import sys; sys.stderr.write(f"[WEBHOOK] Assinatura invalida: {e}\n"); sys.stderr.flush()
         return jsonify({"erro": "Webhook invalido"}), 400
 
-    # Renovação mensal da assinatura
+    import sys
+    sys.stderr.write(f"[WEBHOOK] Evento: {event['type']}\n"); sys.stderr.flush()
+
+    # Renovação mensal
     if event["type"] == "invoice.payment_succeeded":
         invoice = event["data"]["object"]
         customer_id = invoice.get("customer")
@@ -3111,8 +3116,10 @@ def stripe_webhook():
             if user and user.plano and user.plano in PLANOS_STRIPE:
                 user.creditos = PLANOS_STRIPE[user.plano]["creditos"]
                 db.session.commit()
+                sys.stderr.write(f"[WEBHOOK] Renovacao: {user.email} {user.plano} {user.creditos}cr\n"); sys.stderr.flush()
+                enviar_email(user.email, "Creditos renovados — Klyonclaw Studio", f"""<div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px">{email_header()}<p>Ola <b>{user.nome}</b>!</p><p>Seus creditos foram renovados: <b style="color:#4a9eff">{user.creditos} creditos</b></p><p>Plano: <b>{PLANOS_STRIPE[user.plano]['nome']}</b></p><a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Criar videos</a></div>""")
 
-    # Assinatura cancelada
+    # Cancelamento
     elif event["type"] == "customer.subscription.deleted":
         sub = event["data"]["object"]
         customer_id = sub.get("customer")
@@ -3121,8 +3128,9 @@ def stripe_webhook():
             if user:
                 user.plano = ""
                 db.session.commit()
+                sys.stderr.write(f"[WEBHOOK] Cancelamento: {user.email}\n"); sys.stderr.flush()
 
-    # Checkout completado (backup do pagamento_sucesso)
+    # Checkout completado
     elif event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         meta = session.get("metadata", {})
@@ -3144,6 +3152,10 @@ def stripe_webhook():
                     elif plano_key == "audio":
                         user.audio_ativo = True
                 db.session.commit()
+                sys.stderr.write(f"[WEBHOOK] Checkout: {user.email} {tipo} {plano_key} {creditos}cr\n"); sys.stderr.flush()
+                plano_nome = PLANOS_STRIPE.get(plano_key, PACOTES_AVULSO.get(plano_key, {})).get("nome", plano_key)
+                demos_html = email_demos_section()
+                enviar_email(user.email, "Plano ativado! Seus creditos ja estao disponiveis — Klyonclaw Studio", f"""<div style="font-family:Arial;max-width:500px;margin:0 auto;padding:20px;background:#0b1120;color:#e2e8f0;border-radius:12px">{email_header()}<p>Ola <b>{user.nome}</b>! 🎉</p><p style="font-size:18px;color:#059669;font-weight:700">Seu plano foi ativado com sucesso!</p><div style="background:#1e3a5f;border:2px solid #4a9eff;border-radius:12px;padding:20px;margin:16px 0;text-align:center"><div style="font-size:14px;color:#94a3b8">Plano</div><div style="font-size:22px;font-weight:800;color:#4a9eff;margin:4px 0">{plano_nome}</div><div style="font-size:14px;color:#94a3b8;margin-top:8px">Creditos disponiveis</div><div style="font-size:28px;font-weight:800;color:#fff">{user.creditos}</div></div><p style="font-size:15px;color:#94a3b8;line-height:1.6">Seus creditos ja estao na sua conta e prontos para usar. Que tal criar seu primeiro video agora?</p><p style="font-size:15px;color:#94a3b8;line-height:1.6">E simples: escreva um roteiro, escolha o estilo e a IA faz o resto — imagens, narracao, animacao e legendas.</p>{demos_html}<a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:16px 32px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;margin-top:10px">Criar meu primeiro video →</a><p style="color:#475569;font-size:11px;margin-top:24px">Klyonclaw Studio — AI Video Automation</p></div>""")
 
     return jsonify({"ok": True})
 
