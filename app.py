@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, send_file, jsonify, redirect, url_for
+from flask import Flask, request, render_template, send_file, jsonify, redirect, url_for, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -2302,7 +2302,10 @@ def index():
         conn.close()
     except:
         pass
-    return render_template("landing.html")
+    resp = make_response(render_template("landing.html"))
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Pragma'] = 'no-cache'
+    return resp
 
 @app.route("/termos")
 def termos():
@@ -3716,10 +3719,18 @@ def static_files(filename):
     filepath = os.path.normpath(os.path.join(static_dir, filename))
     if not filepath.startswith(os.path.normpath(static_dir)):
         return jsonify({"erro": "Acesso negado"}), 403
+    # Se não encontrou, tentar extensões alternativas (png/jpg/webp)
     if not os.path.exists(filepath):
-        return jsonify({"erro": "Não encontrado"}), 404
+        base, ext = os.path.splitext(filepath)
+        for alt_ext in ['.png', '.jpg', '.jpeg', '.webp']:
+            alt_path = base + alt_ext
+            if os.path.exists(alt_path):
+                filepath = alt_path
+                break
+        else:
+            return jsonify({"erro": "Não encontrado"}), 404
     response = send_file(filepath)
-    response.headers['Cache-Control'] = 'public, max-age=604800'
+    response.headers['Cache-Control'] = 'public, max-age=300'
     return response
 
 @app.route("/admin/banco_imagens")
