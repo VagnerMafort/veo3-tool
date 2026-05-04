@@ -3712,8 +3712,9 @@ def api_demos():
 def static_files(filename):
     if ".." in filename or filename.startswith("/"):
         return jsonify({"erro": "Acesso negado"}), 403
-    filepath = os.path.normpath(os.path.join("static", filename))
-    if not filepath.startswith(os.path.normpath("static")):
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    filepath = os.path.normpath(os.path.join(static_dir, filename))
+    if not filepath.startswith(os.path.normpath(static_dir)):
         return jsonify({"erro": "Acesso negado"}), 403
     if not os.path.exists(filepath):
         return jsonify({"erro": "Não encontrado"}), 404
