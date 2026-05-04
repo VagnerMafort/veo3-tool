@@ -646,16 +646,16 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
         <div style="flex:1;min-width:150px">
           <label style="margin:0">Antes</label>
           <div style="background:var(--bg3);border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;position:relative;min-height:80px;display:flex;align-items:center;justify-content:center;margin-top:6px">
-            <img id="previewThumbAntes" src="/static/thumb_antes.jpg" style="max-width:100%;max-height:100px;display:none" onerror="this.style.display='none'"/>
-            <span id="placeholderThumbAntes" style="color:var(--text3);font-size:.78rem">Clique para enviar</span>
+            <img id="previewThumbAntes" src="/static/thumb_antes.png" style="max-width:100%;max-height:100px" onerror="this.src='/static/thumb_antes.jpg';this.onerror=()=>{this.style.display='none';this.nextElementSibling.style.display='block'}"/>
+            <span id="placeholderThumbAntes" style="color:var(--text3);font-size:.78rem;display:none">Clique para enviar</span>
             <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="uploadThumbExemplo('antes',this)"/>
           </div>
         </div>
         <div style="flex:1;min-width:150px">
           <label style="margin:0">Depois</label>
           <div style="background:var(--bg3);border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;position:relative;min-height:80px;display:flex;align-items:center;justify-content:center;margin-top:6px">
-            <img id="previewThumbDepois" src="/static/thumb_depois.jpg" style="max-width:100%;max-height:100px;display:none" onerror="this.style.display='none'"/>
-            <span id="placeholderThumbDepois" style="color:var(--text3);font-size:.78rem">Clique para enviar</span>
+            <img id="previewThumbDepois" src="/static/thumb_depois.png" style="max-width:100%;max-height:100px" onerror="this.src='/static/thumb_depois.jpg';this.onerror=()=>{this.style.display='none';this.nextElementSibling.style.display='block'}"/>
+            <span id="placeholderThumbDepois" style="color:var(--text3);font-size:.78rem;display:none">Clique para enviar</span>
             <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="uploadThumbExemplo('depois',this)"/>
           </div>
         </div>
