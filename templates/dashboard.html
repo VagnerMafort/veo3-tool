@@ -1686,7 +1686,45 @@ function pollSB(jobId){
     document.getElementById('statusSB').style.display='none';document.getElementById('statusPreview').style.display='none';
     document.getElementById('btnGerarSB').disabled=false;document.getElementById('btnGerarFaltantes').disabled=false;
     document.getElementById('etapaPreview').style.display='none';
-    sbId=d.sb_id;sbBlocos=d.blocos;mostrarStoryboard();atualizarCreditos();}
+    sbId=d.sb_id;sbBlocos=d.blocos;mostrarStoryboard();atualizarCreditos();
+    if(d.is_trial){
+      setTimeout(()=>{
+        const trialCard=document.createElement('div');
+        trialCard.id='trialOferta';
+        trialCard.style.cssText='background:linear-gradient(145deg,#0c1a3a,#111827);border:2px solid #2563eb;border-radius:16px;padding:28px;margin:20px 0;text-align:center;animation:fadeIn .5s';
+        trialCard.innerHTML=`
+          <div style="font-size:2.5rem;margin-bottom:10px">🎬</div>
+          <h3 style="color:#e2e8f0;font-size:1.2rem;margin-bottom:8px">Gostou das imagens?</h3>
+          <p style="color:#94a3b8;font-size:.9rem;line-height:1.6;margin-bottom:6px">Você gerou <b style="color:#4a9eff">2 imagens grátis</b> de demonstração.</p>
+          <p style="color:#94a3b8;font-size:.9rem;line-height:1.6;margin-bottom:20px">Assine um plano para gerar <b style="color:#fff">todas as cenas</b>, adicionar narração, animação cinematográfica e legendas sincronizadas.</p>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;max-width:500px;margin-left:auto;margin-right:auto">
+            <div style="background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.3);border-radius:10px;padding:12px">
+              <div style="font-size:.85rem;font-weight:700;color:#94a3b8">Básico</div>
+              <div style="font-size:1.1rem;font-weight:800;color:#fff">R$39,90<small style="font-size:.7rem;color:#64748b">/mês</small></div>
+              <div style="font-size:.75rem;color:#4a9eff">500 créditos</div>
+            </div>
+            <div style="background:rgba(37,99,235,.15);border:2px solid #2563eb;border-radius:10px;padding:12px;position:relative">
+              <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:#2563eb;color:#fff;font-size:.6rem;padding:2px 8px;border-radius:10px;font-weight:700">POPULAR</div>
+              <div style="font-size:.85rem;font-weight:700;color:#94a3b8">Pro</div>
+              <div style="font-size:1.1rem;font-weight:800;color:#fff">R$79,90<small style="font-size:.7rem;color:#64748b">/mês</small></div>
+              <div style="font-size:.75rem;color:#4a9eff">1.500 créditos</div>
+            </div>
+            <div style="background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.3);border-radius:10px;padding:12px">
+              <div style="font-size:.85rem;font-weight:700;color:#94a3b8">Business</div>
+              <div style="font-size:1.1rem;font-weight:800;color:#fff">R$149,90<small style="font-size:.7rem;color:#64748b">/mês</small></div>
+              <div style="font-size:.75rem;color:#4a9eff">4.000 créditos</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <button onclick="trocarAba('planos')" style="padding:14px 32px;background:linear-gradient(135deg,#2563eb,#4a9eff);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;box-shadow:0 4px 15px rgba(37,99,235,.3)">💎 Ver todos os planos</button>
+          </div>
+          <p style="color:#64748b;font-size:.75rem;margin-top:12px">Seu roteiro e imagens ficam salvos no rascunho</p>
+        `;
+        const lista=document.getElementById('listaCenas');
+        lista.parentElement.insertBefore(trialCard,lista.nextSibling);
+      },500);
+    }
+  }
   if(d.status==='erro'){clearInterval(iv);
     document.getElementById('statusSB').style.display='none';document.getElementById('statusPreview').style.display='none';
     document.getElementById('btnGerarSB').disabled=false;document.getElementById('btnGerarFaltantes').disabled=false;
@@ -1694,6 +1732,7 @@ function pollSB(jobId){
 },3000);}
 
 function mostrarStoryboard(){document.getElementById('etapaRoteiro').style.display='none';document.getElementById('etapaPreview').style.display='none';document.getElementById('etapaStoryboard').style.display='block';
+  const oldTrial=document.getElementById('trialOferta');if(oldTrial)oldTrial.remove();
   const lista=document.getElementById('listaCenas');lista.innerHTML='';
   // Inicializar estado de animação por cena
   if(!window._animarCenas)window._animarCenas={};

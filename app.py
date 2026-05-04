@@ -1678,7 +1678,7 @@ Write in ENGLISH."""},
             sb_data = {"blocos": blocos, "estilo": estilo, "dir": sb_dir, "creditos_gastos": creditos_gastos_sb, "tipo_video": tipo_video, "is_trial": is_trial}
             with open(os.path.join(sb_dir, "storyboard.json"), "w") as f:
                 json.dump(sb_data, f)
-            jobs[job_id] = {"status": "storyboard_pronto", "progresso": "Storyboard pronto", "total": total, "atual": total, "blocos": blocos, "sb_id": job_id}
+            jobs[job_id] = {"status": "storyboard_pronto", "progresso": "Storyboard pronto", "total": total, "atual": total, "blocos": blocos, "sb_id": job_id, "is_trial": is_trial}
         except Exception as e:
             jobs[job_id] = {"status": "erro", "progresso": str(e), "total": 0, "atual": 0}
 
