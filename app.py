@@ -4104,8 +4104,6 @@ def validar_codigo_teste():
         import sys; sys.stderr.write(f"[CONVITE] Erro: {e}\n"); sys.stderr.flush()
         return jsonify({"erro": "Erro ao validar código"}), 500
 
-@app.route("/admin/definir_plano", methods=["POST"])
-
 @app.route("/admin/testar_email", methods=["POST"])
 @login_required
 def admin_testar_email():
