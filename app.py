@@ -4291,6 +4291,48 @@ def admin_enviar_promo_massa():
     import sys; sys.stderr.write(f"[PROMO] Email de promoção enviado para {enviados} usuários\n"); sys.stderr.flush()
     return jsonify({"ok": True, "enviados": enviados})
 
+@app.route("/admin/enviar_atualizacao", methods=["POST"])
+@login_required
+def admin_enviar_atualizacao():
+    """Envia email de atualização do sistema para todos os usuários cadastrados"""
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    data = request.json
+    titulo = data.get("titulo", "").strip()
+    conteudo = data.get("conteudo", "").strip()
+    destino = data.get("destino", "todos")  # todos, sem_plano, com_plano
+    if not titulo or not conteudo:
+        return jsonify({"erro": "Preencha título e conteúdo"}), 400
+    demos_html = email_demos_section()
+    # Converter quebras de linha em HTML
+    conteudo_html = conteudo.replace('\n', '<br/>')
+    if destino == "sem_plano":
+        usuarios = [u for u in User.query.all() if not u.plano and not u.is_admin]
+    elif destino == "com_plano":
+        usuarios = [u for u in User.query.all() if u.plano and not u.is_admin]
+    else:
+        usuarios = [u for u in User.query.all() if not u.is_admin]
+    enviados = 0
+    for user in usuarios:
+        enviar_email(user.email, f"🆕 {titulo} — Klyonclaw Studio", f"""<div style="font-family:Arial;max-width:500px;margin:0 auto;padding:0;background:#0b1120;color:#e2e8f0;border-radius:12px;overflow:hidden">
+<div style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:20px 24px;text-align:center">
+<div style="font-size:12px;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Novidade no Klyonclaw Studio</div>
+<div style="font-size:22px;font-weight:800;color:#fff">{titulo}</div>
+</div>
+<div style="padding:24px">
+{email_header()}
+<p style="font-size:15px;line-height:1.6">Olá <b>{user.nome}</b>! 👋</p>
+<div style="font-size:15px;line-height:1.8;color:#94a3b8;margin:16px 0">{conteudo_html}</div>
+{demos_html}
+<div style="text-align:center;margin-top:20px">
+<a href="https://studio.klyonclaw.com/dashboard" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#2563eb,#4a9eff);color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">Experimentar agora →</a>
+</div>
+<p style="color:#475569;font-size:11px;margin-top:24px;text-align:center">Klyonclaw Studio — AI Video Automation</p>
+</div></div>""")
+        enviados += 1
+    import sys; sys.stderr.write(f"[UPDATE] Email de atualização '{titulo}' enviado para {enviados} usuários\n"); sys.stderr.flush()
+    return jsonify({"ok": True, "enviados": enviados})
+
 @app.route("/admin/definir_plano", methods=["POST"])
 @login_required
 def admin_definir_plano():
