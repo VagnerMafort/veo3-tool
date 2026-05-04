@@ -1113,7 +1113,8 @@ async function enviarEmailTeste(){
   result.innerHTML=d.ok?`<span style="color:var(--green)">✅ ${d.msg}</span>`:`<span style="color:var(--red-text)">❌ ${d.erro||'Erro'}</span>`;
 }
 
-// Convites de teste
+// Testar emails
+async function enviarEmailTeste(){
   const email=document.getElementById('testeEmailDest').value.trim();
   const tipo=document.getElementById('testeEmailTipo').value;
   const btn=document.getElementById('btnTesteEmail');
