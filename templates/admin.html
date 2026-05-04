@@ -110,6 +110,7 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     <div class="tab" onclick="trocarAba('banco')">🗃️ Banco</div>
     <div class="tab" onclick="trocarAba('audio')">🎵 Áudio</div>
     <div class="tab" onclick="trocarAba('suporteAdmin')">💬 Suporte</div>
+    <div class="tab" onclick="trocarAba('emails')">📧 Emails</div>
     <div class="tab" onclick="trocarAba('landing')">🌐 Landing</div>
     {% if is_master %}<div class="tab" onclick="trocarAba('docs')">📖 Docs</div>{% endif %}
   </div>
@@ -152,74 +153,10 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
         <span class="metric-value">{{ users|rejectattr('plano')|list|length }} usuários</span>
       </div>
     </div>
-    <div class="card">
-      <h2>📧 Testar Emails</h2>
-      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envie qualquer email automático do sistema para um endereço de teste.</p>
-      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:end">
-        <div style="flex:1;min-width:180px">
-          <label style="margin:0;font-size:.75rem">Email destino</label>
-          <input type="email" id="testeEmailDest" placeholder="seu@email.com" style="font-size:.82rem"/>
-        </div>
-        <div style="flex:1;min-width:180px">
-          <label style="margin:0;font-size:.75rem">Tipo de email</label>
-          <select id="testeEmailTipo" style="font-size:.82rem">
-            <option value="boas_vindas">📩 Boas-vindas (cadastro)</option>
-            <option value="nova_senha">🔑 Nova senha (esqueci senha)</option>
-            <option value="convite_teste">🎬 Convite de teste</option>
-            <option value="codigo_invalido">❌ Código inválido</option>
-            <option value="codigo_expirado">⏰ Código expirado</option>
-            <option value="teste_ativado">✅ Teste ativado</option>
-            <option value="reengajamento_24h">🎬 Reengajamento 24h (não acessou)</option>
-            <option value="reengajamento_48h">💡 Reengajamento 48h (sumiu)</option>
-            <option value="rascunho_pendente">📝 Rascunho pendente</option>
-            <option value="plano_ativado">✅ Plano ativado (pagamento)</option>
-            <option value="promocao_lancamento">🔥 Promoção de lançamento</option>
-          </select>
-        </div>
-        <button class="btn-sm btn-green" onclick="enviarEmailTeste()" id="btnTesteEmail" style="padding:10px 16px;font-size:.82rem">📧 Enviar</button>
-      </div>
-      <div id="testeEmailResult" style="display:none;font-size:.82rem;margin-top:6px"></div>
-    </div>
-    <div class="card">
-      <h2>📢 Enviar Atualização do Sistema</h2>
-      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envie um email de novidade/atualização para os usuários. Reutilizável para qualquer update.</p>
-      <label style="margin-top:0">Título da atualização</label>
-      <input type="text" id="updateTitulo" placeholder="Ex: Novo sistema de animação híbrida" style="font-size:.82rem"/>
-      <label>Conteúdo (use Enter para quebrar linhas)</label>
-      <textarea id="updateConteudo" style="min-height:180px;font-size:.82rem" placeholder="Descreva a novidade aqui..."></textarea>
-      <label>Enviar para</label>
-      <select id="updateDestino" style="font-size:.82rem">
-        <option value="todos">📧 Todos os usuários</option>
-        <option value="sem_plano">🆓 Apenas sem plano</option>
-        <option value="com_plano">💎 Apenas com plano</option>
-      </select>
-      <button class="btn" onclick="enviarAtualizacao()" id="btnEnviarUpdate" style="max-width:400px;background:linear-gradient(135deg,#2563eb,#7c3aed)">📢 Enviar Atualização</button>
-      <div id="updateResult" style="display:none;font-size:.82rem;margin-top:8px"></div>
-    </div>
   </div>
 
   <!-- USUARIOS -->
   <div class="pane" id="paneUsuarios">
-    <div class="card">
-      <h2>🎁 Convites de Teste</h2>
-      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envie convites de teste com 200 créditos (validade 2h).</p>
-      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:end">
-        <div style="flex:1;min-width:200px">
-          <label style="margin:0;font-size:.75rem">Selecionar usuário (ou deixe vazio pra auto)</label>
-          <select id="conviteUserSelect" style="font-size:.82rem">
-            <option value="">🤖 Automático (2 mais recentes sem plano)</option>
-            {% for u in users %}
-            {% if not u.plano and not u.is_admin %}
-            <option value="{{ u.id }}">{{ u.nome }} ({{ u.email }})</option>
-            {% endif %}
-            {% endfor %}
-          </select>
-        </div>
-        <button class="btn-sm btn-green" onclick="enviarConvites()" id="btnEnviarConvites" style="padding:10px 16px;font-size:.82rem">📧 Enviar Convite</button>
-      </div>
-      <div id="convitesResultado" style="display:none;font-size:.82rem;margin-bottom:10px"></div>
-      <div id="convitesLista" style="font-size:.78rem;color:var(--text2)"></div>
-    </div>
     <div class="card">
       <h2>👥 Gerenciar Usuários ({{ users|length }})</h2>
       <input type="text" id="buscaUser" placeholder="Buscar por nome ou email..." oninput="filtrarUsers()" style="margin-bottom:14px"/>
@@ -289,8 +226,6 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
         <span id="promoStatus" style="font-size:.88rem;font-weight:600"></span>
       </div>
       <div id="promoInfo" style="font-size:.78rem;color:var(--text2)"></div>
-      <button class="btn" onclick="enviarPromoMassa()" id="btnPromoMassa" style="max-width:400px;margin-top:10px;background:linear-gradient(135deg,#dc2626,#f59e0b)">📧 Enviar email de promoção para todos sem plano</button>
-      <div id="promoMassaResult" style="display:none;font-size:.82rem;margin-top:8px"></div>
     </div>
     <div class="card">
       <h2>🎨 Identidade Visual</h2>
@@ -518,6 +453,83 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     <div class="card">
       <h2>💬 Mensagens de Suporte</h2>
       <div id="listaSuporte"><div class="vazio">Carregando...</div></div>
+    </div>
+  </div>
+
+  <!-- EMAILS -->
+  <div class="pane" id="paneEmails">
+    <div class="card">
+      <h2>📧 Testar Emails</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envie qualquer email automático do sistema para um endereço de teste.</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:end">
+        <div style="flex:1;min-width:180px">
+          <label style="margin:0;font-size:.75rem">Email destino</label>
+          <input type="email" id="testeEmailDest" placeholder="seu@email.com" style="font-size:.82rem"/>
+        </div>
+        <div style="flex:1;min-width:180px">
+          <label style="margin:0;font-size:.75rem">Tipo de email</label>
+          <select id="testeEmailTipo" style="font-size:.82rem">
+            <option value="boas_vindas">📩 Boas-vindas (cadastro)</option>
+            <option value="nova_senha">🔑 Nova senha (esqueci senha)</option>
+            <option value="convite_teste">🎬 Convite de teste</option>
+            <option value="codigo_invalido">❌ Código inválido</option>
+            <option value="codigo_expirado">⏰ Código expirado</option>
+            <option value="teste_ativado">✅ Teste ativado</option>
+            <option value="reengajamento_24h">🎬 Reengajamento 24h</option>
+            <option value="reengajamento_48h">💡 Reengajamento 48h</option>
+            <option value="rascunho_pendente">📝 Rascunho pendente</option>
+            <option value="plano_ativado">✅ Plano ativado</option>
+            <option value="promocao_lancamento">🔥 Promoção de lançamento</option>
+          </select>
+        </div>
+        <button class="btn-sm btn-green" onclick="enviarEmailTeste()" id="btnTesteEmail" style="padding:10px 16px;font-size:.82rem">📧 Enviar</button>
+      </div>
+      <div id="testeEmailResult" style="display:none;font-size:.82rem;margin-top:6px"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎁 Convites de Teste</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envie convites com 200 créditos (validade 2h).</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:end">
+        <div style="flex:1;min-width:200px">
+          <label style="margin:0;font-size:.75rem">Selecionar usuário (ou deixe vazio pra auto)</label>
+          <select id="conviteUserSelect" style="font-size:.82rem">
+            <option value="">🤖 Automático (2 mais recentes sem plano)</option>
+            {% for u in users %}
+            {% if not u.plano and not u.is_admin %}
+            <option value="{{ u.id }}">{{ u.nome }} ({{ u.email }})</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn-sm btn-green" onclick="enviarConvites()" id="btnEnviarConvites" style="padding:10px 16px;font-size:.82rem">📧 Enviar Convite</button>
+      </div>
+      <div id="convitesResultado" style="display:none;font-size:.82rem;margin-bottom:10px"></div>
+      <div id="convitesLista" style="font-size:.78rem;color:var(--text2)"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔥 Email de Promoção em Massa</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envia o email da promoção ativa para todos os usuários sem plano.</p>
+      <button class="btn" onclick="enviarPromoMassa()" id="btnPromoMassa" style="max-width:400px;background:linear-gradient(135deg,#dc2626,#f59e0b)">📧 Enviar promoção para todos sem plano</button>
+      <div id="promoMassaResult" style="display:none;font-size:.82rem;margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h2>📢 Enviar Atualização do Sistema</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:10px">Envie um email de novidade/atualização. Reutilizável para qualquer update.</p>
+      <label style="margin-top:0">Título da atualização</label>
+      <input type="text" id="updateTitulo" placeholder="Ex: Novo sistema de animação híbrida" style="font-size:.82rem"/>
+      <label>Conteúdo (use Enter para quebrar linhas)</label>
+      <textarea id="updateConteudo" style="min-height:180px;font-size:.82rem" placeholder="Descreva a novidade aqui..."></textarea>
+      <label>Enviar para</label>
+      <select id="updateDestino" style="font-size:.82rem">
+        <option value="todos">📧 Todos os usuários</option>
+        <option value="sem_plano">🆓 Apenas sem plano</option>
+        <option value="com_plano">💎 Apenas com plano</option>
+      </select>
+      <button class="btn" onclick="enviarAtualizacao()" id="btnEnviarUpdate" style="max-width:400px;background:linear-gradient(135deg,#2563eb,#7c3aed)">📢 Enviar Atualização</button>
+      <div id="updateResult" style="display:none;font-size:.82rem;margin-top:8px"></div>
     </div>
   </div>
 
@@ -778,7 +790,7 @@ applyTheme();
 
 let _bancoCarregado=false, _audioCarregado=false;
 function trocarAba(aba){
-  const abas=['metricas','usuarios','planos','prompts','banco','audio','suporteAdmin','landing','docs'];
+  const abas=['metricas','usuarios','planos','prompts','banco','audio','suporteAdmin','emails','landing','docs'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',abas[i]===aba));
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane'+aba.charAt(0).toUpperCase()+aba.slice(1)).classList.add('active');
