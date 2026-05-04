@@ -3642,6 +3642,22 @@ def admin_demos_get():
         return jsonify({"erro": "Sem permissao"}), 403
     return jsonify({"demos": load_demos()})
 
+@app.route("/admin/upload_thumb_exemplo", methods=["POST"])
+@login_required
+def admin_upload_thumb_exemplo():
+    if not current_user.is_admin:
+        return jsonify({"erro": "Sem permissao"}), 403
+    if "imagem" not in request.files:
+        return jsonify({"erro": "Envie uma imagem"}), 400
+    tipo = request.form.get("tipo", "antes")
+    if tipo not in ("antes", "depois"):
+        return jsonify({"erro": "Tipo inválido"}), 400
+    imagem = request.files["imagem"]
+    os.makedirs("static", exist_ok=True)
+    filepath = os.path.join("static", f"thumb_{tipo}.jpg")
+    imagem.save(filepath)
+    return jsonify({"ok": True})
+
 @app.route("/admin/demos/upload", methods=["POST"])
 @login_required
 def admin_demos_upload():

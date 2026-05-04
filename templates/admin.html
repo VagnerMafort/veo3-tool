@@ -640,6 +640,30 @@ textarea{resize:vertical;min-height:150px;font-family:monospace;font-size:.8rem}
     </div>
 
     <div class="card">
+      <h2>🖼️ Thumbnail Antes/Depois</h2>
+      <p style="font-size:.78rem;color:var(--text3);margin-bottom:14px">Imagens de exemplo que aparecem na seção de thumbnails da landing.</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:150px">
+          <label style="margin:0">Antes</label>
+          <div style="background:var(--bg3);border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;position:relative;min-height:80px;display:flex;align-items:center;justify-content:center;margin-top:6px">
+            <img id="previewThumbAntes" src="/static/thumb_antes.jpg" style="max-width:100%;max-height:100px;display:none" onerror="this.style.display='none'"/>
+            <span id="placeholderThumbAntes" style="color:var(--text3);font-size:.78rem">Clique para enviar</span>
+            <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="uploadThumbExemplo('antes',this)"/>
+          </div>
+        </div>
+        <div style="flex:1;min-width:150px">
+          <label style="margin:0">Depois</label>
+          <div style="background:var(--bg3);border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;position:relative;min-height:80px;display:flex;align-items:center;justify-content:center;margin-top:6px">
+            <img id="previewThumbDepois" src="/static/thumb_depois.jpg" style="max-width:100%;max-height:100px;display:none" onerror="this.style.display='none'"/>
+            <span id="placeholderThumbDepois" style="color:var(--text3);font-size:.78rem">Clique para enviar</span>
+            <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="uploadThumbExemplo('depois',this)"/>
+          </div>
+        </div>
+      </div>
+      <div id="thumbExemploResult" style="display:none;font-size:.82rem;margin-top:8px"></div>
+    </div>
+
+    <div class="card">
       <h2>🔗 Link da Landing</h2>
       <div class="metric-row"><span class="metric-label">URL</span><span class="metric-value"><a href="https://studio.klyonclaw.com" target="_blank" style="color:var(--accent)">studio.klyonclaw.com</a></span></div>
       <p style="font-size:.75rem;color:var(--text3);margin-top:8px">A landing aparece para visitantes não logados. Usuários logados são redirecionados ao dashboard.</p>
@@ -1196,6 +1220,30 @@ async function deletarDemo(idx){
   carregarDemos();
 }
 carregarDemos();
+
+// Thumb antes/depois
+async function uploadThumbExemplo(tipo,input){
+  if(!input.files[0])return;
+  const fd=new FormData();
+  fd.append('imagem',input.files[0]);
+  fd.append('tipo',tipo);
+  const res=await fetch('/admin/upload_thumb_exemplo',{method:'POST',body:fd});
+  const d=await res.json();
+  const result=document.getElementById('thumbExemploResult');
+  result.style.display='block';
+  if(d.ok){
+    result.innerHTML='<span style="color:var(--green)">✅ Imagem '+tipo+' salva!</span>';
+    const img=document.getElementById('previewThumb'+tipo.charAt(0).toUpperCase()+tipo.slice(1));
+    if(img){img.src='/static/thumb_'+tipo+'.jpg?t='+Date.now();img.style.display='block';}
+    const ph=document.getElementById('placeholderThumb'+tipo.charAt(0).toUpperCase()+tipo.slice(1));
+    if(ph)ph.style.display='none';
+  } else {result.innerHTML='<span style="color:var(--red-text)">❌ '+(d.erro||'Erro')+'</span>';}
+}
+// Carregar previews existentes
+['Antes','Depois'].forEach(t=>{
+  const img=document.getElementById('previewThumb'+t);
+  if(img){const test=new Image();test.onload=()=>{img.style.display='block';document.getElementById('placeholderThumb'+t).style.display='none';};test.src=img.src;}
+});
 
 // Promoção
 async function carregarPromo(){
