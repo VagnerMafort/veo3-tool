@@ -1284,7 +1284,12 @@ def montar_video(imagens, audio_path, output_path, legenda_cfg=None):
         im.close()
     except:
         w, h = 1024, 1792
+    # Forçar dimensões pares (libx264 exige)
+    w = w if w % 2 == 0 else w + 1
+    h = h if h % 2 == 0 else h + 1
     sw, sh = int(w * 1.15), int(h * 1.15)
+    sw = sw if sw % 2 == 0 else sw + 1
+    sh = sh if sh % 2 == 0 else sh + 1
     inputs = []
     filtros = []
     partes = []
@@ -1724,6 +1729,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                 for idx_cena, bloco in enumerate(blocos):
                     audio_cena_path = os.path.join(job_dir, f"narr_{idx_cena+1:04d}.mp3")
                     jobs[job_id]["progresso"] = f"Narrando cena {idx_cena+1}/{len(blocos)}..."
+                    sys.stderr.write(f"[NARR] Cena {idx_cena+1}/{len(blocos)}: '{bloco['texto'][:50]}...'\n"); sys.stderr.flush()
                     narracao_ok = False
                     for tentativa in range(3):
                         try:
