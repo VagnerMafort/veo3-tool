@@ -1298,10 +1298,10 @@ def montar_video(imagens, audio_path, output_path, legenda_cfg=None):
         n = max(int(dur * fps), fps)
         inputs += ["-loop", "1", "-t", str(dur + 1), "-i", os.path.abspath(img["path"])]
         zooms = [
-            f"zoompan=z='min(zoom+0.0008,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={n}:s={w}x{h}:fps={fps}",
-            f"zoompan=z='if(lte(zoom,1.0),1.12,max(1.001,zoom-0.0008))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={n}:s={w}x{h}:fps={fps}",
-            f"zoompan=z='1.08':x='if(lte(on,1),0,min(x+0.4,iw-iw/zoom))':y='ih/2-(ih/zoom/2)':d={n}:s={w}x{h}:fps={fps}",
-            f"zoompan=z='1.08':x='if(lte(on,1),iw,max(x-0.4,0))':y='ih/2-(ih/zoom/2)':d={n}:s={w}x{h}:fps={fps}",
+            f"zoompan=z='min(zoom+0.003,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={n}:s={w}x{h}:fps={fps}",
+            f"zoompan=z='if(lte(zoom,1.0),1.25,max(1.001,zoom-0.003))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={n}:s={w}x{h}:fps={fps}",
+            f"zoompan=z='1.15':x='if(lte(on,1),0,min(x+1.2,iw-iw/zoom))':y='ih/2-(ih/zoom/2)':d={n}:s={w}x{h}:fps={fps}",
+            f"zoompan=z='1.15':x='if(lte(on,1),iw,max(x-1.2,0))':y='ih/2-(ih/zoom/2)':d={n}:s={w}x{h}:fps={fps}",
         ]
         # trim força a duração exata, evitando que zoompan gere frames extras
         filtros.append(f"[{i}:v]scale={sw}:{sh},{zooms[i%4]},trim=duration={dur},setpts=PTS-STARTPTS[v{i}]")
