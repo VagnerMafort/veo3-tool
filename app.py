@@ -2,7 +2,7 @@ from flask import Flask, request, render_template, send_file, jsonify, redirect,
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-import whisper, math, os, uuid, threading, zipfile, requests, subprocess, json, re, shutil, sqlite3, stripe
+import math, os, uuid, threading, zipfile, requests, subprocess, json, re, shutil, sqlite3, stripe
 from pydub import AudioSegment
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -600,6 +600,7 @@ def load_user(user_id):
 def get_whisper_model():
     global whisper_model
     if whisper_model is None:
+        import whisper
         whisper_model = whisper.load_model("small")
     return whisper_model
 
