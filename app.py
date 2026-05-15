@@ -1383,7 +1383,16 @@ def dividir_roteiro(texto, api_key, tipo_video="estatico"):
             frases = re.split(r'(?<=[.!?;])\s+', texto.strip())
             frases = [f.strip() for f in frases if f.strip()]
 
-            if len(frases) <= cenas_alvo:
+            # Se não tem pontuação (texto corrido), dividir por palavras diretamente
+            if len(frases) <= 2 and n_palavras > 20:
+                palavras = texto.strip().split()
+                palavras_por_cena = min(MAX_PALAVRAS_CENA, max(MIN_PALAVRAS_CENA, n_palavras // cenas_alvo))
+                linhas_resultado = []
+                for j in range(0, len(palavras), palavras_por_cena):
+                    cena = " ".join(palavras[j:j+palavras_por_cena])
+                    if cena.strip():
+                        linhas_resultado.append(cena.strip())
+            elif len(frases) <= cenas_alvo:
                 linhas_resultado = frases[:]
             else:
                 # Agrupar frases respeitando o limite de palavras por cena
