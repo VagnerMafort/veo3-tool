@@ -4992,7 +4992,7 @@ def admin_deletar_musica_sistema():
 @app.route("/transcrever_narracao", methods=["POST"])
 @login_required
 def transcrever_narracao():
-    """Recebe um áudio e transcreve com Whisper para usar como roteiro"""
+    """Recebe um áudio e transcreve com OpenAI Whisper API"""
     if "audio" not in request.files:
         return jsonify({"erro": "Envie um arquivo de áudio"}), 400
     audio = request.files["audio"]
@@ -5000,19 +5000,30 @@ def transcrever_narracao():
         return jsonify({"erro": "Arquivo vazio"}), 400
     # Salvar temporariamente
     import tempfile
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+    ext = audio.filename.rsplit(".", 1)[-1].lower() if "." in audio.filename else "mp3"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
     audio.save(tmp.name)
     tmp.close()
     try:
-        import whisper
-        model = whisper.load_model("base")
-        result = model.transcribe(tmp.name, language="pt")
-        texto = result.get("text", "").strip()
+        api_key = current_user.get_api_key() or SYSTEM_OPENAI_KEY
+        if not api_key:
+            return jsonify({"erro": "Chave OpenAI não configurada"}), 500
+        # Usar API OpenAI Whisper (rápido, não precisa de GPU)
+        with open(tmp.name, "rb") as f:
+            r = requests.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                files={"file": (f"audio.{ext}", f, f"audio/{ext}")},
+                data={"model": "whisper-1", "language": "pt"}
+            )
+        if not r.ok:
+            return jsonify({"erro": f"Erro na transcrição: {r.json().get('error', {}).get('message', r.text[:200])}"}), 500
+        texto = r.json().get("text", "").strip()
         if not texto:
             return jsonify({"erro": "Não foi possível transcrever o áudio"}), 400
         return jsonify({"texto": texto})
     except Exception as e:
-        return jsonify({"erro": f"Erro na transcrição: {str(e)}"}), 500
+        return jsonify({"erro": f"Erro: {str(e)}"}), 500
     finally:
         try: os.unlink(tmp.name)
         except: pass
