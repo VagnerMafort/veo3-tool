@@ -1473,6 +1473,53 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 linhas = [l.strip() for l in texto_manual.replace(",", "\n").replace(".", "\n").split("\n") if l.strip()]
 
             total = len(linhas)
+            # ── BUSCA AUTOMÁTICA NO BANCO (se usuário tem banco ativo) ──
+            banco_auto_count = 0
+            if user.banco_ativo and not cenas_preenchidas:
+                cenas_preenchidas = {}
+                jobs[job_id]["progresso"] = "Buscando no banco de imagens..."
+                import sys
+                sys.stderr.write(f"[BANCO-AUTO] Buscando no banco para {total} cenas...\n"); sys.stderr.flush()
+                try:
+                    conn_banco = sqlite3.connect('instance/veo3.db')
+                    usadas = set()
+                    for i_cena, linha in enumerate(linhas):
+                        palavras = [p for p in linha.lower().split() if len(p) >= 4]
+                        if not palavras:
+                            continue
+                        rows = conn_banco.execute(
+                            "SELECT id, path, tags, tipo FROM banco_imagens ORDER BY id DESC LIMIT 200"
+                        ).fetchall()
+                        melhor = None
+                        melhor_score = 0
+                        for row in rows:
+                            if row[0] in usadas:
+                                continue
+                            path = row[1]
+                            if not os.path.exists(path):
+                                continue
+                            tags = (row[2] or "").lower()
+                            score = sum(1 for p in palavras if p in tags)
+                            if score > melhor_score:
+                                melhor_score = score
+                                melhor = row
+                        # Usar se pelo menos 40% das palavras bateram
+                        if melhor and melhor_score >= max(2, len(palavras) * 0.4):
+                            usadas.add(melhor[0])
+                            # Copiar para o storyboard
+                            ext = "mp4" if melhor[3] == "video" else "png"
+                            dest_name = f"banco_{i_cena+1:03d}.{ext}"
+                            dest_path = os.path.join(sb_dir, dest_name)
+                            shutil.copy(melhor[1], dest_path)
+                            cenas_preenchidas[str(i_cena+1)] = dest_name
+                            banco_auto_count += 1
+                            sys.stderr.write(f"[BANCO-AUTO] Cena {i_cena+1}: encontrada no banco (score={melhor_score})\n"); sys.stderr.flush()
+                    conn_banco.close()
+                except Exception as e:
+                    import sys
+                    sys.stderr.write(f"[BANCO-AUTO] Erro: {e}\n"); sys.stderr.flush()
+                sys.stderr.write(f"[BANCO-AUTO] {banco_auto_count}/{total} cenas do banco\n"); sys.stderr.flush()
+
             # Contar quantas cenas precisam ser geradas (excluir preenchidas)
             cenas_a_gerar = [i for i in range(total) if str(i+1) not in cenas_preenchidas]
 
@@ -1684,7 +1731,7 @@ Write in ENGLISH."""},
             sb_data = {"blocos": blocos, "estilo": estilo, "dir": sb_dir, "creditos_gastos": creditos_gastos_sb, "tipo_video": tipo_video, "is_trial": is_trial}
             with open(os.path.join(sb_dir, "storyboard.json"), "w") as f:
                 json.dump(sb_data, f)
-            jobs[job_id] = {"status": "storyboard_pronto", "progresso": "Storyboard pronto", "total": total, "atual": total, "blocos": blocos, "sb_id": job_id, "is_trial": is_trial}
+            jobs[job_id] = {"status": "storyboard_pronto", "progresso": "Storyboard pronto", "total": total, "atual": total, "blocos": blocos, "sb_id": job_id, "is_trial": is_trial, "banco_count": banco_auto_count, "geradas_count": len(cenas_a_gerar)}
         except Exception as e:
             jobs[job_id] = {"status": "erro", "progresso": str(e), "total": 0, "atual": 0}
 

@@ -1720,6 +1720,13 @@ function pollSB(jobId){
     document.getElementById('btnGerarSB').disabled=false;document.getElementById('btnGerarFaltantes').disabled=false;
     document.getElementById('etapaPreview').style.display='none';
     sbId=d.sb_id;sbBlocos=d.blocos;mostrarStoryboard();atualizarCreditos();
+    if(d.banco_count>0){
+      const infoEl=document.createElement('div');
+      infoEl.style.cssText='background:var(--bg3);border:1px solid var(--accent);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;font-size:.82rem';
+      infoEl.innerHTML=`<span style="color:var(--accent)">🗃️ <b>${d.banco_count}</b> do banco (grátis)</span><span style="color:var(--text2)">🎨 <b>${d.geradas_count}</b> geradas com IA</span>`;
+      const lista=document.getElementById('listaCenas');
+      lista.parentElement.insertBefore(infoEl,lista);
+    }
     if(d.is_trial){
       setTimeout(()=>{
         const trialCard=document.createElement('div');
