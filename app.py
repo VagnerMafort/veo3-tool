@@ -1766,7 +1766,7 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
 
             # ── NARRAÇÃO UPLOAD: usar áudio enviado pelo usuário ──
             if narracao_upload_path and os.path.exists(narracao_upload_path):
-                jobs[job_id]["progresso"] = "Usando sua narração..."
+                jobs[job_id]["progresso"] = "Sincronizando narração com cenas..."
                 import sys
                 sys.stderr.write(f"[NARR] Usando narracao upload: {narracao_upload_path}\n"); sys.stderr.flush()
                 # Copiar áudio para o job_dir
@@ -1780,27 +1780,82 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                     duracao_total = float(p.stdout.strip()) if p.returncode == 0 else 60
                 except:
                     duracao_total = 60
-                # Distribuir duração proporcionalmente entre as cenas (por palavras)
-                total_palavras = sum(len(b["texto"].split()) for b in blocos)
+
+                # Transcrever com timestamps para sincronizar cada cena
+                api_key_whisper = user.get_api_key() or SYSTEM_OPENAI_KEY
+                try:
+                    with open(audio_final_path, "rb") as f_audio:
+                        r_whisper = requests.post(
+                            "https://api.openai.com/v1/audio/transcriptions",
+                            headers={"Authorization": f"Bearer {api_key_whisper}"},
+                            files={"file": ("audio.mp3", f_audio, "audio/mp3")},
+                            data={"model": "whisper-1", "language": "pt", "response_format": "verbose_json", "timestamp_granularities[]": "word"},
+                            timeout=60
+                        )
+                    words_data = r_whisper.json().get("words", []) if r_whisper.ok else []
+                except:
+                    words_data = []
+
+                n_cenas = len(blocos)
                 imagens = []
                 t = 0
-                for idx_cena, bloco in enumerate(blocos):
-                    palavras_cena = len(bloco["texto"].split())
-                    proporcao = palavras_cena / total_palavras if total_palavras > 0 else 1 / len(blocos)
-                    dur_cena = max(2.0, round(duracao_total * proporcao, 2))
-                    img_src = os.path.join(sb_dir, bloco["img"])
-                    img_dst = os.path.join(job_dir, f"{idx_cena+1:04d}.png")
-                    shutil.copy(img_src, img_dst)
-                    imagens.append({
-                        "index": idx_cena + 1,
-                        "path": img_dst,
-                        "duracao": dur_cena,
-                        "inicio": round(t, 2),
-                        "fim": round(t + dur_cena, 2),
-                        "texto": bloco["texto"]
-                    })
-                    sys.stderr.write(f"[SYNC] Cena {idx_cena+1}: {dur_cena:.2f}s | Acumulado: {t + dur_cena:.2f}s\n"); sys.stderr.flush()
-                    t += dur_cena
+
+                if words_data:
+                    # Distribuir palavras do Whisper proporcionalmente entre as cenas
+                    total_palavras_roteiro = sum(len(b["texto"].split()) for b in blocos)
+                    cursor = 0
+                    for idx_cena, bloco in enumerate(blocos):
+                        palavras_cena = len(bloco["texto"].split())
+                        # Quantas palavras do Whisper essa cena recebe
+                        proporcao = palavras_cena / total_palavras_roteiro if total_palavras_roteiro > 0 else 1 / n_cenas
+                        n_words = max(1, round(len(words_data) * proporcao))
+                        fatia = words_data[cursor:cursor + n_words]
+                        cursor = min(cursor + n_words, len(words_data))
+
+                        # Início = timestamp da primeira palavra da fatia
+                        inicio_cena = fatia[0]["start"] if fatia else t
+                        # Fim = timestamp da última palavra da fatia (ou início da próxima)
+                        if idx_cena == n_cenas - 1:
+                            fim_cena = duracao_total
+                        elif cursor < len(words_data):
+                            fim_cena = words_data[cursor]["start"]
+                        else:
+                            fim_cena = fatia[-1]["end"] if fatia else duracao_total
+
+                        dur_cena = max(1.5, round(fim_cena - inicio_cena, 2))
+
+                        img_src = os.path.join(sb_dir, bloco["img"])
+                        img_dst = os.path.join(job_dir, f"{idx_cena+1:04d}.png")
+                        shutil.copy(img_src, img_dst)
+                        imagens.append({
+                            "index": idx_cena + 1,
+                            "path": img_dst,
+                            "duracao": dur_cena,
+                            "inicio": round(inicio_cena, 2),
+                            "fim": round(fim_cena, 2),
+                            "texto": bloco["texto"]
+                        })
+                        sys.stderr.write(f"[SYNC] Cena {idx_cena+1}: {dur_cena:.2f}s ({inicio_cena:.1f}-{fim_cena:.1f})\n"); sys.stderr.flush()
+                        t = fim_cena
+                else:
+                    # Fallback: dividir igualmente se Whisper falhar
+                    dur_por_cena = duracao_total / n_cenas
+                    for idx_cena, bloco in enumerate(blocos):
+                        dur_cena = round(dur_por_cena, 2) if idx_cena < n_cenas - 1 else round(duracao_total - t, 2)
+                        img_src = os.path.join(sb_dir, bloco["img"])
+                        img_dst = os.path.join(job_dir, f"{idx_cena+1:04d}.png")
+                        shutil.copy(img_src, img_dst)
+                        imagens.append({
+                            "index": idx_cena + 1,
+                            "path": img_dst,
+                            "duracao": dur_cena,
+                            "inicio": round(t, 2),
+                            "fim": round(t + dur_cena, 2),
+                            "texto": bloco["texto"]
+                        })
+                        t += dur_cena
+
+                sys.stderr.write(f"[SYNC] Total: {n_cenas} cenas | Audio: {duracao_total:.2f}s\n"); sys.stderr.flush()
                 # Não cobrar créditos de narração (usuário enviou o áudio)
                 voice_id = ""  # Evitar gerar narração depois
 
