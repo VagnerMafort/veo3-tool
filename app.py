@@ -4547,6 +4547,69 @@ def banco_img_file(filename):
     response.headers['Cache-Control'] = 'public, max-age=86400'
     return response
 
+@app.route("/buscar_banco_auto", methods=["POST"])
+@login_required
+def buscar_banco_auto():
+    """Busca automática no banco para cenas de um rascunho — substitui se encontrar melhor"""
+    if not current_user.banco_ativo:
+        return jsonify({"substituicoes": 0})
+    data = request.json
+    sb_id = data.get("sb_id", "")
+    cenas = data.get("cenas", [])
+    if not sb_id or not cenas:
+        return jsonify({"substituicoes": 0})
+    sb_dir = os.path.join(STORYBOARD_FOLDER, sb_id)
+    if not os.path.exists(sb_dir):
+        return jsonify({"substituicoes": 0})
+    try:
+        conn = sqlite3.connect('instance/veo3.db')
+        usadas = set()
+        substituicoes = 0
+        for i, texto in enumerate(cenas):
+            palavras = [p for p in texto.lower().split() if len(p) >= 4]
+            if not palavras:
+                continue
+            rows = conn.execute("SELECT id, path, tags, tipo FROM banco_imagens ORDER BY id DESC LIMIT 200").fetchall()
+            melhor = None
+            melhor_score = 0
+            for row in rows:
+                if row[0] in usadas or not os.path.exists(row[1]):
+                    continue
+                tags = (row[2] or "").lower()
+                score = sum(1 for p in palavras if p in tags)
+                if score > melhor_score:
+                    melhor_score = score
+                    melhor = row
+            if melhor and melhor_score >= max(2, len(palavras) * 0.4):
+                usadas.add(melhor[0])
+                # Verificar se a cena já tem uma imagem gerada — só substituir se o match é bom
+                existing = os.path.join(sb_dir, f"{i+1:03d}.png")
+                ext = "mp4" if melhor[3] == "video" else "png"
+                dest = os.path.join(sb_dir, f"banco_{i+1:03d}.{ext}")
+                if not os.path.exists(dest):  # Só substituir se não foi já substituída
+                    shutil.copy(melhor[1], dest)
+                    # Atualizar storyboard.json
+                    sb_json = os.path.join(sb_dir, "storyboard.json")
+                    if os.path.exists(sb_json):
+                        with open(sb_json) as f:
+                            sb_data = json.load(f)
+                        blocos = sb_data.get("blocos", [])
+                        if i < len(blocos):
+                            if ext == "mp4":
+                                blocos[i]["video"] = f"banco_{i+1:03d}.mp4"
+                            else:
+                                blocos[i]["img"] = f"banco_{i+1:03d}.png"
+                            blocos[i]["do_banco"] = True
+                        sb_data["blocos"] = blocos
+                        with open(sb_json, "w") as f:
+                            json.dump(sb_data, f)
+                    substituicoes += 1
+        conn.close()
+        return jsonify({"substituicoes": substituicoes})
+    except Exception as e:
+        import sys; sys.stderr.write(f"[BANCO-AUTO] Erro rascunho: {e}\n"); sys.stderr.flush()
+        return jsonify({"substituicoes": 0})
+
 @app.route("/buscar_banco", methods=["POST"])
 @login_required
 def buscar_banco():
