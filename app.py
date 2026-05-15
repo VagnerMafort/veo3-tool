@@ -1512,7 +1512,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                             if score > melhor_score:
                                 melhor_score = score
                                 melhor = row
-                        if melhor and melhor_score >= max(2, len(palavras) * 0.4):
+                        if melhor and melhor_score >= max(4, len(palavras) * 0.7):
                             if os.path.exists(melhor[1]):
                                 usadas.add(melhor[0])
                                 ext = "mp4" if melhor[3] == "video" else "png"
@@ -1525,6 +1525,13 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 except Exception as e:
                     import sys
                     sys.stderr.write(f"[BANCO-AUTO] Erro: {e}\n"); sys.stderr.flush()
+                # IMPORTANTE: não deixar banco_auto_count = total (precisa gerar pelo menos 1 imagem pra ter blocos)
+                if banco_auto_count >= total:
+                    banco_auto_count = total - 1
+                    # Remover a última preenchida pra forçar geração de pelo menos 1
+                    last_key = str(total)
+                    if last_key in cenas_preenchidas:
+                        del cenas_preenchidas[last_key]
                 sys.stderr.write(f"[BANCO-AUTO] {banco_auto_count}/{total} cenas do banco\n"); sys.stderr.flush()
 
             # Contar quantas cenas precisam ser geradas (excluir preenchidas)
@@ -1565,11 +1572,29 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
             for idx_str, banco_path in cenas_preenchidas.items():
                 idx = int(idx_str) - 1
                 if idx < total:
-                    img_path = os.path.join(sb_dir, f"{idx+1:03d}.png")
-                    src = os.path.join(BANCO_IMG_FOLDER, banco_path) if not os.path.isabs(banco_path) else banco_path
-                    if os.path.exists(src):
-                        shutil.copy(src, img_path)
-                        blocos.append({"index": idx+1, "texto": linhas[idx], "img": f"{idx+1:03d}.png"})
+                    is_video = banco_path.endswith('.mp4')
+                    if is_video:
+                        img_path = os.path.join(sb_dir, f"{idx+1:03d}.mp4")
+                    else:
+                        img_path = os.path.join(sb_dir, f"{idx+1:03d}.png")
+                    # banco_path pode ser: nome no sb_dir (busca auto) ou path no BANCO_IMG_FOLDER (manual)
+                    src_in_sb = os.path.join(sb_dir, banco_path)
+                    src_in_banco = os.path.join(BANCO_IMG_FOLDER, banco_path)
+                    if os.path.exists(src_in_sb):
+                        if src_in_sb != img_path:
+                            shutil.copy(src_in_sb, img_path)
+                    elif os.path.exists(src_in_banco):
+                        shutil.copy(src_in_banco, img_path)
+                    elif os.path.isabs(banco_path) and os.path.exists(banco_path):
+                        shutil.copy(banco_path, img_path)
+                    bloco_data = {"index": idx+1, "texto": linhas[idx]}
+                    if is_video:
+                        bloco_data["img"] = f"{idx+1:03d}.mp4"
+                        bloco_data["video"] = f"{idx+1:03d}.mp4"
+                    else:
+                        bloco_data["img"] = f"{idx+1:03d}.png"
+                    bloco_data["do_banco"] = True
+                    blocos.append(bloco_data)
 
             # ── ETAPA 0: Preparação (sequencial pra evitar deadlock) ──
             ficha = ""
@@ -4644,7 +4669,7 @@ def buscar_banco_auto():
                 if score > melhor_score:
                     melhor_score = score
                     melhor = row
-            if melhor and melhor_score >= max(2, len(palavras) * 0.4):
+            if melhor and melhor_score >= max(4, len(palavras) * 0.7):
                 if not os.path.exists(melhor[1]):
                     continue
                 usadas.add(melhor[0])
