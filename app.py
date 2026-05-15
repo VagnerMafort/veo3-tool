@@ -1512,7 +1512,7 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                             if score > melhor_score:
                                 melhor_score = score
                                 melhor = row
-                        if melhor and melhor_score >= max(4, len(palavras) * 0.7):
+                        if melhor and melhor_score >= max(2, len(palavras) * 0.4):
                             if os.path.exists(melhor[1]):
                                 usadas.add(melhor[0])
                                 ext = "mp4" if melhor[3] == "video" else "png"
@@ -2135,6 +2135,28 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
                                 else:
                                     clipes_validos.append(cp)
                                 sys.stderr.write(f"[SYNC] Cena {ci+1}: animacao {dur_clipe:.1f}s + estatico {dur_restante:.1f}s = {dur_cena_audio:.1f}s\n"); sys.stderr.flush()
+                        elif ci < len(imagens):
+                            # Cena não animada (híbrido) — gerar zoompan
+                            dur_cena_audio = imagens[ci]["duracao"]
+                            img = imagens[ci]
+                            clipe_zoom = os.path.join(job_dir, f"clipe_zoom_{ci+1:04d}.mp4")
+                            try:
+                                im = Image.open(img["path"])
+                                w, h = im.size
+                                im.close()
+                                w = w if w % 2 == 0 else w + 1
+                                h = h if h % 2 == 0 else h + 1
+                            except:
+                                w, h = 1024, 1792
+                            n_frames = max(int(dur_cena_audio * 25), 25)
+                            zoom_cmd = ["ffmpeg", "-y", "-loop", "1", "-t", str(dur_cena_audio + 0.5),
+                                        "-i", os.path.abspath(img["path"]),
+                                        "-vf", f"scale={w}:{h},zoompan=z='min(zoom+0.003,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={n_frames}:s={w}x{h}:fps=25,trim=duration={dur_cena_audio},setpts=PTS-STARTPTS",
+                                        "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p", "-an", clipe_zoom]
+                            subprocess.run(zoom_cmd, capture_output=True, text=True)
+                            if os.path.exists(clipe_zoom):
+                                clipes_validos.append(clipe_zoom)
+                                sys.stderr.write(f"[SYNC] Cena {ci+1}: zoompan {dur_cena_audio:.1f}s\n"); sys.stderr.flush()
 
                     # PASSO 1: Concatenar clipes cortados
                     concat_path = os.path.join(job_dir, "concat_list.txt")
@@ -4669,7 +4691,7 @@ def buscar_banco_auto():
                 if score > melhor_score:
                     melhor_score = score
                     melhor = row
-            if melhor and melhor_score >= max(4, len(palavras) * 0.7):
+            if melhor and melhor_score >= max(2, len(palavras) * 0.4):
                 if not os.path.exists(melhor[1]):
                     continue
                 usadas.add(melhor[0])
