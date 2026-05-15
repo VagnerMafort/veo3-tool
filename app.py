@@ -1482,39 +1482,36 @@ def gerar_storyboard(job_id, user_id, texto_manual, estilo, melhorar_prompts, us
                 sys.stderr.write(f"[BANCO-AUTO] Buscando no banco para {total} cenas...\n"); sys.stderr.flush()
                 try:
                     conn_banco = sqlite3.connect('instance/veo3.db')
+                    # UMA query só — reutilizar para todas as cenas
+                    all_rows = conn_banco.execute(
+                        "SELECT id, path, tags, tipo FROM banco_imagens WHERE tags IS NOT NULL AND tags != '' ORDER BY id DESC LIMIT 100"
+                    ).fetchall()
+                    conn_banco.close()
                     usadas = set()
                     for i_cena, linha in enumerate(linhas):
                         palavras = [p for p in linha.lower().split() if len(p) >= 4]
                         if not palavras:
                             continue
-                        rows = conn_banco.execute(
-                            "SELECT id, path, tags, tipo FROM banco_imagens ORDER BY id DESC LIMIT 200"
-                        ).fetchall()
                         melhor = None
                         melhor_score = 0
-                        for row in rows:
+                        for row in all_rows:
                             if row[0] in usadas:
-                                continue
-                            path = row[1]
-                            if not os.path.exists(path):
                                 continue
                             tags = (row[2] or "").lower()
                             score = sum(1 for p in palavras if p in tags)
                             if score > melhor_score:
                                 melhor_score = score
                                 melhor = row
-                        # Usar se pelo menos 40% das palavras bateram
                         if melhor and melhor_score >= max(2, len(palavras) * 0.4):
-                            usadas.add(melhor[0])
-                            # Copiar para o storyboard
-                            ext = "mp4" if melhor[3] == "video" else "png"
-                            dest_name = f"banco_{i_cena+1:03d}.{ext}"
-                            dest_path = os.path.join(sb_dir, dest_name)
-                            shutil.copy(melhor[1], dest_path)
-                            cenas_preenchidas[str(i_cena+1)] = dest_name
-                            banco_auto_count += 1
-                            sys.stderr.write(f"[BANCO-AUTO] Cena {i_cena+1}: encontrada no banco (score={melhor_score})\n"); sys.stderr.flush()
-                    conn_banco.close()
+                            if os.path.exists(melhor[1]):
+                                usadas.add(melhor[0])
+                                ext = "mp4" if melhor[3] == "video" else "png"
+                                dest_name = f"banco_{i_cena+1:03d}.{ext}"
+                                dest_path = os.path.join(sb_dir, dest_name)
+                                shutil.copy(melhor[1], dest_path)
+                                cenas_preenchidas[str(i_cena+1)] = dest_name
+                                banco_auto_count += 1
+                                sys.stderr.write(f"[BANCO-AUTO] Cena {i_cena+1}: banco (score={melhor_score})\n"); sys.stderr.flush()
                 except Exception as e:
                     import sys
                     sys.stderr.write(f"[BANCO-AUTO] Erro: {e}\n"); sys.stderr.flush()
@@ -4563,17 +4560,19 @@ def buscar_banco_auto():
         return jsonify({"substituicoes": 0})
     try:
         conn = sqlite3.connect('instance/veo3.db')
+        # UMA query só
+        all_rows = conn.execute("SELECT id, path, tags, tipo FROM banco_imagens WHERE tags IS NOT NULL AND tags != '' ORDER BY id DESC LIMIT 100").fetchall()
+        conn.close()
         usadas = set()
         substituicoes = 0
         for i, texto in enumerate(cenas):
             palavras = [p for p in texto.lower().split() if len(p) >= 4]
             if not palavras:
                 continue
-            rows = conn.execute("SELECT id, path, tags, tipo FROM banco_imagens ORDER BY id DESC LIMIT 200").fetchall()
             melhor = None
             melhor_score = 0
-            for row in rows:
-                if row[0] in usadas or not os.path.exists(row[1]):
+            for row in all_rows:
+                if row[0] in usadas:
                     continue
                 tags = (row[2] or "").lower()
                 score = sum(1 for p in palavras if p in tags)
@@ -4581,6 +4580,8 @@ def buscar_banco_auto():
                     melhor_score = score
                     melhor = row
             if melhor and melhor_score >= max(2, len(palavras) * 0.4):
+                if not os.path.exists(melhor[1]):
+                    continue
                 usadas.add(melhor[0])
                 # Verificar se a cena já tem uma imagem gerada — só substituir se o match é bom
                 existing = os.path.join(sb_dir, f"{i+1:03d}.png")
@@ -4604,7 +4605,6 @@ def buscar_banco_auto():
                         with open(sb_json, "w") as f:
                             json.dump(sb_data, f)
                     substituicoes += 1
-        conn.close()
         return jsonify({"substituicoes": substituicoes})
     except Exception as e:
         import sys; sys.stderr.write(f"[BANCO-AUTO] Erro rascunho: {e}\n"); sys.stderr.flush()
