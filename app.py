@@ -633,6 +633,7 @@ ESTILOS_DETALHADOS = {
     "dark fantasy, dramatic, moody atmosphere, epic": "A dark fantasy art scene, moody dramatic atmosphere, epic scale, dark palette with accent lighting, concept art quality, vertical composition",
     "vintage photography, film grain, retro colors, 1970s": "A grainy authentic 1970s photograph, Kodak film grain, warm retro color tones, slightly faded, period-accurate details, vertical frame",
     "neon colors, cyberpunk, futuristic city, glowing lights": "A cyberpunk scene, neon glow lighting, futuristic setting, rain-slicked streets, holographic elements, vertical composition",
+    "stick figure, hand drawn, simple black lines, white background": "A simple stick figure drawing on white paper, hand-drawn black ink lines, minimalist characters with round heads and thin limbs, expressive poses, sketch style, doodle aesthetic, clean white background with subtle paper texture, vertical composition",
 }
 
 def limpar_texto(texto):
