@@ -200,6 +200,14 @@ input:checked+.slider:before{transform:translateX(18px);background:#fff}
         <h2>1. Escreva o roteiro</h2>
         <p class="tip" style="margin-bottom:14px">Escreva naturalmente. O sistema divide em cenas automaticamente.</p>
         <textarea id="textoRoteiro" placeholder="Ex: Davi venceu o gigante Golias, mais o rei Saul ficou com ciúmes e perseguiu Davi"></textarea>
+        <div style="text-align:center;margin:10px 0;color:#64748b;font-size:.82rem">— ou —</div>
+        <div id="uploadNarracaoBox" style="background:var(--bg3);border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;position:relative;transition:.2s" onclick="document.getElementById('inputNarracao').click()">
+          <div style="font-size:1.3rem;margin-bottom:6px">🎙️</div>
+          <div style="font-size:.88rem;font-weight:600;color:var(--text)">Envie uma narração pronta</div>
+          <div style="font-size:.75rem;color:#64748b;margin-top:4px">MP3, WAV ou M4A — o sistema transcreve e gera o vídeo com seu áudio</div>
+          <div id="narracaoFileName" style="display:none;margin-top:8px;font-size:.82rem;color:var(--accent);font-weight:600"></div>
+          <input type="file" id="inputNarracao" accept="audio/*" style="display:none" onchange="handleNarracaoUpload(this)"/>
+        </div>
         <label>Formato do vídeo</label>
         <div class="modo-btns">
           <div class="modo-btn active" id="btnVertical" onclick="setFormato('vertical')">📱 Vertical (9:16)</div>
@@ -1546,6 +1554,30 @@ carregarMusicas();
 <script>
 // Storyboard - Novo fluxo: dividir → preencher do banco → gerar faltantes
 let previewCenas=[], cenasPreenchidas={};
+let narracaoUploadFile=null;
+
+function handleNarracaoUpload(input){
+  const file=input.files[0];
+  if(!file)return;
+  narracaoUploadFile=file;
+  const nameEl=document.getElementById('narracaoFileName');
+  nameEl.textContent='✅ '+file.name;
+  nameEl.style.display='block';
+  document.getElementById('uploadNarracaoBox').style.borderColor='var(--accent)';
+  // Transcrever o áudio
+  const formData=new FormData();
+  formData.append('audio',file);
+  document.getElementById('textoRoteiro').value='⏳ Transcrevendo áudio...';
+  document.getElementById('textoRoteiro').disabled=true;
+  fetch('/transcrever_narracao',{method:'POST',body:formData})
+    .then(r=>r.json())
+    .then(d=>{
+      document.getElementById('textoRoteiro').disabled=false;
+      if(d.erro){document.getElementById('textoRoteiro').value='';alert('Erro: '+d.erro);narracaoUploadFile=null;nameEl.style.display='none';return;}
+      document.getElementById('textoRoteiro').value=d.texto;
+    })
+    .catch(e=>{document.getElementById('textoRoteiro').disabled=false;document.getElementById('textoRoteiro').value='';alert('Erro ao transcrever');narracaoUploadFile=null;});
+}
 
 document.getElementById('btnGerarSB').addEventListener('click',async()=>{
   const texto=document.getElementById('textoRoteiro').value.trim();
@@ -1860,6 +1892,7 @@ document.getElementById('btnFinalizar').addEventListener('click',async()=>{
   }
   fd.append('legenda_ativo',legendaAtivo&&legendaAtivo.checked?'true':'false');fd.append('legenda_fonte',document.getElementById('legendaFonte')?document.getElementById('legendaFonte').value:'Arial');fd.append('legenda_tamanho',document.getElementById('legendaTamanho')?document.getElementById('legendaTamanho').value:'18');fd.append('legenda_cor',document.getElementById('legendaCor')?document.getElementById('legendaCor').value:'&H00FFFFFF');fd.append('legenda_posicao',document.getElementById('legendaPosicao')?document.getElementById('legendaPosicao').value:'2');fd.append('legenda_sombra',document.getElementById('legendaSombra')&&document.getElementById('legendaSombra').checked?'true':'false');
   fd.append('musica_id',document.getElementById('musicaId').value);
+  if(narracaoUploadFile)fd.append('narracao_upload',narracaoUploadFile);
   const efxCheck=document.getElementById('efeitosSonoros');
   fd.append('efeitos_sonoros',efxCheck&&efxCheck.checked?'true':'false');
   try{const res=await fetch('/finalizar_video',{method:'POST',body:fd});const d=await res.json();if(d.erro)throw new Error(d.erro);pollFinal(d.job_id);}catch(e){document.getElementById('statusFinal').style.display='none';document.getElementById('btnFinalizar').disabled=false;document.getElementById('erroFinal').textContent='❌ '+e.message;document.getElementById('erroFinal').style.display='block';}

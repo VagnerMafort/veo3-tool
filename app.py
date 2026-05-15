@@ -1687,7 +1687,7 @@ Write in ENGLISH."""},
         except Exception as e:
             jobs[job_id] = {"status": "erro", "progresso": str(e), "total": 0, "atual": 0}
 
-def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia=False, musica_path="", efeitos_sonoros=False, cenas_animar=None):
+def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia=False, musica_path="", efeitos_sonoros=False, cenas_animar=None, narracao_upload_path=None):
     with app.app_context():
         try:
             user = User.query.get(user_id)
@@ -1709,7 +1709,47 @@ def finalizar_video(job_id, user_id, sb_id, voice_id, modo_video, legenda_cfg, i
             # Rastrear créditos gastos (inclui geração de imagens/divisão do storyboard)
             creditos_gastos_video = sb_data.get("creditos_gastos", 0)
 
-            if user.get_minimax_key() and voice_id:
+            # ── NARRAÇÃO UPLOAD: usar áudio enviado pelo usuário ──
+            if narracao_upload_path and os.path.exists(narracao_upload_path):
+                jobs[job_id]["progresso"] = "Usando sua narração..."
+                import sys
+                sys.stderr.write(f"[NARR] Usando narracao upload: {narracao_upload_path}\n"); sys.stderr.flush()
+                # Copiar áudio para o job_dir
+                audio_final_path = os.path.join(job_dir, "narracao.mp3")
+                shutil.copy(narracao_upload_path, audio_final_path)
+                # Medir duração total do áudio
+                try:
+                    p = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                                        "-of", "default=noprint_wrappers=1:nokey=1", audio_final_path],
+                                       capture_output=True, text=True)
+                    duracao_total = float(p.stdout.strip()) if p.returncode == 0 else 60
+                except:
+                    duracao_total = 60
+                # Distribuir duração proporcionalmente entre as cenas (por palavras)
+                total_palavras = sum(len(b["texto"].split()) for b in blocos)
+                imagens = []
+                t = 0
+                for idx_cena, bloco in enumerate(blocos):
+                    palavras_cena = len(bloco["texto"].split())
+                    proporcao = palavras_cena / total_palavras if total_palavras > 0 else 1 / len(blocos)
+                    dur_cena = max(2.0, round(duracao_total * proporcao, 2))
+                    img_src = os.path.join(sb_dir, bloco["img"])
+                    img_dst = os.path.join(job_dir, f"{idx_cena+1:04d}.png")
+                    shutil.copy(img_src, img_dst)
+                    imagens.append({
+                        "index": idx_cena + 1,
+                        "path": img_dst,
+                        "duracao": dur_cena,
+                        "inicio": round(t, 2),
+                        "fim": round(t + dur_cena, 2),
+                        "texto": bloco["texto"]
+                    })
+                    sys.stderr.write(f"[SYNC] Cena {idx_cena+1}: {dur_cena:.2f}s | Acumulado: {t + dur_cena:.2f}s\n"); sys.stderr.flush()
+                    t += dur_cena
+                # Não cobrar créditos de narração (usuário enviou o áudio)
+                voice_id = ""  # Evitar gerar narração depois
+
+            elif user.get_minimax_key() and voice_id:
                 # Cobrar créditos de narração
                 creditos_narracao = len(blocos) * CREDITOS_NARRACAO
                 if not user.gastar_creditos(creditos_narracao):
@@ -4948,6 +4988,34 @@ def admin_deletar_musica_sistema():
         return jsonify({"erro": "Erro ao deletar"}), 500
 
 # ── Rotas Storyboard ─────────────────────────────────────
+@app.route("/transcrever_narracao", methods=["POST"])
+@login_required
+def transcrever_narracao():
+    """Recebe um áudio e transcreve com Whisper para usar como roteiro"""
+    if "audio" not in request.files:
+        return jsonify({"erro": "Envie um arquivo de áudio"}), 400
+    audio = request.files["audio"]
+    if not audio.filename:
+        return jsonify({"erro": "Arquivo vazio"}), 400
+    # Salvar temporariamente
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+    audio.save(tmp.name)
+    tmp.close()
+    try:
+        import whisper
+        model = whisper.load_model("base")
+        result = model.transcribe(tmp.name, language="pt")
+        texto = result.get("text", "").strip()
+        if not texto:
+            return jsonify({"erro": "Não foi possível transcrever o áudio"}), 400
+        return jsonify({"texto": texto})
+    except Exception as e:
+        return jsonify({"erro": f"Erro na transcrição: {str(e)}"}), 500
+    finally:
+        try: os.unlink(tmp.name)
+        except: pass
+
 @app.route("/dividir_roteiro", methods=["POST"])
 @login_required
 def dividir_roteiro_route():
@@ -5196,6 +5264,12 @@ def finalizar_video_route():
     voice_id = request.form.get("voice_id", "").strip()
     modo_video = request.form.get("modo_video", "longo")
     intervalo = int(request.form.get("intervalo", 2))
+    # Narração enviada pelo usuário (upload de áudio)
+    narracao_upload = request.files.get("narracao_upload")
+    narracao_upload_path = None
+    if narracao_upload and narracao_upload.filename:
+        narracao_upload_path = os.path.join(OUTPUT_FOLDER, f"narracao_upload_{sb_id}.mp3")
+        narracao_upload.save(narracao_upload_path)
     legenda_cfg = {
         "ativo": request.form.get("legenda_ativo", "false") == "true",
         "fonte": request.form.get("legenda_fonte", "Arial"),
@@ -5247,7 +5321,7 @@ def finalizar_video_route():
     sys.stderr.flush()
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "aguardando", "progresso": "Na fila...", "total": 0, "atual": 0}
-    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia, musica_path, efeitos_sonoros, cenas_animar))
+    thread = threading.Thread(target=finalizar_video, args=(job_id, current_user.id, sb_id, voice_id, modo_video, legenda_cfg, intervalo, animar_ia, musica_path, efeitos_sonoros, cenas_animar, narracao_upload_path))
     thread.daemon = True
     thread.start()
     return jsonify({"job_id": job_id})
