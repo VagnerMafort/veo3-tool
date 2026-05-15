@@ -1180,23 +1180,9 @@ async function abrirRascunho(rascunhoId){
     setTipoVideo(d.tipo_video||'animado');
     trocarAba('gerar');
     setTimeout(()=>mostrarStoryboard(),100);
-    // Busca automática no banco (se banco ativo)
-    {% if user.banco_ativo %}
-    fetch('/buscar_banco_auto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sb_id:d.sb_id,cenas:d.blocos.map(b=>b.texto)})})
-      .then(r=>r.json()).then(result=>{
-        if(result.substituicoes && result.substituicoes > 0){
-          const infoEl=document.createElement('div');
-          infoEl.style.cssText='background:var(--bg3);border:1px solid var(--green);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:.82rem;color:var(--green);text-align:center';
-          infoEl.innerHTML=`🗃️ <b>${result.substituicoes}</b> cena(s) atualizada(s) com imagens/vídeos melhores do banco (grátis)`;
-          const lista=document.getElementById('listaCenas');
-          if(lista)lista.parentElement.insertBefore(infoEl,lista);
-          // Recarregar blocos atualizados
-          fetch('/carregar_rascunho/'+rascunhoId).then(r=>r.json()).then(d2=>{
-            if(!d2.erro){sbBlocos=d2.blocos;mostrarStoryboard();}
-          });
-        }
-      }).catch(()=>{});
-    {% endif %}
+    // Busca automática no banco desativada temporariamente (performance)
+    // {% if user.banco_ativo %}
+    // {% endif %}
   }catch(e){alert('Erro ao carregar rascunho');}
 }
 
