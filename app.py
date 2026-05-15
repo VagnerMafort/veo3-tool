@@ -633,7 +633,7 @@ ESTILOS_DETALHADOS = {
     "dark fantasy, dramatic, moody atmosphere, epic": "A dark fantasy art scene, moody dramatic atmosphere, epic scale, dark palette with accent lighting, concept art quality, vertical composition",
     "vintage photography, film grain, retro colors, 1970s": "A grainy authentic 1970s photograph, Kodak film grain, warm retro color tones, slightly faded, period-accurate details, vertical frame",
     "neon colors, cyberpunk, futuristic city, glowing lights": "A cyberpunk scene, neon glow lighting, futuristic setting, rain-slicked streets, holographic elements, vertical composition",
-    "stick figure, hand drawn, simple black lines, white background": "A simple stick figure drawing on white paper, hand-drawn black ink lines, minimalist characters with round heads and thin limbs, expressive poses, sketch style, doodle aesthetic, clean white background with subtle paper texture, vertical composition",
+    "stick figure, hand drawn, simple black lines, white background": "STRICT stick figure drawing style: ONLY black ink lines on white paper. Characters are SIMPLE stick figures with circle heads, dot eyes, line mouth, thin straight limbs. NO hair details, NO clothing details, NO colors, NO shading, NO realistic features. Differentiate characters ONLY by: size (tall/short), simple accessories (hat=triangle on head, ponytail=single line from head, glasses=two circles on face). Background is MINIMAL: simple line objects (door=rectangle, table=lines, car=basic shape). Style must look like a quick whiteboard doodle. NEVER add colors, NEVER add detailed hair, NEVER add clothing textures. Keep it EXTREMELY simple like xkcd comics. Vertical composition",
 }
 
 def limpar_texto(texto):
